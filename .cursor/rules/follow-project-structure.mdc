@@ -1,0 +1,40 @@
+---
+description: Always follow this project's existing code and folder structure (MVRSC modular monolith)
+alwaysApply: true
+---
+
+# Salon Backend — Always Follow Existing Structure
+
+Whether the user mentions architecture or not, **match this repo’s patterns**. Do not invent a new layout or DI style.
+
+## Architecture
+
+- Modular monolith (single Express app) — **not** microservices
+- **MVRSC** per feature: `model` → `validation` → `repository` → `service` → `controller` → `routes` → `docs` → `index`
+- **Module-local DI**: `createShared()` in `src/core/shared.js`; wire modules in `src/routes/index.js` via `createXxxModule(shared)`
+- Do **not** reintroduce a central `container.js` unless the user explicitly asks
+
+## Folder map
+
+| Path | Purpose |
+|------|---------|
+| `src/core/` | Infra only (config, database, logger, redis, socket, queue, cron, storage, events, swagger, monitoring, health) |
+| `src/common/` | Shared app code (base classes, constants/enums, errors, middleware, helpers, utils) |
+| `src/modules/<name>/` | Feature modules — keep the same file shape as `user/` |
+| `src/app.js` | Express app factory only (no feature wiring) |
+| `src/server.js` | Boot, security middleware, graceful shutdown |
+| `src/routes/` | Mount modules + health |
+| `src/tests/` | unit / integration / repository / service / controller / socket |
+
+## Coding rules
+
+- Class-based layers; extend `BaseRepository` / `BaseService` / `BaseController` / `BaseValidator`
+- DB queries only in repositories; business logic only in services; thin controllers
+- Enums only in `src/common/constants/enums.js`
+- Cross-module: EventBus + public module factories — never import another module’s model/repository internals
+- New module: factory in `modules/x/index.js` → mount in `routes/index.js` → docs in `core/swagger/docs.registry.js`
+- Prefer ESM (`"type": "module"`), existing packages, and existing response/error patterns (`ApiResponse`, `AppError`)
+
+## When unsure
+
+Read an existing module (`src/modules/user/`) and mirror it. Do not restructure folders casually.
