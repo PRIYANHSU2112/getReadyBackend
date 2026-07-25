@@ -17,6 +17,7 @@ describe('UserRepository', () => {
       name: 'Repo User',
       email: 'repo@example.com',
       password: 'password123',
+      role: 'admin',
     });
 
     const found = await repo.findByEmail('repo@example.com');
@@ -29,6 +30,7 @@ describe('UserRepository', () => {
       name: 'Soft',
       email: 'soft@example.com',
       password: 'password123',
+      role: 'admin',
     });
 
     const deleted = await repo.softDelete(created._id);

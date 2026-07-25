@@ -1,5 +1,9 @@
 export { StorageService } from './StorageService.js';
-export { LocalProvider } from './local.provider.js';
-export { S3Provider } from './s3.provider.js';
-export { CloudinaryProvider } from './cloudinary.provider.js';
-export { upload, singleUpload, multiUpload } from './multer.config.js';
+export {
+  s3,
+  uploadToS3,
+  deleteFromS3,
+  getS3Url,
+  S3Provider,
+} from './s3.provider.js';
+export { upload, singleUpload, multiUpload, optionalSingleUpload } from './multer.config.js';

@@ -8,15 +8,14 @@ services:
       - /app/node_modules
     environment:
       NODE_ENV: development
-      MONGODB_URI: mongodb://mongodb:27017/salon
+      PORT: 3000
+      APP_URL: http://localhost:${PORT:-3000}
+      # MongoDB: use DATABASE_URI / MONGODB_URI from .env (Atlas)
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_PASSWORD: ''
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_ENABLED: 'true'
     command: npm run dev
-
-  mongodb:
-    ports:
-      - '27017:27017'
 
   redis:
     ports:

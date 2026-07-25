@@ -40,8 +40,53 @@ async function bootstrap() {
     // Connect Database
     await mongooseConnection.connect(config.mongodbUri);
 
-    // Connect Redis
-    await RedisClient.getInstance().connect();
+    // Align indexes (partial unique + sort helpers)
+    try {
+      const { UserModel } = await import('./modules/user/user.model.js');
+      const { RoleModel } = await import('./modules/rbac/role.model.js');
+      const { PermissionModel } = await import('./modules/rbac/permission.model.js');
+      const { NotificationModel } = await import('./modules/notification/notification.model.js');
+      const { AddressModel } = await import('./modules/address/address.model.js');
+      const { BannerModel } = await import('./modules/banner/banner.model.js');
+      const { FilterModel } = await import('./modules/filter/filter.model.js');
+      const { FilterValueModel } = await import('./modules/filter/filter-value.model.js');
+      await Promise.all([
+        UserModel.syncIndexes(),
+        RoleModel.syncIndexes(),
+        PermissionModel.syncIndexes(),
+        NotificationModel.syncIndexes(),
+        AddressModel.syncIndexes(),
+        BannerModel.syncIndexes(),
+        FilterModel.syncIndexes(),
+        FilterValueModel.syncIndexes(),
+      ]);
+      logger.info('Mongo indexes synced');
+    } catch (indexErr) {
+      logger.warn({ err: indexErr }, 'Index sync failed — uniqueness/sort may be wrong until fixed');
+    }
+
+    // Connect Redis (optional — fall back to in-memory cache via createShared)
+    if (config.redis.enabled) {
+      try {
+        await RedisClient.getInstance().connect();
+        const ok = await RedisClient.getInstance().ping();
+        if (!ok) {
+          throw new Error('Redis ping failed');
+        }
+      } catch (redisErr) {
+        logger.warn(
+          { err: redisErr },
+          '[Redis] Unavailable — using in-memory cache. Start Redis or set REDIS_ENABLED=false.',
+        );
+        try {
+          await RedisClient.getInstance().disconnect();
+        } catch {
+          // ignore cleanup errors
+        }
+      }
+    } else {
+      logger.warn('[Redis] Disabled — using in-memory cache (set REDIS_ENABLED=true to enable Redis)');
+    }
 
     // Create Express App
     const app = createApp({
@@ -68,7 +113,9 @@ async function shutdown() {
     await new Promise((resolve) => server.close(resolve));
   }
 
-  await RedisClient.getInstance().disconnect();
+  if (config.redis.enabled) {
+    await RedisClient.getInstance().disconnect();
+  }
   await mongooseConnection.disconnect();
 
   logger.info('Server stopped');

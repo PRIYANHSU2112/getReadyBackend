@@ -7,7 +7,7 @@ export class UserController extends BaseController {
   constructor(userService) {
     super();
     this.userService = userService;
-    this.bindMethods(['create', 'login', 'list', 'getById', 'update', 'remove']);
+    this.bindMethods(['create', 'list', 'getById', 'getMe', 'updateMe', 'update', 'remove']);
   }
 
   async create(req, res) {
@@ -15,14 +15,19 @@ export class UserController extends BaseController {
     return this.created(res, user);
   }
 
-  async login(req, res) {
-    const result = await this.userService.login(req.body.email, req.body.password);
-    return this.ok(res, result);
-  }
-
   async list(req, res) {
     const { items, meta } = await this.userService.listUsers(req.query);
     return this.ok(res, items, meta);
+  }
+
+  async getMe(req, res) {
+    const user = await this.userService.getMe(req.user.id);
+    return this.ok(res, user);
+  }
+
+  async updateMe(req, res) {
+    const user = await this.userService.updateMe(req.user.id, req.body, req.file);
+    return this.ok(res, user);
   }
 
   async getById(req, res) {
@@ -31,7 +36,7 @@ export class UserController extends BaseController {
   }
 
   async update(req, res) {
-    const user = await this.userService.updateUser(req.params.id, req.body);
+    const user = await this.userService.updateUser(req.params.id, req.body, req.file);
     return this.ok(res, user);
   }
 
@@ -40,3 +45,6 @@ export class UserController extends BaseController {
     return this.noContent(res);
   }
 }
+
+
+

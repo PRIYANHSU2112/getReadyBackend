@@ -1,0 +1,1037 @@
+{
+  "info": {
+    "name": "Salon API",
+    "description": "Generated from Swagger/OpenAPI module docs.\n\n1. Set `baseUrl` (default http://localhost:5000)\n2. Run **Admin / Super Admin login**\n3. `accessToken` is saved automatically from `data.token`\n4. Call protected endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    }
+  ],
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (pm.response.code === 200 || pm.response.code === 201) {",
+          "  try {",
+          "    const json = pm.response.json();",
+          "    if (json && json.data && json.data.token) {",
+          "      pm.collectionVariables.set('accessToken', json.data.token);",
+          "    }",
+          "  } catch (e) {}",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Get current authenticated user",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Requires Bearer JWT. Collection auth uses {{accessToken}} (auto-set after login)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth - Admin",
+      "item": [
+        {
+          "name": "Admin / Super Admin login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"superadmin@salon.com\",\n  \"password\": \"SuperAdmin@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/admin/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "admin",
+                "login"
+              ]
+            },
+            "description": "Returns a JWT. Use **Authorize** with the token for protected routes. Accepts roles `admin` and `super_admin`.\n\nPublic (no auth).",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin login (alias of /admin/login)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"superadmin@salon.com\",\n  \"password\": \"SuperAdmin@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Same as `POST /api/v1/auth/admin/login`.\n\nPublic (no auth).",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Request password-reset OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"superadmin@salon.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/admin/forgot-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "admin",
+                "forgot-password"
+              ]
+            },
+            "description": "Always returns a generic message (does not reveal whether the email exists). OTP is sent for admin/super_admin accounts.\n\nPublic (no auth).",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reset password with OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"superadmin@salon.com\",\n  \"otp\": \"123456\",\n  \"newPassword\": \"NewPass@12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/admin/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "admin",
+                "reset-password"
+              ]
+            },
+            "description": "Public (no auth).",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth - Mobile",
+      "item": [
+        {
+          "name": "Send login OTP (customer / beautician)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+919876543210\",\n  \"role\": \"customer\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/mobile/send-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "mobile",
+                "send-otp"
+              ]
+            },
+            "description": "Public (no auth).",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Resend login OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+919876543210\",\n  \"role\": \"customer\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/mobile/resend-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "mobile",
+                "resend-otp"
+              ]
+            },
+            "description": "Public (no auth).",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Verify OTP and login / register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+919876543210\",\n  \"otp\": \"123456\",\n  \"role\": \"customer\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/mobile/verify-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "mobile",
+                "verify-otp"
+              ]
+            },
+            "description": "Creates the user on first successful verify if they do not exist. `name` is optional (defaults to \"User\").\n\nPublic (no auth).",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Liveness probe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "No authentication. Returns process liveness.\n\nPublic (no auth).",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Readiness probe",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ready",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ready"
+              ]
+            },
+            "description": "Checks MongoDB (and Redis when enabled). No authentication.\n\nPublic (no auth).",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "List my notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications?page=1&limit=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Auth:** Bearer JWT required. Returns notifications for the authenticated user only.\n\nRequires Bearer JWT. Collection auth uses {{accessToken}} (auto-set after login)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "RBAC",
+      "item": [
+        {
+          "name": "[Admin] List roles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/roles?page=1&limit=10&sort=name&search=admin&isActive=true&isSystem=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "roles"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "sort",
+                  "value": "name",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "search",
+                  "value": "admin",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "isActive",
+                  "value": "true",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "isSystem",
+                  "value": "true",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Auth:** Bearer JWT.\n\n**Access:** Admin (`roles.read`). Super Admin bypasses. Not for Beautician by default.\n\nRequires Bearer JWT. Collection auth uses {{accessToken}} (auto-set after login)."
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Create custom role",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Front Desk\",\n  \"slug\": \"front_desk\",\n  \"description\": \"Reception staff\",\n  \"permissions\": [\n    \"users.read\"\n  ],\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "roles"
+              ]
+            },
+            "description": "**Auth:** Bearer JWT.\n\n**Access:** Admin (`roles.manage`). Super Admin bypasses.\n\nCannot create a Super Admin role. Permission keys must already exist (run permissions sync first).\n\nRequires Bearer JWT. Collection auth uses {{accessToken}} (auto-set after login)."
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Get role by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/roles/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "roles",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "507f1f77bcf86cd799439011",
+                  "description": "Role ObjectId"
+                }
+              ]
+            },
+            "description": "**Auth:** Bearer JWT.\n\n**Access:** Admin (`roles.read`). Super Admin bypasses. Not for Beautician by default.\n\nRequires Bearer JWT. Collection auth uses {{accessToken}} (auto-set after login)."
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Update role",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Front Desk Lead\",\n  \"description\": \"Updated description\",\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/roles/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "roles",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "507f1f77bcf86cd799439011",
+                  "description": "Role ObjectId"
+                }
+              ]
+            },
+            "description": "**Auth:** Bearer JWT.\n\n**Access:** Admin (`roles.manage`). Super Admin bypasses.\n\nSystem role slug cannot be changed.\n\nRequires Bearer JWT. Collection auth uses {{accessToken}} (auto-set after login)."
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Delete custom role",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/roles/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "roles",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "507f1f77bcf86cd799439011",
+                  "description": "Role ObjectId"
+                }
+              ]
+            },
+            "description": "**Auth:** Bearer JWT.\n\n**Access:** Admin (`roles.manage`). Super Admin bypasses.\n\nCannot delete system / super admin roles. Fails with `ROLE_IN_USE` if users still have this slug.\n\nRequires Bearer JWT. Collection auth uses {{accessToken}} (auto-set after login)."
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Replace role permissions",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissions\": [\n    \"users.read\",\n    \"users.update\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/roles/:id/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "roles",
+                ":id",
+                "permissions"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "507f1f77bcf86cd799439011",
+                  "description": "Role ObjectId"
+                }
+              ]
+            },
+            "description": "**Auth:** Bearer JWT.\n\n**Access:** Admin (`roles.manage`). Super Admin bypasses.\n\nRequires Bearer JWT. Collection auth uses {{accessToken}} (auto-set after login)."
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] List permissions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/permissions?page=1&limit=50&sort=module&module=users&isActive=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "permissions"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "sort",
+                  "value": "module",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "module",
+                  "value": "users",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "isActive",
+                  "value": "true",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Auth:** Bearer JWT.\n\n**Access:** Admin (`permissions.read`). Super Admin bypasses.\n\nRequires Bearer JWT. Collection auth uses {{accessToken}} (auto-set after login)."
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Sync permissions from code registry",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/permissions/sync",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "permissions",
+                "sync"
+              ]
+            },
+            "description": "**Auth:** Bearer JWT.\n\n**Access:** Admin (`permissions.sync`). Super Admin bypasses.\n\nUpserts all keys from the permission registry into MongoDB. Does not allow free-form key creation.\n\nRequires Bearer JWT. Collection auth uses {{accessToken}} (auto-set after login)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users - Admin",
+      "item": [
+        {
+          "name": "[Admin] Create user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ananya Kapoor\",\n  \"phone\": \"+919811122233\",\n  \"role\": \"customer\",\n  \"gender\": \"FEMALE\",\n  \"dob\": \"1998-03-22T00:00:00.000Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ]
+            },
+            "description": "**Auth:** Bearer JWT required.\n\n**Permission:** `users.create` (Admin by default).\n\n**Rules:** customer/beautician require `phone`; admin/super_admin require `email` + `password` (min 8).\n\n**Try it out:** change `phone` / `email` each time — they must be unique (409 if already used).\n\nRequires Bearer JWT. Collection auth uses {{accessToken}} (auto-set after login)."
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Update user by id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Priya S.\",\n  \"gender\": \"FEMALE\",\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "507f1f77bcf86cd799439011",
+                  "description": "User ObjectId"
+                }
+              ]
+            },
+            "description": "**Auth:** Bearer JWT required.\n\n**Permission:** `users.update` (Admin by default), or self via `allowSelf`.\n\nJSON or multipart. Optional `file` for profile image.\n\nRequires Bearer JWT. Collection auth uses {{accessToken}} (auto-set after login)."
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin] Soft-delete user",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "507f1f77bcf86cd799439011",
+                  "description": "User ObjectId"
+                }
+              ]
+            },
+            "description": "**Auth:** Bearer JWT required.\n\n**Permission:** `users.delete` (Admin by default).\n\nRequires Bearer JWT. Collection auth uses {{accessToken}} (auto-set after login)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users - Admin / Beautician",
+      "item": [
+        {
+          "name": "[Admin / Beautician] List users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users?page=1&limit=10&sort=-createdAt&search=priya&role=customer&isActive=true&gender=FEMALE&createdFrom=2026-01-01T00%3A00%3A00.000Z&createdTo=2026-12-31T23%3A59%3A59.999Z&hasReferral=false",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "sort",
+                  "value": "-createdAt",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "search",
+                  "value": "priya",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "role",
+                  "value": "customer",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "isActive",
+                  "value": "true",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "gender",
+                  "value": "FEMALE",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "createdFrom",
+                  "value": "2026-01-01T00:00:00.000Z",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "createdTo",
+                  "value": "2026-12-31T23:59:59.999Z",
+                  "description": "",
+                  "disabled": false
+                },
+                {
+                  "key": "hasReferral",
+                  "value": "false",
+                  "description": "",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "**Auth:** Bearer JWT required.\n\n**Permission:** `users.read` (Admin / Beautician by default). Super Admin bypasses. Self-access allowed on `/:id` via `allowSelf`.\n\nRequires Bearer JWT. Collection auth uses {{accessToken}} (auto-set after login)."
+          },
+          "response": []
+        },
+        {
+          "name": "[Admin / Beautician] Get user by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "507f1f77bcf86cd799439011",
+                  "description": "User ObjectId"
+                }
+              ]
+            },
+            "description": "**Auth:** Bearer JWT required.\n\n**Permission:** `users.read` (Admin / Beautician by default). Super Admin bypasses. Self-access allowed on `/:id` via `allowSelf`.\n\nRequires Bearer JWT. Collection auth uses {{accessToken}} (auto-set after login)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users - Self",
+      "item": [
+        {
+          "name": "Get my profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me"
+              ]
+            },
+            "description": "**Auth:** Bearer JWT required.\n\n**Permission:** none (authenticated self route).\n\nRequires Bearer JWT. Collection auth uses {{accessToken}} (auto-set after login)."
+          },
+          "response": []
+        },
+        {
+          "name": "Update my profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Priya Sharma\",\n  \"gender\": \"FEMALE\",\n  \"fcmToken\": \"fcm_updated_token_xyz\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me"
+              ]
+            },
+            "description": "**Auth:** Bearer JWT required.\n\n**Permission:** none (authenticated self route).\n\nSupports JSON or multipart. Optional `file` uploads profile image (max 5MB). At least one field or a file is required.\n\nRequires Bearer JWT. Collection auth uses {{accessToken}} (auto-set after login)."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

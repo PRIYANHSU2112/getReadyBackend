@@ -8,14 +8,16 @@ describe('UserService', () => {
   let userRepository;
   let eventBus;
   let cacheService;
-  let jwtUtil;
   let service;
 
   beforeEach(() => {
     userRepository = {
       findByEmail: jest.fn(),
+      findByPhone: jest.fn(),
+      findByReferralCode: jest.fn(),
       create: jest.fn(),
       findActiveById: jest.fn(),
+      buildListFilter: jest.fn().mockReturnValue({ deletedAt: null }),
       search: jest.fn(),
       countActive: jest.fn(),
       updateById: jest.fn(),
@@ -27,19 +29,27 @@ describe('UserService', () => {
       set: jest.fn(),
       del: jest.fn(),
     };
-    jwtUtil = { sign: jest.fn().mockReturnValue('token') };
-    service = new UserService(userRepository, eventBus, cacheService, jwtUtil);
+    service = new UserService(userRepository, eventBus, cacheService);
   });
 
   it('creates a user and emits user.created', async () => {
     userRepository.findByEmail.mockResolvedValue(null);
+    userRepository.findByPhone.mockResolvedValue(null);
+    userRepository.findByReferralCode.mockResolvedValue(null);
     userRepository.create.mockResolvedValue({
       _id: 'abc',
       name: 'Ada',
       email: 'ada@example.com',
-      role: 'user',
+      role: 'customer',
+      referralCode: 'REF12345',
       toJSON() {
-        return { _id: 'abc', name: 'Ada', email: 'ada@example.com', role: 'user' };
+        return {
+          _id: 'abc',
+          name: 'Ada',
+          email: 'ada@example.com',
+          role: 'customer',
+          referralCode: 'REF12345',
+        };
       },
     });
 
@@ -47,6 +57,8 @@ describe('UserService', () => {
       name: 'Ada',
       email: 'ada@example.com',
       password: 'password123',
+      phone: '+919876543210',
+      role: 'customer',
     });
 
     expect(result.email).toBe('ada@example.com');
@@ -59,7 +71,13 @@ describe('UserService', () => {
   it('rejects duplicate email', async () => {
     userRepository.findByEmail.mockResolvedValue({ _id: '1', email: 'ada@example.com' });
     await expect(
-      service.createUser({ name: 'Ada', email: 'ada@example.com', password: 'password123' }),
+      service.createUser({
+        name: 'Ada',
+        email: 'ada@example.com',
+        password: 'password123',
+        phone: '+919876543210',
+        role: 'customer',
+      }),
     ).rejects.toBeInstanceOf(AppError);
   });
 

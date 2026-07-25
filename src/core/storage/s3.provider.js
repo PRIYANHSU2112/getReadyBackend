@@ -1,51 +1,86 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { v4 as uuidv4 } from 'uuid';
+import config from '../config/index.js';
+
+const s3Config = config.storage.s3;
+
+const clientOptions = {
+  region: s3Config.region || 'us-east-1',
+  credentials: {
+    accessKeyId: s3Config.accessKeyId || '',
+    secretAccessKey: s3Config.secretAccessKey || '',
+  },
+};
+
+if (s3Config.endpoint) {
+  clientOptions.endpoint = s3Config.endpoint;
+  clientOptions.forcePathStyle = false;
+}
+
+/** Shared S3 client (AWS / DigitalOcean Spaces / Linode) */
+export const s3 = new S3Client(clientOptions);
 
 /**
- * S3 storage provider stub — configure via env for production use.
+ * Upload a buffer to S3.
+ * @param {Buffer} fileBuffer
+ * @param {string} fileName
+ * @param {string} mimeType
+ * @returns {Promise<{ key: string, url: string, provider: string }>}
  */
-export class S3Provider {
-  /**
-   * @param {{ region: string, accessKeyId: string, secretAccessKey: string, bucket: string }} config
-   */
-  constructor(config) {
-    this.bucket = config.bucket;
-    this.client = new S3Client({
-      region: config.region,
-      credentials: {
-        accessKeyId: config.accessKeyId,
-        secretAccessKey: config.secretAccessKey,
-      },
-    });
+export async function uploadToS3(fileBuffer, fileName, mimeType) {
+  const folder = (s3Config.folder || 'uploads').replace(/^\/+|\/+$/g, '');
+  const key = `${folder}/${Date.now()}_${fileName}`;
+
+  const params = {
+    Bucket: s3Config.bucket,
+    Key: key,
+    Body: fileBuffer,
+    ContentType: mimeType,
+  };
+
+  if (s3Config.publicRead !== false) {
+    params.ACL = 'public-read';
   }
 
+  await s3.send(new PutObjectCommand(params));
+
+  return {
+    provider: 's3',
+    key,
+    url: getS3Url(key),
+  };
+}
+
+
+export function getS3Url(key) {
+  if (s3Config.endpoint) {
+    const host = s3Config.endpoint.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    return `https://${s3Config.bucket}.${host}/${key}`;
+  }
+  return `https://${s3Config.bucket}.s3.${s3Config.region}.amazonaws.com/${key}`;
+}
+
+
+export async function deleteFromS3(key) {
+  if (!key || !s3Config.bucket) return;
+  await s3.send(
+    new DeleteObjectCommand({
+      Bucket: s3Config.bucket,
+      Key: key,
+    }),
+  );
+}
+
+/** @deprecated Use uploadToS3 — kept for StorageService compatibility */
+export class S3Provider {
   async upload(file) {
-    const key = `${uuidv4()}-${file.originalname}`;
-    await this.client.send(
-      new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: key,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-      }),
-    );
-    return {
-      provider: 's3',
-      key,
-      url: this.getUrl(key),
-    };
+    return uploadToS3(file.buffer, file.originalname, file.mimetype);
   }
 
   async delete(key) {
-    await this.client.send(
-      new DeleteObjectCommand({
-        Bucket: this.bucket,
-        Key: key,
-      }),
-    );
+    return deleteFromS3(key);
   }
 
   getUrl(key) {
-    return `https://${this.bucket}.s3.amazonaws.com/${key}`;
+    return getS3Url(key);
   }
 }

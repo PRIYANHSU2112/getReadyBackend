@@ -15,7 +15,7 @@ Copy `.env.example` to `.env` and set secrets:
 | `MONGODB_URI` | MongoDB connection string |
 | `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` | Redis connection |
 | `JWT_SECRET` | Min 16 characters |
-| `STORAGE_PROVIDER` | `local` \| `s3` \| `cloudinary` |
+| `AWS_BUCKET_NAME` / `AWS_*` | S3 storage (required for uploads) |
 
 Env-specific overrides live in `src/core/config/environments/`.
 

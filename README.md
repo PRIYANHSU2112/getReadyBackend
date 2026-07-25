@@ -13,7 +13,7 @@ Production-oriented **Express** backend boilerplate using **MVRSC** (Model, Vali
 - Helmet, CORS, rate limit, XSS, NoSQL sanitize, HPP
 - Pino logging, global error handling, Joi validation
 - Swagger/OpenAPI
-- Storage facade (local / S3 / Cloudinary)
+- Storage facade (S3)
 - In-process EventBus for cross-module events
 - Prometheus metrics + Grafana sample dashboard
 - Jest + Supertest

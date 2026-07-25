@@ -3,5 +3,5 @@ export default {
   cacheTtlSeconds: 60,
   metricsEnabled: true,
   swaggerEnabled: true,
-  storageProvider: 'local',
+  storageProvider: 's3',
 };

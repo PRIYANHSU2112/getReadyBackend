@@ -18,7 +18,13 @@ FROM base AS production
 ENV NODE_ENV=production
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN mkdir -p uploads && chown -R node:node /app
+# Avoid chown -R /app — Docker Desktop on Windows fails layer extract (Lchown read-only FS).
+# node:alpine already has user `node`; ensure nodejs group and writable uploads only.
+RUN addgroup -S nodejs \
+  && (getent passwd node >/dev/null || adduser -S node -G nodejs) \
+  && addgroup node nodejs 2>/dev/null || true \
+  && mkdir -p /app/uploads \
+  && chown node:nodejs /app/uploads
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \

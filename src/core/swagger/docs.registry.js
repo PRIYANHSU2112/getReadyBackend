@@ -1,8 +1,23 @@
 import { userDocs } from '../../modules/user/user.docs.js';
+import { authDocs } from '../../modules/auth/auth.docs.js';
 import { notificationDocs } from '../../modules/notification/notification.docs.js';
+import { rbacDocs } from '../../modules/rbac/rbac.docs.js';
+import { addressDocs } from '../../modules/address/address.docs.js';
+import { bannerDocs } from '../../modules/banner/banner.docs.js';
+import { filterDocs } from '../../modules/filter/filter.docs.js';
+import { healthDocs } from './health.docs.js';
 
 /**
  * Central Swagger docs registry.
  * Add a module's docs here when creating a new feature module.
  */
-export const swaggerDocs = [userDocs, notificationDocs];
+export const swaggerDocs = [
+  healthDocs,
+  authDocs,
+  userDocs,
+  notificationDocs,
+  rbacDocs,
+  addressDocs,
+  bannerDocs,
+  filterDocs,
+];

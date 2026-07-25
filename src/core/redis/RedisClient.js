@@ -2,21 +2,25 @@ import Redis from 'ioredis';
 import config from '../config/index.js';
 import { logger } from '../logger/pino.logger.js';
 
+/** Fail-fast options for request-path cache (not BullMQ workers). */
 function buildRedisOptions() {
   return {
     host: config.redis.host,
     port: config.redis.port,
     password: config.redis.password,
-    maxRetriesPerRequest: null,
+    maxRetriesPerRequest: 1,
+    commandTimeout: 100,
+    connectTimeout: 2000,
+    enableOfflineQueue: false,
     keepAlive: 10000,
     lazyConnect: true,
     showFriendlyErrorStack: config.env === 'development',
     retryStrategy(times) {
-      if (times > 3) {
+      if (times > 2) {
         return null;
       }
       logger.warn(`[Redis] Retrying connection... Attempt: ${times}`);
-      return Math.min(times * 500, 2000);
+      return Math.min(times * 200, 500);
     },
   };
 }
@@ -68,13 +72,26 @@ export class RedisClient {
     return this.#client;
   }
 
+  isReady() {
+    return Boolean(this.#client && this.#client.status === 'ready');
+  }
+
   async disconnect() {
-    if (this.#client) {
-      await this.#client.quit().catch(() => {});
-      this.#client = null;
-      RedisClient.#instance = null;
-      logger.info('[Redis] Disconnected');
+    if (!this.#client) return;
+    const client = this.#client;
+    this.#client = null;
+    RedisClient.#instance = null;
+    try {
+      // Prefer disconnect over quit so offline clients do not hang boot/shutdown
+      client.disconnect();
+    } catch {
+      try {
+        await client.quit();
+      } catch {
+        // ignore
+      }
     }
+    logger.info('[Redis] Disconnected');
   }
 
   async ping() {

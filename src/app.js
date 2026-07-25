@@ -1,5 +1,4 @@
 import express from 'express';
-import path from 'path';
 import pinoHttp from 'pino-http';
 
 import config from './core/config/index.js';
@@ -8,6 +7,7 @@ import { createShared } from './core/shared.js';
 import { setupSwagger } from './core/swagger/index.js';
 import {
   requestIdMiddleware,
+  responseTimeMiddleware,
   createErrorMiddleware,
   notFoundHandler,
 } from './common/middleware/index.js';
@@ -28,6 +28,7 @@ export function createApp(options = {}) {
   app.disable('x-powered-by');
 
   app.use(requestIdMiddleware);
+  app.use(responseTimeMiddleware);
   app.use(
     pinoHttp({
       logger,
@@ -40,10 +41,6 @@ export function createApp(options = {}) {
 
   if (typeof options.applyMiddleware === 'function') {
     options.applyMiddleware(app);
-  }
-
-  if (config.storage.provider === 'local') {
-    app.use('/uploads', express.static(path.resolve(config.storage.localPath)));
   }
 
   app.use(createRootRouter(shared));

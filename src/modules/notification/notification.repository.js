@@ -6,6 +6,9 @@ export class NotificationRepository extends BaseRepository {
   }
 
   async findByUserId(userId, options = {}) {
-    return this.findAll({ userId, deletedAt: null }, options);
+    return this.findAll(
+      { userId, deletedAt: null },
+      { ...options, select: options.select || '-__v' },
+    );
   }
 }

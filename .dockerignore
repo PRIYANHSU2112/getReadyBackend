@@ -1,0 +1,33 @@
+# Secrets — never bake into image layers
+.env
+.env.*
+!.env.example
+
+# Dependencies & VCS
+node_modules
+.git
+.gitignore
+.cursor
+
+# Local / build artifacts
+uploads
+coverage
+dist
+build
+tmp
+temp
+*.log
+npm-debug.log*
+
+# Docs & compose (not needed inside image)
+*.md
+docker-compose*.yml
+.dockerignore
+Dockerfile
+
+# Tests (production image)
+src/tests
+**/__tests__
+**/*.test.js
+**/*.spec.js
+jest.config.*

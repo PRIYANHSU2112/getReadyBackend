@@ -18,6 +18,7 @@ export function createAuthMiddleware(jwtUtil) {
         id: payload.sub || payload.id,
         role: payload.role,
         email: payload.email,
+        phone: payload.phone,
       };
       next();
     } catch {
@@ -42,6 +43,7 @@ export function createOptionalAuthMiddleware(jwtUtil) {
         id: payload.sub || payload.id,
         role: payload.role,
         email: payload.email,
+        phone: payload.phone,
       };
     } catch {
       // ignore invalid optional token

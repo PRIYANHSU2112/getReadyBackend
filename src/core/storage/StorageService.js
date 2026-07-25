@@ -1,44 +1,31 @@
 import { StorageProvider } from '../../common/constants/enums.js';
-import { LocalProvider } from './local.provider.js';
-import { S3Provider } from './s3.provider.js';
-import { CloudinaryProvider } from './cloudinary.provider.js';
+import { uploadToS3, deleteFromS3, getS3Url } from './s3.provider.js';
 import { AppError } from '../../common/errors/AppError.js';
+import { HttpStatus } from '../../common/constants/http-status.js';
+import { ErrorCodes } from '../../common/constants/error-codes.js';
 
 /**
- * Storage facade — selects provider from config.
+ * Storage facade — S3 only (uses uploadToS3).
  */
 export class StorageService {
-  /**
-   * @param {object} storageConfig
-   * @param {string} appUrl
-   */
-  constructor(storageConfig, appUrl) {
-    this.providerName = storageConfig.provider;
-    this.provider = this.#createProvider(storageConfig, appUrl);
+
+  constructor(_storageConfig, _appUrl) {
+    this.providerName = StorageProvider.S3;
   }
 
-  #createProvider(storageConfig, appUrl) {
-    switch (storageConfig.provider) {
-      case StorageProvider.S3:
-        return new S3Provider(storageConfig.s3);
-      case StorageProvider.CLOUDINARY:
-        return new CloudinaryProvider(storageConfig.cloudinary);
-      case StorageProvider.LOCAL:
-      default:
-        return new LocalProvider(storageConfig.localPath, appUrl);
-    }
-  }
 
   async upload(file) {
-    if (!file) throw new AppError('No file provided', 400, 'BAD_REQUEST');
-    return this.provider.upload(file);
+    if (!file?.buffer) {
+      throw new AppError('No file provided', HttpStatus.BAD_REQUEST, ErrorCodes.BAD_REQUEST);
+    }
+    return uploadToS3(file.buffer, file.originalname, file.mimetype);
   }
 
   async delete(key) {
-    return this.provider.delete(key);
+    return deleteFromS3(key);
   }
 
   getUrl(key) {
-    return this.provider.getUrl(key);
+    return getS3Url(key);
   }
 }

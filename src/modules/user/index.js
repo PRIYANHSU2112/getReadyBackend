@@ -7,16 +7,36 @@ import { userDocs } from './user.docs.js';
 
 /**
  * User module factory — wires Repository → Service → Controller → Routes.
- * @param {{ eventBus?: object, cacheService?: object|null, jwtUtil: object, authenticate: Function }} deps
+ * @param {{
+ *   eventBus?: object,
+ *   cacheService?: object|null,
+ *   storageService?: object|null,
+ *   authenticate: Function,
+ *   checkPermission: Function,
+ *   roleService?: object|null,
+ * }} deps
  */
-export function createUserModule({ eventBus = null, cacheService = null, jwtUtil, authenticate }) {
+export function createUserModule({
+  eventBus = null,
+  cacheService = null,
+  storageService = null,
+  authenticate,
+  checkPermission,
+  roleService = null,
+}) {
   const repository = new UserRepository(UserModel);
-  const service = new UserService(repository, eventBus, cacheService, jwtUtil);
+  const service = new UserService(
+    repository,
+    eventBus,
+    cacheService,
+    storageService,
+    roleService,
+  );
   const controller = new UserController(service);
 
   return {
     service,
-    routes: createUserRoutes(controller, { authenticate }),
+    routes: createUserRoutes(controller, { authenticate, checkPermission }),
     docs: userDocs,
   };
 }
