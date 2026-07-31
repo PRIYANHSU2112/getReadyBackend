@@ -51,6 +51,8 @@ const config = Object.freeze({
   jwt: {
     secret: env.JWT_SECRET || 'jwt-secret-key',
     expiresIn: env.JWT_EXPIRES_IN || '1d',
+    refreshSecret: env.JWT_REFRESH_SECRET || env.JWT_SECRET || 'jwt-refresh-secret-key',
+    refreshExpiresIn: env.JWT_REFRESH_EXPIRES_IN || '7d',
   },
   otp: {
     ttlSeconds: Number(env.OTP_TTL_SECONDS) || 300,

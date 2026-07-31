@@ -36,7 +36,8 @@ const loginExample = {
 };
 
 const loginSuccess = successExample({
-  token: JWT_EXAMPLE,
+  accessToken: JWT_EXAMPLE,
+  refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2NGYwYzJhMWI0ZTFjMmQzZDRlNTA2NzAiLCJyb2xlIjoiYWRtaW4iLCJ0b2tlblR5cGUiOiJyZWZyZXNoIn0.example',
   user: adminUserExample,
 });
 
@@ -253,11 +254,68 @@ export const authDocs = {
         responses: {
           ...okResponse(
             successExample({
-              token: JWT_EXAMPLE,
+              accessToken: JWT_EXAMPLE,
+              refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example',
               user: userExample,
             }),
           ),
           ...withErrors(400, 422, 500),
+        },
+      },
+    },
+
+    '/api/v1/auth/refresh': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Refresh Access & Refresh Token Pair (Token Rotation)',
+        description:
+          'Accepts a valid `refreshToken`, invalidates it, and returns a fresh `accessToken` + `refreshToken` pair.',
+        security: publicSecurity,
+        requestBody: jsonBody(
+          {
+            type: 'object',
+            required: ['refreshToken'],
+            properties: {
+              refreshToken: { type: 'string', description: 'Active Refresh Token' },
+            },
+          },
+          { refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example' },
+        ),
+        responses: {
+          ...okResponse(
+            successExample({
+              accessToken: JWT_EXAMPLE,
+              refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.new_example',
+              user: userExample,
+            }),
+            'Token refreshed successfully',
+          ),
+          ...withErrors(401, 422, 500),
+        },
+      },
+    },
+
+    '/api/v1/auth/logout': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Logout & Revoke Refresh Token',
+        description: 'Revokes active refresh token and invalidates session.',
+        security: bearerSecurity,
+        requestBody: jsonBody(
+          {
+            type: 'object',
+            properties: {
+              refreshToken: { type: 'string', description: 'Refresh Token to revoke' },
+            },
+          },
+          { refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example' },
+        ),
+        responses: {
+          ...okResponse(
+            successExample({ message: 'Logged out successfully' }),
+            'Logout successful',
+          ),
+          ...withErrors(401, 500),
         },
       },
     },

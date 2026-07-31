@@ -13,8 +13,16 @@ export class AuthService extends BaseService {
    * @param {import('../../common/utils/jwt.util.js').JwtUtil} jwtUtil
    * @param {import('../../common/utils/sms.util.js').SmsUtil} smsService
    * @param {object} config
+   * @param {import('./refresh-token.repository.js').RefreshTokenRepository|null} [refreshTokenRepository]
    */
-  constructor(authRepository, userService, jwtUtil, smsService, config) {
+  constructor(
+    authRepository,
+    userService,
+    jwtUtil,
+    smsService,
+    config,
+    refreshTokenRepository = null,
+  ) {
     super(null, null);
     this.authRepository = authRepository;
     this.userService = userService;
@@ -22,6 +30,7 @@ export class AuthService extends BaseService {
     this.jwtUtil = jwtUtil;
     this.smsService = smsService;
     this.config = config;
+    this.refreshTokenRepository = refreshTokenRepository;
   }
 
   #generateOtp() {
@@ -30,13 +39,41 @@ export class AuthService extends BaseService {
     return String(num).padStart(this.config.otp.length, '0');
   }
 
-  #issueToken(user) {
-    return this.jwtUtil.sign({
-      sub: user.id || user._id?.toString(),
+  async #issueTokenPair(user, { createdByIp = null, userAgent = null } = {}) {
+    const userIdStr = user.id || user._id?.toString();
+    const payload = {
+      sub: userIdStr,
       role: user.role,
       email: user.email || undefined,
       phone: user.phone || undefined,
-    });
+    };
+
+    const jti = crypto.randomUUID();
+    const accessToken = this.jwtUtil.signAccessToken
+      ? this.jwtUtil.signAccessToken(payload)
+      : this.jwtUtil.sign(payload);
+
+    const refreshToken = this.jwtUtil.signRefreshToken
+      ? this.jwtUtil.signRefreshToken(payload, { jwtid: jti })
+      : this.jwtUtil.sign({ ...payload, tokenType: 'refresh' }, { jwtid: jti });
+
+    if (this.refreshTokenRepository) {
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      await this.refreshTokenRepository.saveRefreshToken({
+        userId: userIdStr,
+        token: refreshToken,
+        jti,
+        expiresAt,
+        createdByIp,
+        userAgent,
+      });
+    }
+
+    return {
+      accessToken,
+      refreshToken,
+      expiresIn: this.config.jwt.expiresIn,
+    };
   }
 
   async #sendOtpWithRateLimit({ purpose, identifier, channel, phone, email }) {
@@ -112,7 +149,7 @@ export class AuthService extends BaseService {
     return true;
   }
 
-  async adminLogin({ email, password }) {
+  async adminLogin({ email, password }, reqInfo = {}) {
     const user = await this.userService.findByEmailForAuth(email);
     const allowedAdminRoles = new Set([UserRole.ADMIN, UserRole.SUPER_ADMIN]);
     if (
@@ -132,7 +169,9 @@ export class AuthService extends BaseService {
     const sanitized = await this.userService.updateLastLogin(user._id.toString(), {
       emailVerifiedAt: user.emailVerifiedAt || new Date(),
     });
-    return { token: this.#issueToken(sanitized), user: sanitized };
+
+    const tokenPair = await this.#issueTokenPair(sanitized, reqInfo);
+    return { ...tokenPair, user: sanitized };
   }
 
   async adminForgotPassword({ email }) {
@@ -176,7 +215,7 @@ export class AuthService extends BaseService {
     return this.mobileSendOtp({ phone, role });
   }
 
-  async mobileVerifyOtp({ phone, otp, role, name, referralCode, fcmToken }) {
+  async mobileVerifyOtp({ phone, otp, role, name, referralCode, fcmToken }, reqInfo = {}) {
     await this.#verifyOtp({
       purpose: OtpPurpose.LOGIN,
       identifier: `${phone}:${role}`,
@@ -191,7 +230,66 @@ export class AuthService extends BaseService {
       fcmToken,
     });
 
-    return { token: this.#issueToken(user), user };
+    const tokenPair = await this.#issueTokenPair(user, reqInfo);
+    return { ...tokenPair, user };
+  }
+
+  async refreshToken({ refreshToken, createdByIp = null, userAgent = null }) {
+    if (!refreshToken) {
+      throw new UnauthorizedError('Refresh token is required');
+    }
+
+    let decoded;
+    try {
+      decoded = this.jwtUtil.verifyRefreshToken
+        ? this.jwtUtil.verifyRefreshToken(refreshToken)
+        : this.jwtUtil.verify(refreshToken);
+    } catch {
+      throw new UnauthorizedError('Invalid or expired refresh token');
+    }
+
+    const userId = decoded.sub;
+
+    if (this.refreshTokenRepository) {
+      const stored = await this.refreshTokenRepository.findByToken(refreshToken);
+      if (!stored) {
+        throw new UnauthorizedError('Refresh token not found');
+      }
+
+      if (stored.isRevoked) {
+        await this.refreshTokenRepository.revokeAllUserTokens(userId);
+        throw new UnauthorizedError('Security alert: Revoked refresh token reuse detected');
+      }
+
+      const user = await this.userRepository.findById(userId);
+      if (!user || !user.isActive || user.deletedAt) {
+        throw new UnauthorizedError('User account not active');
+      }
+
+      const tokenPair = await this.#issueTokenPair(user, { createdByIp, userAgent });
+      await this.refreshTokenRepository.revokeToken(refreshToken, {
+        replacedByToken: tokenPair.refreshToken,
+      });
+
+      return { ...tokenPair, user };
+    }
+
+    const user = await this.userRepository.findById(userId);
+    if (!user || !user.isActive || user.deletedAt) {
+      throw new UnauthorizedError('User account not active');
+    }
+
+    const tokenPair = await this.#issueTokenPair(user, { createdByIp, userAgent });
+    return { ...tokenPair, user };
+  }
+
+  async logout({ userId, refreshToken }) {
+    if (this.refreshTokenRepository && refreshToken) {
+      await this.refreshTokenRepository.revokeToken(refreshToken);
+    } else if (this.refreshTokenRepository && userId) {
+      await this.refreshTokenRepository.revokeAllUserTokens(userId);
+    }
+    return { message: 'Logged out successfully' };
   }
 
   async getMe(userId) {

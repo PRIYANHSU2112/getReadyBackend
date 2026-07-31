@@ -53,6 +53,18 @@ export function createAuthRoutes(authController, guards = {}) {
     asyncHandler(authController.mobileVerifyOtp),
   );
 
+  router.post(
+    '/refresh',
+    validate(authValidator, 'refreshTokenBody'),
+    asyncHandler(authController.refreshToken),
+  );
+
+  router.post(
+    '/logout',
+    validate(authValidator, 'logoutBody'),
+    asyncHandler(authController.logout),
+  );
+
   router.get('/me', authenticate, asyncHandler(authController.me));
 
   return router;

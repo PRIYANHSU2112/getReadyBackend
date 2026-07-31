@@ -39,7 +39,7 @@ describe('RBAC routes (integration)', () => {
       email: 'admin@test.com',
       password: 'password123',
     });
-    adminToken = login.body.data.token;
+    adminToken = login.body.data.accessToken;
   });
 
   it('GET /api/v1/permissions lists synced permissions', async () => {

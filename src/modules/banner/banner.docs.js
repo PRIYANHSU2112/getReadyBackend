@@ -39,7 +39,8 @@ const bannerExample = {
   imageUrl: 'https://cdn.example.com/banners/summer-glow.jpg',
   linkUrl: 'https://example.com/offers/summer',
   position: 1,
-  serviceCategory: 'Hair',
+  categoryId: OBJECT_ID,
+  serviceCategory: 'hair',
   serviceIds: [OBJECT_ID],
   type: BannerType.OFFER,
   status: BannerStatus.ACTIVE,
@@ -65,11 +66,17 @@ const formFields = {
     maximum: MAX_BANNER_POSITION,
     example: 1,
   },
+  categoryId: {
+    type: 'string',
+    nullable: true,
+    example: OBJECT_ID,
+    description: 'Category ObjectId — denormalizes slug into serviceCategory',
+  },
   serviceCategory: {
     type: 'string',
     nullable: true,
-    example: 'Hair',
-    description: 'Service category name/key from the app category list (not a DB ref)',
+    example: 'hair',
+    description: 'Legacy category slug/name; auto-set from categoryId when provided',
   },
   serviceIds: {
     type: 'string',
@@ -100,9 +107,14 @@ const filterParams = [
     },
   },
   {
+    name: 'categoryId',
+    in: 'query',
+    schema: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' },
+  },
+  {
     name: 'serviceCategory',
     in: 'query',
-    schema: { type: 'string', example: 'Hair' },
+    schema: { type: 'string', example: 'hair' },
   },
   {
     name: 'serviceId',

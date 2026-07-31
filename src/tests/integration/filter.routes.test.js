@@ -86,7 +86,7 @@ describe('Filter routes (integration)', () => {
       email: 'admin@test.com',
       password: 'password123',
     });
-    adminToken = login.body.data.token;
+    adminToken = login.body.data.accessToken;
 
     customerToken = jwt.sign({
       sub: customer._id.toString(),
@@ -153,12 +153,16 @@ describe('Filter routes (integration)', () => {
       .field('name', 'Prime Selection')
       .field('displayType', FilterDisplayType.CHIPS)
       .field('selectionType', FilterSelectionType.MULTIPLE)
-      .field('scopes', JSON.stringify(['services']));
+      .field('scopes', JSON.stringify(['services']))
+      .field('metadata', JSON.stringify({ source: 'swagger' }))
+      .field('isFeatured', 'true');
 
     expect(created.status).toBe(201);
     expect(created.body.data.slug).toBe('prime-selection');
     expect(created.body.data.image.url).toContain('prime.png');
-    expect(created.body.data.imageUrl).toContain('prime.png');
+    expect(created.body.data).not.toHaveProperty('imageUrl');
+    expect(created.body.data.metadata).toEqual({ source: 'swagger' });
+    expect(created.body.data.isFeatured).toBe(true);
 
     const value = await request(app)
       .post(`/api/v1/filters/${created.body.data.id}/values`)

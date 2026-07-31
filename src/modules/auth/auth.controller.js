@@ -14,12 +14,15 @@ export class AuthController extends BaseController {
       'mobileSendOtp',
       'mobileResendOtp',
       'mobileVerifyOtp',
+      'refreshToken',
+      'logout',
       'me',
     ]);
   }
 
   async adminLogin(req, res) {
-    const result = await this.authService.adminLogin(req.body);
+    const reqInfo = { createdByIp: req.ip, userAgent: req.get('user-agent') };
+    const result = await this.authService.adminLogin(req.body, reqInfo);
     return this.ok(res, result);
   }
 
@@ -44,7 +47,24 @@ export class AuthController extends BaseController {
   }
 
   async mobileVerifyOtp(req, res) {
-    const result = await this.authService.mobileVerifyOtp(req.body);
+    const reqInfo = { createdByIp: req.ip, userAgent: req.get('user-agent') };
+    const result = await this.authService.mobileVerifyOtp(req.body, reqInfo);
+    return this.ok(res, result);
+  }
+
+  async refreshToken(req, res) {
+    const reqInfo = { createdByIp: req.ip, userAgent: req.get('user-agent') };
+    const result = await this.authService.refreshToken({
+      refreshToken: req.body.refreshToken,
+      ...reqInfo,
+    });
+    return this.ok(res, result);
+  }
+
+  async logout(req, res) {
+    const userId = req.user?.id || req.user?.sub;
+    const refreshToken = req.body?.refreshToken;
+    const result = await this.authService.logout({ userId, refreshToken });
     return this.ok(res, result);
   }
 

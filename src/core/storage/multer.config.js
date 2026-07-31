@@ -43,3 +43,47 @@ export function optionalSingleUpload(fieldName = 'file') {
     return middleware(req, res, next);
   };
 }
+
+/** Optional 3-file KYC upload: selfieImage, idCardFront, idCardBack */
+export function optionalKycUpload() {
+  const middleware = upload.fields([
+    { name: 'selfieImage', maxCount: 1 },
+    { name: 'idCardFront', maxCount: 1 },
+    { name: 'idCardBack', maxCount: 1 },
+    { name: 'file', maxCount: 1 }, // Fallback for single file upload
+  ]);
+  return (req, res, next) => {
+    const contentType = req.headers['content-type'] || '';
+    if (!contentType.includes('multipart/form-data')) {
+      return next();
+    }
+    return middleware(req, res, next);
+  };
+}
+
+/** Optional multi-file upload (field `files`) + optional `thumbnail`. */
+export function optionalServiceMediaUpload() {
+  const middleware = upload.fields([
+    { name: 'files', maxCount: 5 },
+    { name: 'file', maxCount: 1 },
+    { name: 'thumbnail', maxCount: 1 },
+  ]);
+  return (req, res, next) => {
+    const contentType = req.headers['content-type'] || '';
+    if (!contentType.includes('multipart/form-data')) {
+      return next();
+    }
+    return middleware(req, res, (err) => {
+      if (err) return next(err);
+      // Normalize to req.files as flat array with fieldname
+      if (req.files && !Array.isArray(req.files)) {
+        const flat = [];
+        for (const [fieldname, list] of Object.entries(req.files)) {
+          for (const f of list) flat.push(f);
+        }
+        req.files = flat;
+      }
+      return next();
+    });
+  };
+}

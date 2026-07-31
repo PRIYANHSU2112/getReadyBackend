@@ -10,6 +10,12 @@ import { createRbacModule } from '../modules/rbac/index.js';
 import { createAddressModule } from '../modules/address/index.js';
 import { createBannerModule } from '../modules/banner/index.js';
 import { createFilterModule } from '../modules/filter/index.js';
+import { createCategoryModule } from '../modules/category/index.js';
+import { createServiceModule } from '../modules/service/index.js';
+import { createPackageModule } from '../modules/package/index.js';
+import { createSkillModule } from '../modules/skill/index.js';
+import { createBeauticianProfileModule } from '../modules/beautician-profile/index.js';
+import { createBankDetailModule } from '../modules/bank-detail/index.js';
 
 export function createRootRouter(shared) {
   const router = Router();
@@ -28,6 +34,9 @@ export function createRootRouter(shared) {
     authenticate: shared.authenticate,
     cacheService: shared.cacheService,
   });
+
+  // Seed permissions and sync system role default permissions (Admin, Beautician) on boot
+  rbac.service.seedDefaults().catch(() => {});
 
   const user = createUserModule({
     eventBus: shared.eventBus,
@@ -58,11 +67,34 @@ export function createRootRouter(shared) {
     cacheService: shared.cacheService,
   });
 
+  const category = createCategoryModule({
+    authenticate: shared.authenticate,
+    checkPermission: rbac.checkPermission,
+    cacheService: shared.cacheService,
+    storageService: shared.storageService,
+  });
+
+  const serviceModule = createServiceModule({
+    authenticate: shared.authenticate,
+    checkPermission: rbac.checkPermission,
+    cacheService: shared.cacheService,
+    storageService: shared.storageService,
+    categoryRepository: category.repository,
+  });
+
+  const packageModule = createPackageModule({
+    authenticate: shared.authenticate,
+    eventBus: shared.eventBus,
+    cacheService: shared.cacheService,
+    categoryRepository: category.repository,
+  });
+
   const banner = createBannerModule({
     authenticate: shared.authenticate,
     checkPermission: rbac.checkPermission,
     cacheService: shared.cacheService,
     storageService: shared.storageService,
+    categoryRepository: category.repository,
   });
 
   const filter = createFilterModule({
@@ -72,16 +104,46 @@ export function createRootRouter(shared) {
     storageService: shared.storageService,
   });
 
-  const v1 = Router();
-  v1.use('/auth', auth.routes);
-  v1.use('/users', user.routes);
-  v1.use('/roles', rbac.roleRoutes);
-  v1.use('/permissions', rbac.permissionRoutes);
-  v1.use('/notifications', notification.routes);
-  v1.use('/addresses', address.routes);
-  v1.use('/banners', banner.routes);
-  v1.use('/filters', filter.routes);
-  router.use('/api/v1', v1);
+  const skill = createSkillModule({
+    authenticate: shared.authenticate,
+    checkPermission: rbac.checkPermission,
+    cacheService: shared.cacheService,
+  });
+
+  const beauticianProfile = createBeauticianProfileModule({
+    authenticate: shared.authenticate,
+    checkPermission: rbac.checkPermission,
+    cacheService: shared.cacheService,
+    storageService: shared.storageService,
+  });
+
+  const bankDetail = createBankDetailModule({
+    authenticate: shared.authenticate,
+    checkPermission: rbac.checkPermission,
+    cacheService: shared.cacheService,
+    storageService: shared.storageService,
+    beauticianProfileRepository: beauticianProfile.profileRepo,
+  });
+
+  // Mount API V1 Routes
+  const apiV1 = Router();
+  apiV1.use('/auth', auth.routes);
+  apiV1.use('/users', user.routes);
+  apiV1.use('/notifications', notification.routes);
+  apiV1.use('/rbac', rbac.routes);
+  apiV1.use('/addresses', address.routes);
+  apiV1.use('/banners', banner.routes);
+  apiV1.use('/filters', filter.routes);
+  apiV1.use('/categories', category.routes);
+  apiV1.use('/services', serviceModule.routes);
+  apiV1.use('/service-change-requests', serviceModule.changeRequestRoutes);
+  apiV1.use('/packages', packageModule.routes);
+  apiV1.use('/package-change-requests', packageModule.changeRequestRoutes);
+  apiV1.use('/skills', skill.routes);
+  apiV1.use('/beautician-profiles', beauticianProfile.routes);
+  apiV1.use('/bank-details', bankDetail.routes);
+
+  router.use('/api/v1', apiV1);
 
   return router;
 }

@@ -24,6 +24,12 @@ const bannerSchema = new mongoose.Schema(
       max: MAX_BANNER_POSITION,
       index: true,
     },
+    categoryId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Category',
+      default: null,
+      index: true,
+    },
     serviceCategory: {
       type: String,
       trim: true,
@@ -60,6 +66,7 @@ const bannerSchema = new mongoose.Schema(
 
 bannerSchema.index({ status: 1, deletedAt: 1, position: 1, sortOrder: 1 });
 bannerSchema.index({ status: 1, deletedAt: 1, serviceCategory: 1, sortOrder: 1 });
+bannerSchema.index({ status: 1, deletedAt: 1, categoryId: 1, sortOrder: 1 });
 bannerSchema.index({ status: 1, deletedAt: 1, serviceIds: 1 });
 bannerSchema.index({ startAt: 1, endAt: 1 });
 

@@ -104,6 +104,78 @@ export const PERMISSION_CATALOG = Object.freeze([
     action: 'delete',
     description: 'Soft-delete filter groups and values',
   },
+  {
+    key: 'categories.read',
+    module: 'categories',
+    action: 'read',
+    description: 'List and view categories (admin / beautician)',
+  },
+  {
+    key: 'categories.create',
+    module: 'categories',
+    action: 'create',
+    description: 'Create categories',
+  },
+  {
+    key: 'categories.update',
+    module: 'categories',
+    action: 'update',
+    description: 'Update, restore, reorder, and toggle categories',
+  },
+  {
+    key: 'categories.delete',
+    module: 'categories',
+    action: 'delete',
+    description: 'Soft-delete categories',
+  },
+  {
+    key: 'services.read',
+    module: 'services',
+    action: 'read',
+    description: 'List and view services and change requests',
+  },
+  {
+    key: 'services.create',
+    module: 'services',
+    action: 'create',
+    description: 'Create services',
+  },
+  {
+    key: 'services.update',
+    module: 'services',
+    action: 'update',
+    description: 'Update services, approve/reject create and change requests',
+  },
+  {
+    key: 'services.delete',
+    module: 'services',
+    action: 'delete',
+    description: 'Soft-delete services',
+  },
+  {
+    key: 'packages.read',
+    module: 'packages',
+    action: 'read',
+    description: 'List and view packages and change requests',
+  },
+  {
+    key: 'packages.create',
+    module: 'packages',
+    action: 'create',
+    description: 'Create packages',
+  },
+  {
+    key: 'packages.update',
+    module: 'packages',
+    action: 'update',
+    description: 'Update packages, approve/reject create and change requests',
+  },
+  {
+    key: 'packages.delete',
+    module: 'packages',
+    action: 'delete',
+    description: 'Soft-delete packages',
+  },
 ]);
 
 /**
@@ -201,6 +273,50 @@ export const ROUTE_PERMISSIONS = Object.freeze([
     method: 'POST',
     pathPattern: '/filters/:filterId/values/:valueId/restore',
     permission: 'filters.update',
+  },
+
+  // Categories — public + static paths before parameterized
+  { method: 'GET', pathPattern: '/categories/public', permission: null },
+  { method: 'GET', pathPattern: '/categories/public/:slug', permission: null },
+  { method: 'PATCH', pathPattern: '/categories/reorder', permission: 'categories.update' },
+  { method: 'PATCH', pathPattern: '/categories/bulk/status', permission: 'categories.update' },
+  { method: 'POST', pathPattern: '/categories/bulk/delete', permission: 'categories.delete' },
+  { method: 'GET', pathPattern: '/categories', permission: 'categories.read' },
+  { method: 'POST', pathPattern: '/categories', permission: 'categories.create' },
+  { method: 'GET', pathPattern: '/categories/:id', permission: 'categories.read' },
+  { method: 'PATCH', pathPattern: '/categories/:id', permission: 'categories.update' },
+  { method: 'DELETE', pathPattern: '/categories/:id', permission: 'categories.delete' },
+  { method: 'POST', pathPattern: '/categories/:id/restore', permission: 'categories.update' },
+  { method: 'PATCH', pathPattern: '/categories/:id/status', permission: 'categories.update' },
+
+  // Services — public + static before parameterized
+  { method: 'GET', pathPattern: '/services/public', permission: null },
+  { method: 'GET', pathPattern: '/services/public/:slug', permission: null },
+  { method: 'PATCH', pathPattern: '/services/reorder', permission: 'services.update' },
+  { method: 'PATCH', pathPattern: '/services/bulk/status', permission: 'services.update' },
+  { method: 'POST', pathPattern: '/services/bulk/delete', permission: 'services.delete' },
+  { method: 'GET', pathPattern: '/services', permission: 'services.read' },
+  { method: 'POST', pathPattern: '/services', permission: 'services.create' },
+  { method: 'GET', pathPattern: '/services/:id', permission: 'services.read' },
+  { method: 'PATCH', pathPattern: '/services/:id', permission: 'services.update' },
+  { method: 'DELETE', pathPattern: '/services/:id', permission: 'services.delete' },
+  { method: 'POST', pathPattern: '/services/:id/restore', permission: 'services.update' },
+  { method: 'PATCH', pathPattern: '/services/:id/status', permission: 'services.update' },
+  { method: 'POST', pathPattern: '/services/:id/approve', permission: 'services.update' },
+  { method: 'POST', pathPattern: '/services/:id/reject', permission: 'services.update' },
+
+  // Service change requests (admin panel)
+  { method: 'GET', pathPattern: '/service-change-requests', permission: 'services.read' },
+  { method: 'GET', pathPattern: '/service-change-requests/:id', permission: 'services.read' },
+  {
+    method: 'POST',
+    pathPattern: '/service-change-requests/:id/approve',
+    permission: 'services.update',
+  },
+  {
+    method: 'POST',
+    pathPattern: '/service-change-requests/:id/reject',
+    permission: 'services.update',
   },
 ]);
 
@@ -334,5 +450,11 @@ export function getAdminDefaultPermissions() {
  * @returns {string[]}
  */
 export function getBeauticianDefaultPermissions() {
-  return ['users.read'];
+  return [
+    'users.read',
+    'categories.read',
+    'services.read',
+    'services.create',
+    'services.update',
+  ];
 }

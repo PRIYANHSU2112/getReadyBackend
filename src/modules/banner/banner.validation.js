@@ -40,6 +40,7 @@ const createBanner = Joi.object({
     .min(MIN_BANNER_POSITION)
     .max(MAX_BANNER_POSITION)
     .required(),
+  categoryId: objectId.allow(null).optional(),
   serviceCategory: Joi.string()
     .trim()
     .max(MAX_SERVICE_CATEGORY_LENGTH)
@@ -64,6 +65,7 @@ const updateBanner = Joi.object({
   title: Joi.string().trim().min(1).max(200),
   linkUrl: uriOrPath.allow('', null),
   position: Joi.number().integer().min(MIN_BANNER_POSITION).max(MAX_BANNER_POSITION),
+  categoryId: objectId.allow(null),
   serviceCategory: Joi.string().trim().max(MAX_SERVICE_CATEGORY_LENGTH).allow('', null),
   serviceIds: serviceIdsField,
   type: Joi.string().valid(...Object.values(BannerType)),
@@ -85,6 +87,7 @@ const listBannersQuery = Joi.object({
   limit: Joi.number().integer().min(1).max(100).default(10),
   sort: Joi.string().default(DEFAULT_BANNER_SORT),
   position: Joi.number().integer().min(MIN_BANNER_POSITION).max(MAX_BANNER_POSITION),
+  categoryId: objectId,
   serviceCategory: Joi.string().trim().max(MAX_SERVICE_CATEGORY_LENGTH),
   serviceId: objectId,
   platform: Joi.string().valid(...Object.values(BannerPlatform)),
@@ -97,6 +100,7 @@ const activeBannersQuery = Joi.object({
   limit: Joi.number().integer().min(1).max(100).default(10),
   sort: Joi.string().default(DEFAULT_BANNER_SORT),
   position: Joi.number().integer().min(MIN_BANNER_POSITION).max(MAX_BANNER_POSITION),
+  categoryId: objectId,
   serviceCategory: Joi.string().trim().max(MAX_SERVICE_CATEGORY_LENGTH),
   serviceId: objectId,
   platform: Joi.string().valid(...Object.values(BannerPlatform)),

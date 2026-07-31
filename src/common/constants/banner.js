@@ -20,4 +20,4 @@ export const DEFAULT_BANNER_SORT = 'sortOrder';
 
 /** Slim fields for public active list responses. */
 export const BANNER_PUBLIC_SELECT =
-  'title image linkUrl position serviceCategory serviceIds type status sortOrder startAt endAt platform createdAt updatedAt';
+  'title image linkUrl position categoryId serviceCategory serviceIds type status sortOrder startAt endAt platform createdAt updatedAt';

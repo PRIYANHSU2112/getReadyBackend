@@ -74,4 +74,35 @@ describe('permission.registry', () => {
       matchRoute('POST', '/api/v1/filters/507f1f77bcf86cd799439011/values'),
     ).toMatchObject({ permission: 'filters.create' });
   });
+
+  it('matches categories catalog and public routes', () => {
+    expect(getPermissionKeys()).toContain('categories.read');
+    expect(matchRoute('GET', '/api/v1/categories/public')).toMatchObject({
+      pathPattern: '/categories/public',
+      permission: null,
+    });
+    expect(matchRoute('GET', '/api/v1/categories/public/hair')).toMatchObject({
+      pathPattern: '/categories/public/:slug',
+      permission: null,
+    });
+    expect(matchRoute('GET', '/api/v1/categories')).toMatchObject({
+      permission: 'categories.read',
+    });
+    expect(matchRoute('POST', '/api/v1/categories')).toMatchObject({
+      permission: 'categories.create',
+    });
+  });
+
+  it('matches services and change-request routes', () => {
+    expect(getPermissionKeys()).toContain('services.read');
+    expect(matchRoute('GET', '/api/v1/services/public')).toMatchObject({
+      permission: null,
+    });
+    expect(matchRoute('POST', '/api/v1/services')).toMatchObject({
+      permission: 'services.create',
+    });
+    expect(
+      matchRoute('POST', '/api/v1/service-change-requests/507f1f77bcf86cd799439011/approve'),
+    ).toMatchObject({ permission: 'services.update' });
+  });
 });

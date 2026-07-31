@@ -73,6 +73,38 @@ export function setupSwagger(app, moduleDocs = swaggerDocs) {
           description:
             'Generic filter groups/values — public slim GET /public; admin CRUD (`filters.*`).',
         },
+        {
+          name: 'Categories',
+          description: 'Service categories.',
+        },
+        {
+          name: 'Services',
+          description: 'Salon services.',
+        },
+        {
+          name: 'Service Change Requests',
+          description: 'Admin panel review queue for beautician service updates.',
+        },
+        {
+          name: 'Skills',
+          description: 'Admin-managed skills master list + public beautician selection (`GET /skills/active`).',
+        },
+        {
+          name: 'Beautician Profile',
+          description: 'Beautician profile management, selfie KYC upload, submission, and admin review queue.',
+        },
+        {
+          name: 'Beautician Work History',
+          description: 'Beautician salon work experience history.',
+        },
+        {
+          name: 'Beautician Certificates',
+          description: 'Beautician uploaded qualification certificates.',
+        },
+        {
+          name: 'Bank Details',
+          description: 'Beautician payout bank account details, passbook image, and admin verification.',
+        },
       ],
       paths: Object.assign({}, ...moduleDocs.map((d) => d.paths || {})),
     },

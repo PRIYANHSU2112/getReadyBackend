@@ -42,6 +42,14 @@ const mobileVerifyOtp = Joi.object({
   fcmToken: Joi.string().max(512).optional(),
 });
 
+const refreshTokenBody = Joi.object({
+  refreshToken: Joi.string().trim().required(),
+});
+
+const logoutBody = Joi.object({
+  refreshToken: Joi.string().trim().optional(),
+});
+
 export class AuthValidator extends BaseValidator {
   constructor() {
     super({
@@ -51,6 +59,8 @@ export class AuthValidator extends BaseValidator {
       mobileSendOtp,
       mobileResendOtp,
       mobileVerifyOtp,
+      refreshTokenBody,
+      logoutBody,
     });
   }
 }

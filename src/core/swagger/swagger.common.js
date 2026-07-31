@@ -28,6 +28,14 @@ export const PERMISSION_KEY_ENUM = [
   'filters.create',
   'filters.update',
   'filters.delete',
+  'categories.read',
+  'categories.create',
+  'categories.update',
+  'categories.delete',
+  'services.read',
+  'services.create',
+  'services.update',
+  'services.delete',
 ];
 
 export const bearerSecurity = [{ bearerAuth: [] }];

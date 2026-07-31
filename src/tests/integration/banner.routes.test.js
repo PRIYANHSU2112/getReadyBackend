@@ -7,6 +7,7 @@ import { EventBus } from '../../core/events/EventBus.js';
 import { JwtUtil } from '../../common/utils/jwt.util.js';
 import { UserModel } from '../../modules/user/user.model.js';
 import { BannerModel } from '../../modules/banner/banner.model.js';
+import { CategoryModel } from '../../modules/category/category.model.js';
 import {
   UserRole,
   BannerStatus,
@@ -96,7 +97,7 @@ describe('Banner routes (integration)', () => {
       email: 'admin@test.com',
       password: 'password123',
     });
-    adminToken = login.body.data.token;
+    adminToken = login.body.data.accessToken;
 
     customerToken = jwt.sign({
       sub: customer._id.toString(),
@@ -248,5 +249,46 @@ describe('Banner routes (integration)', () => {
       .field('position', '1');
 
     expect(res.status).toBe(401);
+  });
+
+  it('create with categoryId denormalizes slug; active filter matches categoryId or legacy string', async () => {
+    const category = await CategoryModel.create({
+      name: 'Hair',
+      slug: 'hair',
+      isActive: true,
+      displayOrder: 1,
+    });
+
+    const created = await postBanner(app, adminToken, {
+      title: 'Hair Offer',
+      position: 1,
+      categoryId: category._id.toString(),
+      status: BannerStatus.ACTIVE,
+    });
+
+    expect(created.status).toBe(201);
+    expect(created.body.data.categoryId).toBe(category._id.toString());
+    expect(created.body.data.serviceCategory).toBe('hair');
+
+    await BannerModel.create({
+      ...dbBanner,
+      title: 'Legacy Hair',
+      categoryId: null,
+      serviceCategory: 'hair',
+      position: 2,
+    });
+
+    const byId = await request(app)
+      .get('/api/v1/banners/active')
+      .query({ categoryId: category._id.toString() });
+
+    expect(byId.status).toBe(200);
+    expect(byId.body.data.length).toBeGreaterThanOrEqual(2);
+    expect(
+      byId.body.data.every(
+        (b) =>
+          b.categoryId === category._id.toString() || b.serviceCategory === 'hair',
+      ),
+    ).toBe(true);
   });
 });

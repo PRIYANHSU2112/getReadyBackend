@@ -50,6 +50,11 @@ async function bootstrap() {
       const { BannerModel } = await import('./modules/banner/banner.model.js');
       const { FilterModel } = await import('./modules/filter/filter.model.js');
       const { FilterValueModel } = await import('./modules/filter/filter-value.model.js');
+      const { CategoryModel } = await import('./modules/category/category.model.js');
+      const { ServiceModel } = await import('./modules/service/service.model.js');
+      const { ServiceChangeRequestModel } = await import(
+        './modules/service/service-change-request.model.js'
+      );
       await Promise.all([
         UserModel.syncIndexes(),
         RoleModel.syncIndexes(),
@@ -59,6 +64,9 @@ async function bootstrap() {
         BannerModel.syncIndexes(),
         FilterModel.syncIndexes(),
         FilterValueModel.syncIndexes(),
+        CategoryModel.syncIndexes(),
+        ServiceModel.syncIndexes(),
+        ServiceChangeRequestModel.syncIndexes(),
       ]);
       logger.info('Mongo indexes synced');
     } catch (indexErr) {

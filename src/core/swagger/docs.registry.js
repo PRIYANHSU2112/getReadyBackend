@@ -5,6 +5,12 @@ import { rbacDocs } from '../../modules/rbac/rbac.docs.js';
 import { addressDocs } from '../../modules/address/address.docs.js';
 import { bannerDocs } from '../../modules/banner/banner.docs.js';
 import { filterDocs } from '../../modules/filter/filter.docs.js';
+import { categoryDocs } from '../../modules/category/category.docs.js';
+import { serviceDocs } from '../../modules/service/service.docs.js';
+import { packageDocs } from '../../modules/package/package.docs.js';
+import { skillDocs } from '../../modules/skill/skill.docs.js';
+import { beauticianProfileDocs } from '../../modules/beautician-profile/beautician-profile.docs.js';
+import { bankDetailDocs } from '../../modules/bank-detail/bank-detail.docs.js';
 import { healthDocs } from './health.docs.js';
 
 /**
@@ -20,4 +26,10 @@ export const swaggerDocs = [
   addressDocs,
   bannerDocs,
   filterDocs,
+  categoryDocs,
+  serviceDocs,
+  packageDocs,
+  skillDocs,
+  beauticianProfileDocs,
+  bankDetailDocs,
 ];

@@ -80,3 +80,60 @@ export const FilterSelectionType = Object.freeze({
   SINGLE: 'single',
   MULTIPLE: 'multiple',
 });
+
+export const ServiceDiscountType = Object.freeze({
+  NONE: 'NONE',
+  PERCENTAGE: 'PERCENTAGE',
+  FIXED: 'FIXED',
+});
+
+export const ServiceStatus = Object.freeze({
+  PENDING_APPROVAL: 'PENDING_APPROVAL',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+});
+
+export const ServiceChangeRequestStatus = Object.freeze({
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+});
+
+export const ServiceBadge = Object.freeze({
+  MOST_POPULAR: 'most_popular',
+  TRENDING: 'trending',
+  TOP_RATED: 'top_rated',
+});
+
+export const ServiceGender = Object.freeze({
+  ALL: 'all',
+  FEMALE: 'female',
+  MALE: 'male',
+  UNISEX: 'unisex',
+});
+
+export const BeauticianProfileStatus = Object.freeze({
+  PENDING: 'PENDING',
+  UNDER_REVIEW: 'UNDER_REVIEW',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  SUSPENDED: 'SUSPENDED',
+});
+
+export const KycStatus = Object.freeze({
+  PENDING: 'PENDING',
+  VERIFIED: 'VERIFIED',
+  REJECTED: 'REJECTED',
+});
+
+export const BankVerificationStatus = Object.freeze({
+  PENDING: 'PENDING',
+  VERIFIED: 'VERIFIED',
+  REJECTED: 'REJECTED',
+});
+
+export const CertificateStatus = Object.freeze({
+  PENDING: 'PENDING',
+  VERIFIED: 'VERIFIED',
+  REJECTED: 'REJECTED',
+});

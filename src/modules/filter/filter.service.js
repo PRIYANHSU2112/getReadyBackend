@@ -43,7 +43,6 @@ export class FilterService extends BaseService {
     if (obj.filterId) obj.filterId = obj.filterId.toString();
     if (obj.createdBy) obj.createdBy = obj.createdBy.toString();
     if (obj.updatedBy) obj.updatedBy = obj.updatedBy.toString();
-    if (obj.image?.url) obj.imageUrl = obj.image.url;
     return obj;
   }
 

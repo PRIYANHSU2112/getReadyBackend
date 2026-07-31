@@ -20,7 +20,32 @@ const slugSchema = Joi.string()
   .pattern(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
   .max(MAX_FILTER_SLUG_LENGTH);
 
-const metadataSchema = Joi.object().unknown(true).default({});
+/** Multipart form fields arrive as strings — accept JSON string or object. */
+const metadataSchema = Joi.alternatives()
+  .try(
+    Joi.object().unknown(true),
+    Joi.string()
+      .allow('')
+      .custom((value, helpers) => {
+        if (!value || !String(value).trim()) return {};
+        try {
+          const parsed = JSON.parse(value);
+          if (
+            parsed === null ||
+            typeof parsed !== 'object' ||
+            Array.isArray(parsed)
+          ) {
+            return helpers.error('object.base');
+          }
+          return parsed;
+        } catch {
+          return helpers.error('object.base');
+        }
+      }),
+  )
+  .default({});
+
+const boolField = Joi.boolean().truthy('true').falsy('false');
 
 const createFilter = Joi.object({
   name: Joi.string().trim().min(1).max(MAX_FILTER_NAME_LENGTH).required(),
@@ -32,10 +57,10 @@ const createFilter = Joi.object({
   selectionType: Joi.string()
     .valid(...Object.values(FilterSelectionType))
     .default(FilterSelectionType.MULTIPLE),
-  isSearchable: Joi.boolean().default(false),
-  isRequired: Joi.boolean().default(false),
-  isActive: Joi.boolean().default(true),
-  isFeatured: Joi.boolean().default(false),
+  isSearchable: boolField.default(false),
+  isRequired: boolField.default(false),
+  isActive: boolField.default(true),
+  isFeatured: boolField.default(false),
   displayOrder: Joi.number().integer().min(0).default(0),
   icon: Joi.string().trim().max(2000).allow('', null).optional(),
   color: Joi.string().trim().max(50).allow('', null).optional(),
@@ -54,10 +79,10 @@ const updateFilter = Joi.object({
   description: Joi.string().trim().max(500).allow('', null),
   displayType: Joi.string().valid(...Object.values(FilterDisplayType)),
   selectionType: Joi.string().valid(...Object.values(FilterSelectionType)),
-  isSearchable: Joi.boolean(),
-  isRequired: Joi.boolean(),
-  isActive: Joi.boolean(),
-  isFeatured: Joi.boolean(),
+  isSearchable: boolField,
+  isRequired: boolField,
+  isActive: boolField,
+  isFeatured: boolField,
   displayOrder: Joi.number().integer().min(0),
   icon: Joi.string().trim().max(2000).allow('', null),
   color: Joi.string().trim().max(50).allow('', null),
@@ -86,11 +111,11 @@ const listFiltersQuery = Joi.object({
   limit: Joi.number().integer().min(1).max(100).default(10),
   sort: Joi.string().default(DEFAULT_FILTER_SORT),
   search: Joi.string().trim().max(100).allow(''),
-  isActive: Joi.boolean(),
-  isFeatured: Joi.boolean(),
+  isActive: boolField,
+  isFeatured: boolField,
   scope: Joi.string().trim().lowercase().max(50),
-  includeDeleted: Joi.boolean().default(false),
-  includeValues: Joi.boolean().default(false),
+  includeDeleted: boolField.default(false),
+  includeValues: boolField.default(false),
 });
 
 const publicFiltersQuery = Joi.object({
@@ -98,7 +123,7 @@ const publicFiltersQuery = Joi.object({
 });
 
 const statusBody = Joi.object({
-  isActive: Joi.boolean().required(),
+  isActive: boolField.required(),
 });
 
 const reorderBody = Joi.object({
@@ -115,7 +140,7 @@ const reorderBody = Joi.object({
 
 const bulkStatusBody = Joi.object({
   ids: Joi.array().items(objectId).min(1).max(100).required(),
-  isActive: Joi.boolean().required(),
+  isActive: boolField.required(),
 });
 
 const bulkDeleteBody = Joi.object({
@@ -129,8 +154,8 @@ const createFilterValue = Joi.object({
   icon: Joi.string().trim().max(2000).allow('', null).optional(),
   color: Joi.string().trim().max(50).allow('', null).optional(),
   displayOrder: Joi.number().integer().min(0).default(0),
-  isDefault: Joi.boolean().default(false),
-  isActive: Joi.boolean().default(true),
+  isDefault: boolField.default(false),
+  isActive: boolField.default(true),
   metadata: metadataSchema,
 });
 
@@ -141,8 +166,8 @@ const updateFilterValue = Joi.object({
   icon: Joi.string().trim().max(2000).allow('', null),
   color: Joi.string().trim().max(50).allow('', null),
   displayOrder: Joi.number().integer().min(0),
-  isDefault: Joi.boolean(),
-  isActive: Joi.boolean(),
+  isDefault: boolField,
+  isActive: boolField,
   metadata: metadataSchema,
 }).min(1);
 
@@ -151,8 +176,8 @@ const listFilterValuesQuery = Joi.object({
   limit: Joi.number().integer().min(1).max(100).default(20),
   sort: Joi.string().default(DEFAULT_FILTER_VALUE_SORT),
   search: Joi.string().trim().max(100).allow(''),
-  isActive: Joi.boolean(),
-  includeDeleted: Joi.boolean().default(false),
+  isActive: boolField,
+  includeDeleted: boolField.default(false),
 });
 
 export class FilterValidator extends BaseValidator {

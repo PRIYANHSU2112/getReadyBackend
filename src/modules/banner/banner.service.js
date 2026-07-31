@@ -21,17 +21,25 @@ export class BannerService extends BaseService {
    * @param {import('./banner.repository.js').BannerRepository} bannerRepository
    * @param {import('../../core/redis/cache.service.js').CacheService|null} cacheService
    * @param {import('../../core/storage/StorageService.js').StorageService|null} storageService
+   * @param {import('../category/category.repository.js').CategoryRepository|null} categoryRepository
    */
-  constructor(bannerRepository, cacheService = null, storageService = null) {
+  constructor(
+    bannerRepository,
+    cacheService = null,
+    storageService = null,
+    categoryRepository = null,
+  ) {
     super(null, cacheService);
     this.bannerRepository = bannerRepository;
     this.storageService = storageService;
+    this.categoryRepository = categoryRepository;
   }
 
   #sanitize(banner) {
     if (!banner) return banner;
     const obj = typeof banner.toJSON === 'function' ? banner.toJSON() : { ...banner };
     if (obj._id) obj.id = obj._id.toString();
+    if (obj.categoryId) obj.categoryId = obj.categoryId.toString();
     if (Array.isArray(obj.serviceIds)) {
       obj.serviceIds = obj.serviceIds.map((id) => id?.toString?.() || id);
     }
@@ -49,6 +57,7 @@ export class BannerService extends BaseService {
 
     if (payload.linkUrl === '') payload.linkUrl = null;
     if (payload.serviceCategory === '') payload.serviceCategory = null;
+    if (payload.categoryId === '') payload.categoryId = null;
     if (payload.startAt === undefined) delete payload.startAt;
     if (payload.endAt === undefined) delete payload.endAt;
 
@@ -67,6 +76,42 @@ export class BannerService extends BaseService {
     }
 
     return payload;
+  }
+
+  /**
+   * Resolve categoryId → active Category; denormalize slug into serviceCategory.
+   */
+  async #applyCategoryRef(payload) {
+    if (payload.categoryId === undefined) return payload;
+    if (payload.categoryId === null) {
+      return payload;
+    }
+    if (!this.categoryRepository) {
+      throw new AppError(
+        'Category lookup is not configured',
+        HttpStatus.INTERNAL_ERROR,
+        ErrorCodes.INTERNAL_ERROR,
+      );
+    }
+    const category = await this.categoryRepository.findActiveById(payload.categoryId);
+    if (!category || !category.isActive) {
+      throw new AppError(
+        'Category not found or inactive',
+        HttpStatus.BAD_REQUEST,
+        ErrorCodes.VALIDATION_ERROR,
+      );
+    }
+    payload.serviceCategory = category.slug;
+    return payload;
+  }
+
+  async #resolveListQuery(query = {}) {
+    const out = { ...query };
+    if (out.categoryId && this.categoryRepository) {
+      const category = await this.categoryRepository.findActiveById(out.categoryId);
+      if (category) out.categorySlug = category.slug;
+    }
+    return out;
   }
 
   async #uploadImage(file) {
@@ -98,6 +143,7 @@ export class BannerService extends BaseService {
       'banner',
       'active',
       query.position ?? 'all',
+      query.categoryId ?? 'all',
       query.serviceCategory ?? 'all',
       query.serviceId ?? 'all',
       query.platform ?? 'all',
@@ -123,7 +169,8 @@ export class BannerService extends BaseService {
       allowedSortFields: [...BANNER_SORT_FIELDS],
       defaultSort: DEFAULT_BANNER_SORT,
     });
-    const cacheKey = this.#activeCacheKey(query, pagination);
+    const resolvedQuery = await this.#resolveListQuery(query);
+    const cacheKey = this.#activeCacheKey(resolvedQuery, pagination);
 
     const local = activeLocalCache.getSync(cacheKey);
     if (local) return local;
@@ -134,7 +181,7 @@ export class BannerService extends BaseService {
       return cached;
     }
 
-    const filter = this.bannerRepository.buildActiveFilter(query);
+    const filter = this.bannerRepository.buildActiveFilter(resolvedQuery);
     const { items, total } = await this.bannerRepository.listActivePublic(filter, {
       skip: pagination.skip,
       limit: pagination.limit,
@@ -156,7 +203,8 @@ export class BannerService extends BaseService {
       allowedSortFields: [...BANNER_SORT_FIELDS],
       defaultSort: DEFAULT_BANNER_SORT,
     });
-    const filter = this.bannerRepository.buildAdminFilter(query);
+    const resolvedQuery = await this.#resolveListQuery(query);
+    const filter = this.bannerRepository.buildAdminFilter(resolvedQuery);
     const { items, total } = await this.bannerRepository.listAdmin(filter, {
       skip: pagination.skip,
       limit: pagination.limit,
@@ -205,6 +253,7 @@ export class BannerService extends BaseService {
       );
     }
 
+    await this.#applyCategoryRef(payload);
     payload.image = await this.#uploadImage(file);
 
     const created = await this.bannerRepository.create(payload);
@@ -251,6 +300,8 @@ export class BannerService extends BaseService {
         ErrorCodes.VALIDATION_ERROR,
       );
     }
+
+    await this.#applyCategoryRef(payload);
 
     if (file) {
       payload.image = await this.#uploadImage(file);

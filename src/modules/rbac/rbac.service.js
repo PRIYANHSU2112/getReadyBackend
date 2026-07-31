@@ -100,26 +100,45 @@ export class RbacService extends BaseService {
     return this.#sanitizeRole(role);
   }
 
+  /**
+   * Sync registry permissions into DB catalog table (insert new, mark inactive missing).
+   */
   async syncPermissionsFromRegistry() {
-    const catalog = listRegistryPermissions();
-    const synced = [];
-    for (const item of catalog) {
-      const doc = await this.permissionRepository.upsertByKey({
-        key: item.key,
-        module: item.module,
-        action: item.action,
-        description: item.description,
-        isActive: true,
-      });
-      synced.push(this.#sanitizePermission(doc));
+    const registryList = listRegistryPermissions();
+
+    const ops = registryList.map((p) => ({
+      updateOne: {
+        filter: { key: p.key },
+        update: {
+          $set: {
+            key: p.key,
+            module: p.module,
+            action: p.action,
+            description: p.description,
+            isActive: true,
+          },
+        },
+        upsert: true,
+      },
+    }));
+
+    if (ops.length) {
+      await this.permissionRepository.bulkWrite(ops);
     }
-    return { count: synced.length, items: synced };
+
+    const regKeys = registryList.map((p) => p.key);
+    await this.permissionRepository.deactivateUnlistedKeys(regKeys);
+
+    const allInDb = await this.permissionRepository.findActive();
+    return {
+      items: allInDb.map((p) => this.#sanitizePermission(p)),
+      total: allInDb.length,
+    };
   }
 
   /**
    * Upsert system roles + sync permissions. Safe to run multiple times.
-   * Existing custom role permission assignments are preserved on re-seed.
-   * Super Admin always receives every registry permission key.
+   * System roles always sync permissions from registry default keys.
    */
   async seedDefaults() {
     const { items: permissions } = await this.syncPermissionsFromRegistry();
@@ -145,6 +164,7 @@ export class RbacService extends BaseService {
         isSystem: true,
         isSuperAdmin: false,
         isActive: true,
+        alwaysSyncPermissions: true,
       },
       {
         name: 'Beautician',
@@ -154,6 +174,7 @@ export class RbacService extends BaseService {
         isSystem: true,
         isSuperAdmin: false,
         isActive: true,
+        alwaysSyncPermissions: true,
       },
       {
         name: 'Customer',
@@ -177,7 +198,7 @@ export class RbacService extends BaseService {
           isSuperAdmin: def.isSuperAdmin,
           isActive: true,
         };
-        // Keep Super Admin (and any alwaysSync role) permissions in sync with registry
+        // Keep System roles permissions in sync with registry defaults
         if (def.alwaysSyncPermissions) {
           payload.permissions = def.permissions;
         }
@@ -194,120 +215,140 @@ export class RbacService extends BaseService {
     }
 
     return {
-      permissions: permissions.length,
       roles: roles.map((r) => this.#sanitizeRole(r)),
+      permissionCount: permissions.length,
     };
   }
+
+  // ═══════════════════════════════════════════════════════════
+  //  PERMISSIONS (Read-only catalog)
+  // ═══════════════════════════════════════════════════════════
 
   async listPermissions(query = {}) {
-    const pagination = parseListQuery(query, {
-      allowedSortFields: ['createdAt', 'key', 'module'],
-      defaultSort: 'module',
-    });
-    const filter = {};
-    if (query.isActive !== undefined) filter.isActive = query.isActive;
-    if (query.module) filter.module = query.module;
+    const list = await this.permissionRepository.findActive();
+    let items = list.map((p) => this.#sanitizePermission(p));
 
-    const [items, total] = await Promise.all([
-      this.permissionRepository.findAll(filter, {
-        skip: pagination.skip,
-        limit: pagination.limit,
-        sort: pagination.sort,
-      }),
-      this.permissionRepository.count(filter),
-    ]);
+    if (query.module) {
+      const modLower = String(query.module).trim().toLowerCase();
+      items = items.filter((p) => p.module?.toLowerCase() === modLower);
+    }
 
-    return {
-      items: items.map((p) => this.#sanitizePermission(p)),
-      meta: {
-        ...buildPaginationMeta(total, pagination),
-        sort: pagination.sort,
-        filters: buildAppliedFilters(query, ['module', 'isActive']),
-      },
-    };
+    if (query.search) {
+      const q = String(query.search).trim().toLowerCase();
+      items = items.filter(
+        (p) =>
+          p.key.toLowerCase().includes(q) ||
+          p.description?.toLowerCase().includes(q) ||
+          p.module?.toLowerCase().includes(q),
+      );
+    }
+
+    return { items, total: items.length };
   }
+
+  async getPermissionByKey(key) {
+    const perm = await this.permissionRepository.findByKey(key);
+    return this.#sanitizePermission(this.ensureFound(perm, `Permission key "${key}" not found`));
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  ROLES (CRUD + permission assignment)
+  // ═══════════════════════════════════════════════════════════
 
   async listRoles(query = {}) {
     const pagination = parseListQuery(query, {
       allowedSortFields: ROLE_SORT_FIELDS,
       defaultSort: 'name',
     });
-    const filter = this.roleRepository.buildListFilter(query);
 
-    const [items, total] = await Promise.all([
-      this.roleRepository.search(filter, {
-        skip: pagination.skip,
-        limit: pagination.limit,
-        sort: pagination.sort,
-      }),
-      this.roleRepository.count(filter),
-    ]);
+    const filter = {};
+    if (query.isActive !== undefined) {
+      filter.isActive = query.isActive;
+    }
+
+    const { items, total } = await this.roleRepository.findAndCount(filter, {
+      skip: pagination.skip,
+      limit: pagination.limit,
+      sort: pagination.sort,
+    });
+
+    let sanitized = items.map((r) => this.#sanitizeRole(r));
+
+    if (this.countUsersByRole) {
+      sanitized = await Promise.all(
+        sanitized.map(async (role) => ({
+          ...role,
+          userCount: await this.countUsersByRole(role.slug),
+        })),
+      );
+    }
+
+    const appliedFilters = buildAppliedFilters(query, ['isActive']);
 
     return {
-      items: items.map((r) => this.#sanitizeRole(r)),
-      meta: {
-        ...buildPaginationMeta(total, pagination),
-        sort: pagination.sort,
-        filters: buildAppliedFilters(query, ['search', 'isActive', 'isSystem']),
-      },
+      items: sanitized,
+      meta: buildPaginationMeta(total, pagination, appliedFilters),
     };
   }
 
   async getRoleById(id) {
     const role = await this.roleRepository.findById(id);
-    return this.#sanitizeRole(this.ensureFound(role, 'Role not found'));
+    const sanitized = this.#sanitizeRole(this.ensureFound(role, 'Role not found'));
+    if (this.countUsersByRole && sanitized?.slug) {
+      sanitized.userCount = await this.countUsersByRole(sanitized.slug);
+    }
+    return sanitized;
   }
 
-  async #assertPermissionKeysExist(keys) {
-    const unique = [...new Set(keys)];
-    const found = await this.permissionRepository.findKeys(unique);
-    const foundKeys = new Set(found.map((p) => p.key));
-    const missing = unique.filter((k) => !foundKeys.has(k));
+  async #assertPermissionKeysExist(keys = []) {
+    if (!Array.isArray(keys)) {
+      throw new AppError('permissions must be an array', HttpStatus.UNPROCESSABLE, ErrorCodes.VALIDATION_ERROR);
+    }
+    const unique = [...new Set(keys.map((k) => String(k).trim()))];
+    if (!unique.length) return [];
+
+    const activeInDb = await this.permissionRepository.findByKeys(unique);
+    const foundSet = new Set(activeInDb.map((p) => p.key));
+    const missing = unique.filter((k) => !foundSet.has(k));
+
     if (missing.length) {
       throw new AppError(
-        `Unknown or inactive permission keys: ${missing.join(', ')}`,
+        `Unknown or inactive permission key(s): ${missing.join(', ')}`,
         HttpStatus.BAD_REQUEST,
         ErrorCodes.VALIDATION_ERROR,
-        true,
-        { missing },
       );
     }
+
     return unique;
   }
 
   async createRole(data) {
-    const slug = data.slug.toLowerCase().trim();
+    const slug = String(data.slug || '').trim().toLowerCase();
     const existing = await this.roleRepository.findBySlug(slug);
     if (existing) {
-      throw new AppError('Role slug already exists', HttpStatus.CONFLICT, ErrorCodes.CONFLICT);
-    }
-
-    const permissions = data.permissions?.length
-      ? await this.#assertPermissionKeysExist(data.permissions)
-      : [];
-
-    if (data.isSuperAdmin) {
       throw new AppError(
-        'Cannot create another super admin role',
-        HttpStatus.BAD_REQUEST,
-        ErrorCodes.VALIDATION_ERROR,
+        `Role slug "${slug}" already exists`,
+        HttpStatus.CONFLICT,
+        ErrorCodes.ROLE_SLUG_EXISTS,
       );
     }
 
-    const role = await this.roleRepository.create({
+    const permissions = await this.#assertPermissionKeysExist(data.permissions || []);
+
+    const created = await this.roleRepository.create({
       name: data.name,
       slug,
-      description: data.description || '',
+      description: data.description || null,
       permissions,
       isSystem: false,
       isSuperAdmin: false,
-      isActive: data.isActive !== false,
+      isActive: data.isActive !== undefined ? data.isActive : true,
     });
 
-    return this.#sanitizeRole(role);
+    return this.#sanitizeRole(created);
   }
 
-  async updateRole(id, data = {}) {
+  async updateRole(id, data) {
     const existing = await this.roleRepository.findById(id);
     this.ensureFound(existing, 'Role not found');
 
@@ -315,38 +356,24 @@ export class RbacService extends BaseService {
 
     if (data.name !== undefined) payload.name = data.name;
     if (data.description !== undefined) payload.description = data.description;
-    if (data.isActive !== undefined) payload.isActive = data.isActive;
-
-    if (data.slug !== undefined && data.slug.toLowerCase().trim() !== existing.slug) {
-      if (existing.isSystem) {
-        throw new AppError(
-          'Cannot change slug of a system role',
-          HttpStatus.BAD_REQUEST,
-          ErrorCodes.VALIDATION_ERROR,
-        );
+    if (data.isActive !== undefined) {
+      if (existing.isSuperAdmin && !data.isActive) {
+        throw new AppError('Super admin role cannot be deactivated', HttpStatus.BAD_REQUEST, ErrorCodes.VALIDATION_ERROR);
       }
-      const slug = data.slug.toLowerCase().trim();
-      const conflict = await this.roleRepository.findBySlug(slug);
-      if (conflict && conflict._id.toString() !== id) {
-        throw new AppError('Role slug already exists', HttpStatus.CONFLICT, ErrorCodes.CONFLICT);
-      }
-      payload.slug = slug;
+      payload.isActive = data.isActive;
     }
 
-    if (data.isSuperAdmin !== undefined) {
-      if (existing.isSuperAdmin && data.isSuperAdmin === false) {
-        throw new AppError(
-          'Cannot remove super admin flag from the system super admin role',
-          HttpStatus.BAD_REQUEST,
-          ErrorCodes.VALIDATION_ERROR,
-        );
+    if (data.slug !== undefined) {
+      const slug = String(data.slug).trim().toLowerCase();
+      if (existing.isSystem && slug !== existing.slug) {
+        throw new AppError('System role slug cannot be changed', HttpStatus.BAD_REQUEST, ErrorCodes.VALIDATION_ERROR);
       }
-      if (!existing.isSuperAdmin && data.isSuperAdmin === true) {
-        throw new AppError(
-          'Cannot promote a role to super admin',
-          HttpStatus.BAD_REQUEST,
-          ErrorCodes.VALIDATION_ERROR,
-        );
+      if (slug !== existing.slug) {
+        const other = await this.roleRepository.findBySlug(slug);
+        if (other) {
+          throw new AppError(`Role slug "${slug}" already exists`, HttpStatus.CONFLICT, ErrorCodes.ROLE_SLUG_EXISTS);
+        }
+        payload.slug = slug;
       }
     }
 

@@ -15,7 +15,14 @@ import { logger } from './logger/pino.logger.js';
  */
 export function createShared(options = {}) {
   const eventBus = options.eventBus || new EventBus();
-  const jwtUtil = options.jwtUtil || new JwtUtil(config.jwt.secret, config.jwt.expiresIn);
+  const jwtUtil =
+    options.jwtUtil ||
+    new JwtUtil(
+      config.jwt.secret,
+      config.jwt.expiresIn,
+      config.jwt.refreshSecret,
+      config.jwt.refreshExpiresIn,
+    );
 
   let cacheService = options.cacheService;
   if (cacheService === undefined) {

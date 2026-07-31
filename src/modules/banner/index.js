@@ -12,6 +12,7 @@ import { bannerDocs } from './banner.docs.js';
  *   checkPermission: Function,
  *   cacheService?: object|null,
  *   storageService?: object|null,
+ *   categoryRepository?: object|null,
  * }} deps
  */
 export function createBannerModule({
@@ -19,9 +20,15 @@ export function createBannerModule({
   checkPermission,
   cacheService = null,
   storageService = null,
+  categoryRepository = null,
 }) {
   const repository = new BannerRepository(BannerModel);
-  const service = new BannerService(repository, cacheService, storageService);
+  const service = new BannerService(
+    repository,
+    cacheService,
+    storageService,
+    categoryRepository,
+  );
   const controller = new BannerController(service);
 
   return {

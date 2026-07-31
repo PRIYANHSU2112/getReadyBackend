@@ -31,10 +31,28 @@ export class BannerRepository extends BaseRepository {
   /**
    * Admin list filter builder.
    */
+  /**
+   * Match by categoryId and/or legacy serviceCategory string.
+   * When categoryId + resolved slug are provided, match either ref or denormalized slug.
+   */
+  #applyCategoryFilters(filter, query = {}) {
+    if (query.categoryId) {
+      const oid = toObjectId(query.categoryId);
+      const categoryOr = [{ categoryId: oid }];
+      if (query.categorySlug) {
+        categoryOr.push({ serviceCategory: query.categorySlug });
+      }
+      filter.$and = filter.$and || [];
+      filter.$and.push({ $or: categoryOr });
+    } else if (query.serviceCategory) {
+      filter.serviceCategory = query.serviceCategory;
+    }
+  }
+
   buildAdminFilter(query = {}) {
     const filter = { deletedAt: null };
     if (query.position !== undefined) filter.position = Number(query.position);
-    if (query.serviceCategory) filter.serviceCategory = query.serviceCategory;
+    this.#applyCategoryFilters(filter, query);
     if (query.serviceId) filter.serviceIds = toObjectId(query.serviceId);
     if (query.platform) filter.platform = query.platform;
     if (query.type) filter.type = query.type;
@@ -56,7 +74,7 @@ export class BannerRepository extends BaseRepository {
     };
 
     if (query.position !== undefined) filter.position = Number(query.position);
-    if (query.serviceCategory) filter.serviceCategory = query.serviceCategory;
+    this.#applyCategoryFilters(filter, query);
     if (query.serviceId) filter.serviceIds = toObjectId(query.serviceId);
     if (query.type) filter.type = query.type;
 

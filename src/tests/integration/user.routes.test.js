@@ -46,7 +46,7 @@ describe('User routes (integration)', () => {
       email: 'admin@test.com',
       password: 'password123',
     });
-    adminToken = login.body.data.token;
+    adminToken = login.body.data.accessToken;
   });
 
   it('POST /api/v1/users requires admin auth', async () => {
