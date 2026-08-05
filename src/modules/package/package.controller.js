@@ -21,12 +21,12 @@ export class PackageController extends BaseController {
   }
 
   async create(req, res) {
-    const result = await this.packageService.createPackage(req.body, req.user);
+    const result = await this.packageService.createPackage(req.body, req.user, req.files);
     return this.created(res, result);
   }
 
   async update(req, res) {
-    const result = await this.packageService.updatePackage(req.params.id, req.body, req.user);
+    const result = await this.packageService.updatePackage(req.params.id, req.body, req.user, req.files);
     return this.ok(res, result);
   }
 

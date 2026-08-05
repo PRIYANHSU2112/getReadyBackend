@@ -33,6 +33,8 @@ export function createApp(options = {}) {
     pinoHttp({
       logger,
       customProps: (req) => ({ requestId: req.requestId }),
+      customErrorMessage: (_req, _res, err) =>
+        err ? err.message : 'Request completed with error status',
     }),
   );
 

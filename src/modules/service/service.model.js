@@ -51,7 +51,6 @@ const serviceSchema = new mongoose.Schema(
     },
     slug: {
       type: String,
-      required: true,
       trim: true,
       lowercase: true,
       maxlength: MAX_SERVICE_SLUG_LENGTH,

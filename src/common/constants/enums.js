@@ -137,3 +137,48 @@ export const CertificateStatus = Object.freeze({
   VERIFIED: 'VERIFIED',
   REJECTED: 'REJECTED',
 });
+
+export const CartItemType = Object.freeze({
+  SERVICE: 'SERVICE',
+  PACKAGE: 'PACKAGE',
+});
+
+export const MemberRelationship = Object.freeze({
+  SISTER: 'SISTER',
+  MOTHER: 'MOTHER',
+  FATHER: 'FATHER',
+  BROTHER: 'BROTHER',
+  SPOUSE: 'SPOUSE',
+  CHILD: 'CHILD',
+  FRIEND: 'FRIEND',
+  OTHER: 'OTHER',
+});
+
+export const MemberSkinType = Object.freeze({
+  OILY: 'OILY',
+  DRY: 'DRY',
+  SENSITIVE: 'SENSITIVE',
+  COMBINATION: 'COMBINATION',
+});
+
+export const BookForOthersMode = Object.freeze({
+  SAME_SERVICES: 'SAME_SERVICES',
+});
+
+export const SlotStatus = Object.freeze({
+  ACTIVE: 'ACTIVE',
+  BLOCKED: 'BLOCKED',
+  CANCELLED: 'CANCELLED',
+  COMPLETED: 'COMPLETED',
+});
+
+export const SlotAvailability = Object.freeze({
+  AVAILABLE: 'AVAILABLE',
+  FULL: 'FULL',
+});
+
+export const BlogStatus = Object.freeze({
+  DRAFT: 'DRAFT',
+  PUBLISHED: 'PUBLISHED',
+  ARCHIVED: 'ARCHIVED',
+});

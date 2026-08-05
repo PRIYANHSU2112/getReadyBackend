@@ -1,5 +1,10 @@
 import { BaseValidator } from '../../common/base/BaseValidator.js';
 import {
+  joiJsonArray,
+  joiJsonObject,
+  joiParseJson,
+} from '../../common/helpers/joi-json.helper.js';
+import {
   PackageType,
   PackageGender,
   PackageDiscountType,
@@ -8,37 +13,18 @@ import {
 
 const { Joi } = BaseValidator;
 
-const parseJsonArray = (itemSchema, maxItems = 100) =>
-  Joi.alternatives().try(
-    Joi.array().items(itemSchema).max(maxItems),
-    Joi.string().custom((value, helpers) => {
-      try {
-        const parsed = JSON.parse(value);
-        if (!Array.isArray(parsed)) {
-          return helpers.error('language.jsonArrayInvalid');
-        }
-        const { error, value: validated } = Joi.array()
-          .items(itemSchema)
-          .max(maxItems)
-          .validate(parsed);
-        if (error) return helpers.error('language.jsonArrayInvalid');
-        return validated;
-      } catch {
-        return helpers.error('language.jsonArrayInvalid');
-      }
-    }, 'JSON array string parser'),
-  );
-
-const packageItemSchema = Joi.object({
+const singlePackageItemSchema = Joi.object({
   serviceId: Joi.string().hex().length(24).required(),
   categoryId: Joi.string().hex().length(24).required(),
   groupTitle: Joi.string().trim().allow('', null).optional(),
   isMandatory: Joi.boolean().optional().default(false),
   isDefaultSelected: Joi.boolean().optional().default(false),
-  badgeTags: Joi.array().items(Joi.string().trim()).optional().default([]),
+  badgeTags: joiJsonArray(Joi.string().trim()),
   extraCharge: Joi.number().min(0).optional().default(0),
   displayOrder: Joi.number().optional().default(0),
 });
+
+const packageItemSchema = joiParseJson(singlePackageItemSchema);
 
 const imageSchema = Joi.object({
   url: Joi.string().uri().required(),
@@ -57,7 +43,7 @@ const sharedBodyFields = {
   maxSelectCount: Joi.number().integer().min(1),
   selectionNotice: Joi.string().allow(''),
 
-  items: parseJsonArray(packageItemSchema, 50),
+  items: joiJsonArray(packageItemSchema, 50),
 
   durationMinMinutes: Joi.number().integer().min(0),
   durationMaxMinutes: Joi.number().integer().min(0),
@@ -69,7 +55,7 @@ const sharedBodyFields = {
   discountType: Joi.string().valid(...Object.values(PackageDiscountType)),
   discountValue: Joi.number().min(0),
 
-  badges: parseJsonArray(Joi.string().valid(...Object.values(PackageBadge))),
+  badges: joiJsonArray(Joi.string().valid(...Object.values(PackageBadge))),
 
   socialProofText: Joi.string().allow('', null),
 
@@ -81,8 +67,8 @@ const sharedBodyFields = {
   isActive: Joi.boolean(),
   displayOrder: Joi.number(),
 
-  images: parseJsonArray(imageSchema, 10),
-  metadata: Joi.object(),
+  images: joiJsonArray(joiParseJson(imageSchema), 10),
+  metadata: joiJsonObject(),
 };
 
 const createPackage = Joi.object({

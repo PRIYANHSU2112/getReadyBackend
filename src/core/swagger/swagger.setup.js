@@ -1,8 +1,12 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import config from '../config/index.js';
 import { swaggerDocs } from './docs.registry.js';
 import { openApiComponents } from './swagger.common.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Mount Swagger UI. Docs come from the central registry by default.
@@ -11,6 +15,12 @@ import { openApiComponents } from './swagger.common.js';
  */
 export function setupSwagger(app, moduleDocs = swaggerDocs) {
   if (!config.swaggerEnabled) return;
+
+  // Auto token capture + refresh helper for Try it out
+  app.get('/swagger-assets/auth-helper.js', (_req, res) => {
+    res.type('application/javascript');
+    res.sendFile(path.join(__dirname, 'swagger-auth-helper.js'));
+  });
 
   const options = {
     definition: {
@@ -21,20 +31,24 @@ export function setupSwagger(app, moduleDocs = swaggerDocs) {
         description: [
           'Salon modular monolith API.',
           '',
-          '### How to use Try it out',
-          '1. Call **Auth - Admin → Admin / Super Admin login** with seeded credentials (e.g. `superadmin@salon.com` / `SuperAdmin@123`).',
-          '2. Copy `data.token` from the response.',
-          '3. Click **Authorize**, paste the token (without the word `Bearer`), then Authorize.',
-          '4. Call protected endpoints. Staff APIs require role permissions from the RBAC registry.',
+          '### How to use Try it out (auto token refresh)',
+          '1. Call **Auth - Admin → Admin login** or **Auth - Mobile → Verify OTP**.',
+          '2. Tokens are **auto-saved** from `data.accessToken` + `data.refreshToken` — no need to paste manually.',
+          '3. Protected calls use the saved access token. On **401**, Swagger auto-calls `POST /api/v1/auth/refresh` and retries once.',
+          '4. Optional: click **Authorize** only if you want to paste a token by hand.',
+          '5. Hard-refresh the docs page if you logged out / cleared storage.',
           '',
           '### JSON tips',
           '- Use double quotes only.',
           '- Do **not** leave trailing commas in request bodies.',
         ].join('\n'),
       },
+      // Relative "/" keeps Try it out on the same host as /api-docs (avoids silent empty responses)
       servers: [
-        { url: config.appUrl, description: 'Current environment' },
+        { url: '/', description: 'Same origin as this Swagger page (recommended)' },
+        { url: config.appUrl, description: 'Configured APP_URL' },
         { url: 'http://localhost:5000', description: 'Local default' },
+        { url: 'http://localhost:3000', description: 'Local port 3000' },
       ],
       components: openApiComponents,
       // Default security; public routes override with security: []
@@ -44,6 +58,18 @@ export function setupSwagger(app, moduleDocs = swaggerDocs) {
         { name: 'Auth - Admin', description: 'Admin / Super Admin password auth (public)' },
         { name: 'Auth - Mobile', description: 'Customer / Beautician OTP auth (public)' },
         { name: 'Auth', description: 'Authenticated auth helpers' },
+        { name: 'Cart', description: 'Customer cart — Bearer auth only (items, benefits, pricing, book-for-others)' },
+        { name: 'Members', description: 'Family & friends profiles — Bearer auth only (book-for-others)' },
+        {
+          name: 'Slots',
+          description:
+            'Admin-created bookable windows + public available-by-date. Soft-hold/confirm happens in Booking + payment (later).',
+        },
+        {
+          name: 'Blogs',
+          description:
+            'CMS blogs — public home/list/detail; auth like; admin CRUD (`blogs.*`). Categories reuse existing Categories module.',
+        },
         { name: 'Users - Self', description: 'Own profile — any authenticated user' },
         {
           name: 'Users - Admin / Beautician',
@@ -117,6 +143,7 @@ export function setupSwagger(app, moduleDocs = swaggerDocs) {
     swaggerUi.serve,
     swaggerUi.setup(spec, {
       customSiteTitle: `${config.appName} API Docs`,
+      customJs: '/swagger-assets/auth-helper.js',
       swaggerOptions: {
         persistAuthorization: true,
         displayRequestDuration: true,

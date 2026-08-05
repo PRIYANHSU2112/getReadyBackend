@@ -176,6 +176,54 @@ export const PERMISSION_CATALOG = Object.freeze([
     action: 'delete',
     description: 'Soft-delete packages',
   },
+  {
+    key: 'slots.read',
+    module: 'slots',
+    action: 'read',
+    description: 'List and view slots (admin)',
+  },
+  {
+    key: 'slots.create',
+    module: 'slots',
+    action: 'create',
+    description: 'Create slots',
+  },
+  {
+    key: 'slots.update',
+    module: 'slots',
+    action: 'update',
+    description: 'Update slots',
+  },
+  {
+    key: 'slots.delete',
+    module: 'slots',
+    action: 'delete',
+    description: 'Cancel slots',
+  },
+  {
+    key: 'blogs.read',
+    module: 'blogs',
+    action: 'read',
+    description: 'List and view blogs (admin)',
+  },
+  {
+    key: 'blogs.create',
+    module: 'blogs',
+    action: 'create',
+    description: 'Create blogs',
+  },
+  {
+    key: 'blogs.update',
+    module: 'blogs',
+    action: 'update',
+    description: 'Update blogs',
+  },
+  {
+    key: 'blogs.delete',
+    module: 'blogs',
+    action: 'delete',
+    description: 'Soft-delete blogs',
+  },
 ]);
 
 /**
@@ -318,6 +366,26 @@ export const ROUTE_PERMISSIONS = Object.freeze([
     pathPattern: '/service-change-requests/:id/reject',
     permission: 'services.update',
   },
+
+  // Slots — public available before admin CRUD (hold/book via future Booking API)
+  { method: 'GET', pathPattern: '/slots/available', permission: null },
+  { method: 'GET', pathPattern: '/slots', permission: 'slots.read' },
+  { method: 'POST', pathPattern: '/slots/bulk', permission: 'slots.create' },
+  { method: 'POST', pathPattern: '/slots', permission: 'slots.create' },
+  { method: 'GET', pathPattern: '/slots/:id', permission: 'slots.read' },
+  { method: 'PATCH', pathPattern: '/slots/:id', permission: 'slots.update' },
+  { method: 'DELETE', pathPattern: '/slots/:id', permission: 'slots.delete' },
+
+  // Blogs — public home/list/detail + auth like; admin manage CRUD
+  { method: 'GET', pathPattern: '/blogs/home', permission: null },
+  { method: 'GET', pathPattern: '/blogs/manage', permission: 'blogs.read' },
+  { method: 'GET', pathPattern: '/blogs/manage/:id', permission: 'blogs.read' },
+  { method: 'GET', pathPattern: '/blogs', permission: null },
+  { method: 'POST', pathPattern: '/blogs/:id/like', permission: null },
+  { method: 'GET', pathPattern: '/blogs/:id', permission: null },
+  { method: 'POST', pathPattern: '/blogs', permission: 'blogs.create' },
+  { method: 'PATCH', pathPattern: '/blogs/:id', permission: 'blogs.update' },
+  { method: 'DELETE', pathPattern: '/blogs/:id', permission: 'blogs.delete' },
 ]);
 
 const API_PREFIX = '/api/v1';

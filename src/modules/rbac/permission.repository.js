@@ -11,10 +11,38 @@ export class PermissionRepository extends BaseRepository {
     return this.findOne({ key }, { lean: true });
   }
 
+  async findByKeys(keys) {
+    if (!keys?.length) return [];
+    return this.findAll(
+      { key: { $in: keys }, isActive: true },
+      { limit: keys.length, lean: true, select: 'key' },
+    );
+  }
+
+  async findKeys(keys) {
+    return this.findByKeys(keys);
+  }
+
   async findAllActive(options = {}) {
     return this.findAll(
       { isActive: true },
-      { ...options, sort: options.sort || 'module', select: options.select || LIST_SELECT },
+      { limit: 0, sort: 'module', select: LIST_SELECT, ...options },
+    );
+  }
+
+  async findActive(options = {}) {
+    return this.findAllActive(options);
+  }
+
+  async bulkWrite(ops, options = {}) {
+    if (!ops?.length) return;
+    return this.model.bulkWrite(ops, options);
+  }
+
+  async deactivateUnlistedKeys(keys = []) {
+    return this.model.updateMany(
+      { key: { $nin: keys } },
+      { $set: { isActive: false } },
     );
   }
 
@@ -63,14 +91,6 @@ export class PermissionRepository extends BaseRepository {
     return this.findAll(
       { key: { $in: items.map((i) => i.key) } },
       { limit: items.length, sort: 'module', lean: true, select: LIST_SELECT },
-    );
-  }
-
-  async findKeys(keys) {
-    if (!keys?.length) return [];
-    return this.findAll(
-      { key: { $in: keys }, isActive: true },
-      { limit: keys.length, lean: true, select: 'key' },
     );
   }
 

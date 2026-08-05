@@ -87,3 +87,31 @@ export function optionalServiceMediaUpload() {
     });
   };
 }
+
+/** Optional multi-file upload for packages (fields `images`, `files`, `thumbnail`, `file`). */
+export function optionalPackageMediaUpload() {
+  const middleware = upload.fields([
+    { name: 'files', maxCount: 10 },
+    { name: 'file', maxCount: 1 },
+    { name: 'images', maxCount: 10 },
+    { name: 'thumbnail', maxCount: 1 },
+  ]);
+  return (req, res, next) => {
+    const contentType = req.headers['content-type'] || '';
+    if (!contentType.includes('multipart/form-data')) {
+      return next();
+    }
+    return middleware(req, res, (err) => {
+      if (err) return next(err);
+      if (req.files && !Array.isArray(req.files)) {
+        const flat = [];
+        for (const [fieldname, list] of Object.entries(req.files)) {
+          for (const f of list) flat.push(f);
+        }
+        req.files = flat;
+      }
+      return next();
+    });
+  };
+}
+

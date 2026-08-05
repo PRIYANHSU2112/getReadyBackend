@@ -1,7 +1,20 @@
 import { Router } from 'express';
 import { validate } from '../../common/middleware/validate.middleware.js';
 import { asyncHandler } from '../../common/utils/asyncHandler.js';
+import { optionalPackageMediaUpload } from '../../core/storage/multer.config.js';
 import { packageValidator } from './package.validation.js';
+
+function validateUpdate() {
+  return (req, res, next) => {
+    if (
+      (req.files?.length || req.file) &&
+      (!req.body || Object.keys(req.body).length === 0)
+    ) {
+      return next();
+    }
+    return validate(packageValidator, 'updatePackage')(req, res, next);
+  };
+}
 
 export function createPackageRoutes(packageController, guards = {}) {
   const router = Router();
@@ -40,6 +53,7 @@ export function createPackageRoutes(packageController, guards = {}) {
   router.post(
     '/',
     authenticate,
+    optionalPackageMediaUpload(),
     validate(packageValidator, 'createPackage'),
     asyncHandler(packageController.create),
   );
@@ -47,7 +61,8 @@ export function createPackageRoutes(packageController, guards = {}) {
   router.patch(
     '/:id',
     authenticate,
-    validate(packageValidator, 'updatePackage'),
+    optionalPackageMediaUpload(),
+    validateUpdate(),
     asyncHandler(packageController.update),
   );
 

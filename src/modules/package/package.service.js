@@ -74,6 +74,9 @@ export class PackageService extends BaseService {
     for (const key of [...publicLocalCache.store.keys()]) {
       if (key.startsWith(PUBLIC_CACHE_PREFIX)) publicLocalCache.delSync(key);
     }
+    if (this.cacheService?.delByPattern) {
+      await this.cacheService.delByPattern(`${PUBLIC_CACHE_PREFIX}*`);
+    }
   }
 
   buildDiff(oldDoc, changes) {

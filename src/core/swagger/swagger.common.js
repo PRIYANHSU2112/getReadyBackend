@@ -36,6 +36,14 @@ export const PERMISSION_KEY_ENUM = [
   'services.create',
   'services.update',
   'services.delete',
+  'slots.read',
+  'slots.create',
+  'slots.update',
+  'slots.delete',
+  'blogs.read',
+  'blogs.create',
+  'blogs.update',
+  'blogs.delete',
 ];
 
 export const bearerSecurity = [{ bearerAuth: [] }];
@@ -183,11 +191,18 @@ export const standardErrors = {
 };
 
 /**
- * @param {number[]} codes
+ * Build OpenAPI error responses.
+ * Prefer: `{ ...okResponse(...), ...withErrors(401, 404, 422, 500) }`
+ * Also accepts a response map object for backwards compatibility.
+ * @param {...number|object} codes
  */
 export function withErrors(...codes) {
   const out = {};
   for (const code of codes) {
+    if (code && typeof code === 'object') {
+      Object.assign(out, code);
+      continue;
+    }
     if (standardErrors[code]) out[code] = standardErrors[code];
   }
   return out;
@@ -265,7 +280,7 @@ export const openApiComponents = {
       scheme: 'bearer',
       bearerFormat: 'JWT',
       description:
-        'JWT from `POST /api/v1/auth/admin/login` or mobile verify-otp. Click **Authorize** and paste the token (without the word Bearer).',
+        'JWT access token. Prefer logging in via Auth endpoints — Swagger auto-saves `accessToken` + `refreshToken` and auto-refreshes on 401. Manual Authorize still works (paste token without the word Bearer).',
     },
   },
   schemas: {

@@ -8,7 +8,6 @@ const serviceChangeRequestSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Service',
       required: true,
-      index: true,
     },
     requestedBy: {
       type: mongoose.Schema.Types.ObjectId,

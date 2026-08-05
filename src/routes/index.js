@@ -16,6 +16,10 @@ import { createPackageModule } from '../modules/package/index.js';
 import { createSkillModule } from '../modules/skill/index.js';
 import { createBeauticianProfileModule } from '../modules/beautician-profile/index.js';
 import { createBankDetailModule } from '../modules/bank-detail/index.js';
+import { createCartModule } from '../modules/cart/index.js';
+import { createMemberModule } from '../modules/member/index.js';
+import { createSlotModule } from '../modules/slot/index.js';
+import { createBlogModule } from '../modules/blog/index.js';
 
 export function createRootRouter(shared) {
   const router = Router();
@@ -125,12 +129,41 @@ export function createRootRouter(shared) {
     beauticianProfileRepository: beauticianProfile.profileRepo,
   });
 
+  const member = createMemberModule({
+    authenticate: shared.authenticate,
+    cacheService: shared.cacheService,
+  });
+
+  const cart = createCartModule({
+    authenticate: shared.authenticate,
+    cacheService: shared.cacheService,
+    serviceRepository: serviceModule.repository,
+    packageRepository: packageModule.repository,
+    memberRepository: member.repository,
+  });
+
+  const slot = createSlotModule({
+    authenticate: shared.authenticate,
+    checkPermission: rbac.checkPermission,
+    cacheService: shared.cacheService,
+    slotInventory: shared.slotInventory || null,
+  });
+
+  const blog = createBlogModule({
+    authenticate: shared.authenticate,
+    checkPermission: rbac.checkPermission,
+    cacheService: shared.cacheService,
+    storageService: shared.storageService,
+    categoryRepository: category.repository,
+  });
+
   // Mount API V1 Routes
   const apiV1 = Router();
   apiV1.use('/auth', auth.routes);
   apiV1.use('/users', user.routes);
   apiV1.use('/notifications', notification.routes);
-  apiV1.use('/rbac', rbac.routes);
+  apiV1.use('/roles', rbac.roleRoutes);
+  apiV1.use('/permissions', rbac.permissionRoutes);
   apiV1.use('/addresses', address.routes);
   apiV1.use('/banners', banner.routes);
   apiV1.use('/filters', filter.routes);
@@ -138,10 +171,13 @@ export function createRootRouter(shared) {
   apiV1.use('/services', serviceModule.routes);
   apiV1.use('/service-change-requests', serviceModule.changeRequestRoutes);
   apiV1.use('/packages', packageModule.routes);
-  apiV1.use('/package-change-requests', packageModule.changeRequestRoutes);
   apiV1.use('/skills', skill.routes);
   apiV1.use('/beautician-profiles', beauticianProfile.routes);
   apiV1.use('/bank-details', bankDetail.routes);
+  apiV1.use('/members', member.routes);
+  apiV1.use('/cart', cart.routes);
+  apiV1.use('/slots', slot.routes);
+  apiV1.use('/blogs', blog.routes);
 
   router.use('/api/v1', apiV1);
 

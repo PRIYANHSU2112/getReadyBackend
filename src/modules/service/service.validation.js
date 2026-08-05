@@ -1,5 +1,10 @@
 import { BaseValidator } from '../../common/base/BaseValidator.js';
 import {
+  joiJsonArray,
+  joiJsonObject,
+  joiParseJson,
+} from '../../common/helpers/joi-json.helper.js';
+import {
   ServiceDiscountType,
   ServiceStatus,
   ServiceBadge,
@@ -29,25 +34,7 @@ const slugSchema = Joi.string()
   .max(MAX_SERVICE_SLUG_LENGTH);
 const boolField = Joi.boolean().truthy('true').falsy('false');
 
-const metadataSchema = Joi.alternatives()
-  .try(
-    Joi.object().unknown(true),
-    Joi.string()
-      .allow('')
-      .custom((value, helpers) => {
-        if (!value || !String(value).trim()) return {};
-        try {
-          const parsed = JSON.parse(value);
-          if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-            return helpers.error('object.base');
-          }
-          return parsed;
-        } catch {
-          return helpers.error('object.base');
-        }
-      }),
-  )
-  .default({});
+const metadataSchema = joiJsonObject();
 
 const mediaObject = Joi.object({
   url: Joi.string().trim().uri({ allowRelative: true }).allow('', null),
@@ -66,30 +53,6 @@ const inclusionItem = Joi.object({
   displayOrder: Joi.number().integer().min(0).default(0),
 });
 
-const parseJsonArray = (itemSchema, maxItems) => {
-  let arraySchema = Joi.array().items(itemSchema);
-  if (maxItems !== undefined && maxItems !== null) {
-    arraySchema = arraySchema.max(maxItems);
-  }
-  return Joi.alternatives().try(
-    arraySchema,
-    Joi.string()
-      .allow('')
-      .custom((value, helpers) => {
-        if (!value || !String(value).trim()) return [];
-        try {
-          const parsed = JSON.parse(value);
-          if (!Array.isArray(parsed)) return helpers.error('array.base');
-          const { error, value: validated } = arraySchema.validate(parsed);
-          if (error) return helpers.message(error.message);
-          return validated;
-        } catch {
-          return helpers.error('array.base');
-        }
-      }),
-  );
-};
-
 const sharedBodyFields = {
   name: Joi.string().trim().min(1).max(MAX_SERVICE_NAME_LENGTH),
   slug: slugSchema,
@@ -102,24 +65,24 @@ const sharedBodyFields = {
     .max(MAX_SERVICE_DESCRIPTION_LENGTH)
     .allow('', null),
   categoryId: objectId,
-  images: parseJsonArray(imageItem, MAX_SERVICE_IMAGES),
+  images: joiJsonArray(joiParseJson(imageItem), MAX_SERVICE_IMAGES),
   thumbnail: mediaObject,
   video: mediaObject,
   durationMinMinutes: Joi.number().integer().min(0).allow(null),
   durationMaxMinutes: Joi.number().integer().min(0).allow(null),
   approxPrice: Joi.number().min(0).allow(null),
-  badges: parseJsonArray(
+  badges: joiJsonArray(
     Joi.string().valid(...Object.values(ServiceBadge)),
   ),
   isPopular: boolField,
   isTrending: boolField,
   isFeatured: boolField,
   isActive: boolField,
-  inclusions: parseJsonArray(inclusionItem, MAX_SERVICE_INCLUSIONS),
+  inclusions: joiJsonArray(joiParseJson(inclusionItem), MAX_SERVICE_INCLUSIONS),
   isHomeServiceAvailable: boolField,
   homeVisitFee: Joi.number().min(0),
   rewardPointsMultiplier: Joi.number().min(0),
-  tags: parseJsonArray(Joi.string().trim().lowercase().max(50), MAX_SERVICE_TAGS),
+  tags: joiJsonArray(Joi.string().trim().lowercase().max(50), MAX_SERVICE_TAGS),
   gender: Joi.string().valid(...Object.values(ServiceGender)),
   displayOrder: Joi.number().integer().min(0),
   metadata: metadataSchema,

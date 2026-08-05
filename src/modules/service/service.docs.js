@@ -58,7 +58,7 @@ const serviceExample = {
   ratingAvg: 4.8,
   ratingCount: 128,
   tags: ['bridal'],
-  gender: 'female',
+  gender: ServiceGender.FEMALE,
   status: ServiceStatus.APPROVED,
   displayOrder: 1,
   isActive: true,
@@ -89,7 +89,7 @@ const audiencePublic =
 const audienceStaff =
   '**Audience:** Admin **and** Beautician (`services.read`). Beautician sees **own** services only.';
 const audienceAdminOnly =
-  '**Audience:** Admin only. Beautician forbidden for delete/reorder/approve-create.';
+  '**Audience:** Admin only. Beautician forbidden.';
 const audienceBeauticianUpdate =
   '**Audience:** Admin + Beautician (`services.update`).\n\n' +
   '**Beautician:** does **not** mutate live Service — creates a `ServiceChangeRequest` with field diff. Pricing fields stripped.\n' +
@@ -112,7 +112,7 @@ export const serviceDocs = {
           { name: 'minPrice', in: 'query', schema: { type: 'number' }, description: 'Minimum price filter' },
           { name: 'maxPrice', in: 'query', schema: { type: 'number' }, description: 'Maximum price filter' },
           { name: 'minRating', in: 'query', schema: { type: 'number' }, description: 'Minimum average rating (0-5)' },
-          { name: 'gender', in: 'query', schema: { type: 'string', enum: ['all', 'female', 'male', 'kids'] } },
+          { name: 'gender', in: 'query', schema: { type: 'string', enum: Object.values(ServiceGender) } },
           { name: 'tag', in: 'query', schema: { type: 'string' }, description: 'Tag filter (e.g. bridal, facial)' },
           { name: 'featured', in: 'query', schema: { type: 'boolean' } },
           { name: 'popular', in: 'query', schema: { type: 'boolean' } },
@@ -194,11 +194,22 @@ export const serviceDocs = {
         security: bearerSecurity,
         parameters: [
           ...pageQueryParams({ page: 1, limit: 10 }),
+          { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Keyword search filter' },
           {
             name: 'status',
             in: 'query',
             schema: { type: 'string', enum: Object.values(ServiceStatus) },
+            description: 'Filter by approval status (PENDING_APPROVAL, APPROVED, REJECTED)',
           },
+          { name: 'categoryId', in: 'query', schema: { type: 'string' }, description: 'Category ObjectId filter' },
+          { name: 'isActive', in: 'query', schema: { type: 'boolean' }, description: 'Active flag filter' },
+          { name: 'isFeatured', in: 'query', schema: { type: 'boolean' } },
+          { name: 'isPopular', in: 'query', schema: { type: 'boolean' } },
+          { name: 'isTrending', in: 'query', schema: { type: 'boolean' } },
+          { name: 'gender', in: 'query', schema: { type: 'string', enum: Object.values(ServiceGender) } },
+          { name: 'tag', in: 'query', schema: { type: 'string' } },
+          { name: 'includeDeleted', in: 'query', schema: { type: 'boolean', default: false }, description: 'Include soft-deleted services' },
+          { name: 'sort', in: 'query', schema: { type: 'string', default: 'displayOrder -createdAt' } },
         ],
         responses: {
           ...okResponse(
@@ -237,16 +248,30 @@ export const serviceDocs = {
                   durationMinMinutes: { type: 'number', description: 'Min duration in minutes' },
                   durationMaxMinutes: { type: 'number', description: 'Max duration in minutes' },
                   badges: {
-                    type: 'array',
-                    items: { type: 'string', enum: Object.values(ServiceBadge) },
-                    description: 'Badges array or JSON string, e.g. ["most_popular"]',
+                    oneOf: [
+                      { type: 'array', items: { type: 'string', enum: Object.values(ServiceBadge) } },
+                      { type: 'string', example: '["most_popular"]' },
+                    ],
+                    description: 'Badges array, JSON string, or text (e.g. ["most_popular"] or most_popular)',
                   },
                   isPopular: { type: 'boolean', default: false },
                   isTrending: { type: 'boolean', default: false },
                   isFeatured: { type: 'boolean', default: false },
                   isActive: { type: 'boolean', default: true },
                   inclusions: {
-                    type: 'string',
+                    oneOf: [
+                      {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            title: { type: 'string' },
+                            displayOrder: { type: 'number' },
+                          },
+                        },
+                      },
+                      { type: 'string', example: '[{"title": "Exfoliation", "displayOrder": 0}]' },
+                    ],
                     description: 'JSON array string of inclusions, e.g. [{"title": "Exfoliation", "displayOrder": 0}]',
                   },
                   isHomeServiceAvailable: { type: 'boolean', default: false },
@@ -258,14 +283,16 @@ export const serviceDocs = {
                     default: 'all',
                   },
                   tags: {
-                    type: 'array',
-                    items: { type: 'string' },
-                    description: 'Tags array or JSON string, e.g. ["facial", "glowing"]',
+                    oneOf: [
+                      { type: 'array', items: { type: 'string' } },
+                      { type: 'string', example: '["facial", "glowing"]' },
+                    ],
+                    description: 'Tags array, JSON string, or text (e.g. ["facial", "glowing"] or facial)',
                   },
                   displayOrder: { type: 'number', default: 0 },
                   metadata: {
-                    type: 'string',
-                    description: 'Custom key-value JSON string or object',
+                    oneOf: [{ type: 'object' }, { type: 'string', example: '{}' }],
+                    description: 'Custom key-value JSON string or object (e.g. {})',
                   },
                   files: {
                     type: 'array',
@@ -344,6 +371,106 @@ export const serviceDocs = {
         },
       },
     },
+    '/api/v1/services/reorder': {
+      patch: {
+        tags: ['Services'],
+        summary: '[Admin only] Reorder services',
+        description: `${audienceAdminOnly}\n\nBulk update displayOrder for multiple services.`,
+        security: bearerSecurity,
+        requestBody: jsonBody(
+          {
+            type: 'object',
+            required: ['items'],
+            properties: {
+              items: {
+                type: 'array',
+                minItems: 1,
+                items: {
+                  type: 'object',
+                  required: ['id', 'displayOrder'],
+                  properties: {
+                    id: { type: 'string', description: 'Service ObjectId' },
+                    displayOrder: { type: 'number', minimum: 0 },
+                  },
+                },
+              },
+            },
+          },
+          {
+            items: [
+              { id: '64f0c2a1b4e1c2d3e4f50670', displayOrder: 1 },
+              { id: '64f0c2a1b4e1c2d3e4f50671', displayOrder: 2 },
+            ],
+          },
+        ),
+        responses: {
+          ...okResponse(successExample({ count: 2 })),
+          ...withErrors(401, 403, 422, 500),
+        },
+      },
+    },
+    '/api/v1/services/bulk/status': {
+      patch: {
+        tags: ['Services'],
+        summary: '[Admin only] Bulk update service active status',
+        description: `${audienceAdminOnly}\n\nBatch activate or deactivate multiple services.`,
+        security: bearerSecurity,
+        requestBody: jsonBody(
+          {
+            type: 'object',
+            required: ['ids', 'isActive'],
+            properties: {
+              ids: {
+                type: 'array',
+                items: { type: 'string' },
+                minItems: 1,
+                maxItems: 100,
+                description: 'Array of Service ObjectIds',
+              },
+              isActive: { type: 'boolean', description: 'New active status' },
+            },
+          },
+          {
+            ids: ['64f0c2a1b4e1c2d3e4f50670'],
+            isActive: false,
+          },
+        ),
+        responses: {
+          ...okResponse(successExample({ modifiedCount: 1 })),
+          ...withErrors(401, 403, 422, 500),
+        },
+      },
+    },
+    '/api/v1/services/bulk/delete': {
+      post: {
+        tags: ['Services'],
+        summary: '[Admin only] Bulk soft-delete services',
+        description: `${audienceAdminOnly}\n\nBatch soft-delete multiple services.`,
+        security: bearerSecurity,
+        requestBody: jsonBody(
+          {
+            type: 'object',
+            required: ['ids'],
+            properties: {
+              ids: {
+                type: 'array',
+                items: { type: 'string' },
+                minItems: 1,
+                maxItems: 100,
+                description: 'Array of Service ObjectIds',
+              },
+            },
+          },
+          {
+            ids: ['64f0c2a1b4e1c2d3e4f50670'],
+          },
+        ),
+        responses: {
+          ...okResponse(successExample({ deletedCount: 1 })),
+          ...withErrors(401, 403, 422, 500),
+        },
+      },
+    },
     '/api/v1/services/{id}': {
       get: {
         tags: ['Services'],
@@ -381,20 +508,44 @@ export const serviceDocs = {
                   durationMinMinutes: { type: 'number' },
                   durationMaxMinutes: { type: 'number' },
                   badges: {
-                    type: 'array',
-                    items: { type: 'string', enum: Object.values(ServiceBadge) },
+                    oneOf: [
+                      { type: 'array', items: { type: 'string', enum: Object.values(ServiceBadge) } },
+                      { type: 'string', example: '["most_popular"]' },
+                    ],
                   },
                   isPopular: { type: 'boolean' },
                   isTrending: { type: 'boolean' },
                   isFeatured: { type: 'boolean' },
                   isActive: { type: 'boolean' },
-                  inclusions: { type: 'string', description: 'JSON string array' },
+                  inclusions: {
+                    oneOf: [
+                      {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            title: { type: 'string' },
+                            displayOrder: { type: 'number' },
+                          },
+                        },
+                      },
+                      { type: 'string', example: '[{"title": "Exfoliation", "displayOrder": 0}]' },
+                    ],
+                  },
                   isHomeServiceAvailable: { type: 'boolean' },
                   homeVisitFee: { type: 'number' },
                   rewardPointsMultiplier: { type: 'number' },
                   gender: { type: 'string', enum: Object.values(ServiceGender) },
-                  tags: { type: 'array', items: { type: 'string' } },
+                  tags: {
+                    oneOf: [
+                      { type: 'array', items: { type: 'string' } },
+                      { type: 'string', example: '["facial", "glowing"]' },
+                    ],
+                  },
                   displayOrder: { type: 'number' },
+                  metadata: {
+                    oneOf: [{ type: 'object' }, { type: 'string', example: '{}' }],
+                  },
                   files: {
                     type: 'array',
                     items: { type: 'string', format: 'binary' },
@@ -443,6 +594,42 @@ export const serviceDocs = {
         },
       },
     },
+    '/api/v1/services/{id}/restore': {
+      post: {
+        tags: ['Services'],
+        summary: '[Admin only] Restore soft-deleted service',
+        description: `${audienceAdminOnly}\n\nRestores a soft-deleted service back to active pool.`,
+        security: bearerSecurity,
+        parameters: [objectIdParam('id', 'Service ObjectId')],
+        responses: {
+          ...okResponse(successExample(serviceExample)),
+          ...withErrors(401, 403, 404, 422, 500),
+        },
+      },
+    },
+    '/api/v1/services/{id}/status': {
+      patch: {
+        tags: ['Services'],
+        summary: '[Admin only] Toggle single service active status',
+        description: `${audienceAdminOnly}\n\nUpdate isActive flag for a single service.`,
+        security: bearerSecurity,
+        parameters: [objectIdParam('id', 'Service ObjectId')],
+        requestBody: jsonBody(
+          {
+            type: 'object',
+            required: ['isActive'],
+            properties: {
+              isActive: { type: 'boolean', description: 'New active status' },
+            },
+          },
+          { isActive: true },
+        ),
+        responses: {
+          ...okResponse(successExample(serviceExample)),
+          ...withErrors(401, 403, 404, 422, 500),
+        },
+      },
+    },
     '/api/v1/services/{id}/approve': {
       post: {
         tags: ['Services'],
@@ -461,6 +648,7 @@ export const serviceDocs = {
                 enum: Object.values(ServiceDiscountType),
               },
               discountValue: { type: 'number' },
+              reviewedNote: { type: 'string' },
             },
           },
           { price: 12000, discountType: 'PERCENTAGE', discountValue: 25 },
@@ -513,9 +701,12 @@ export const serviceDocs = {
               type: 'string',
               enum: Object.values(ServiceChangeRequestStatus),
             },
+            description: 'Filter by status (PENDING, APPROVED, REJECTED)',
           },
-          { name: 'serviceId', in: 'query', schema: { type: 'string' } },
-          { name: 'mine', in: 'query', schema: { type: 'boolean' } },
+          { name: 'serviceId', in: 'query', schema: { type: 'string' }, description: 'Filter by Service ObjectId' },
+          { name: 'requestedBy', in: 'query', schema: { type: 'string' }, description: 'Filter by User ObjectId' },
+          { name: 'mine', in: 'query', schema: { type: 'boolean' }, description: 'Filter to current user\'s requests' },
+          { name: 'sort', in: 'query', schema: { type: 'string', default: '-createdAt' } },
         ],
         responses: {
           ...okResponse(
@@ -555,6 +746,11 @@ export const serviceDocs = {
             type: 'object',
             properties: {
               price: { type: 'number' },
+              discountType: {
+                type: 'string',
+                enum: Object.values(ServiceDiscountType),
+              },
+              discountValue: { type: 'number' },
               reviewedNote: { type: 'string' },
             },
           },

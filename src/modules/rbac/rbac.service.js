@@ -132,6 +132,7 @@ export class RbacService extends BaseService {
     const allInDb = await this.permissionRepository.findActive();
     return {
       items: allInDb.map((p) => this.#sanitizePermission(p)),
+      count: allInDb.length,
       total: allInDb.length,
     };
   }
@@ -154,7 +155,6 @@ export class RbacService extends BaseService {
         isSystem: true,
         isSuperAdmin: true,
         isActive: true,
-        alwaysSyncPermissions: true,
       },
       {
         name: 'Admin',
@@ -164,7 +164,6 @@ export class RbacService extends BaseService {
         isSystem: true,
         isSuperAdmin: false,
         isActive: true,
-        alwaysSyncPermissions: true,
       },
       {
         name: 'Beautician',
@@ -174,7 +173,6 @@ export class RbacService extends BaseService {
         isSystem: true,
         isSuperAdmin: false,
         isActive: true,
-        alwaysSyncPermissions: true,
       },
       {
         name: 'Customer',
@@ -189,28 +187,9 @@ export class RbacService extends BaseService {
 
     const roles = [];
     for (const def of defaults) {
-      const existing = await this.roleRepository.findBySlug(def.slug);
-      if (existing) {
-        const payload = {
-          name: def.name,
-          description: def.description,
-          isSystem: true,
-          isSuperAdmin: def.isSuperAdmin,
-          isActive: true,
-        };
-        // Keep System roles permissions in sync with registry defaults
-        if (def.alwaysSyncPermissions) {
-          payload.permissions = def.permissions;
-        }
-        const updated = await this.roleRepository.model
-          .findByIdAndUpdate(existing._id.toString(), { $set: payload }, { new: true })
-          .lean()
-          .exec();
-        roles.push(updated);
-      } else {
-        const { alwaysSyncPermissions: _sync, ...createData } = def;
-        roles.push(await this.roleRepository.create(createData));
-      }
+      const { alwaysSyncPermissions: _sync, ...createData } = def;
+      const role = await this.roleRepository.upsertBySlug(createData);
+      roles.push(role);
       await this.#invalidateRoleAuthCache(def.slug);
     }
 

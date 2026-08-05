@@ -30,7 +30,9 @@ export class BaseRepository {
    */
   async findAll(filter = {}, options = {}) {
     const { skip = 0, limit = 10, sort = '-createdAt', lean = true, select } = options;
-    let query = this.model.find(filter).sort(sort).skip(skip).limit(limit);
+    let query = this.model.find(filter).sort(sort);
+    if (skip > 0) query = query.skip(skip);
+    if (limit > 0) query = query.limit(limit);
     if (lean) query = query.lean();
     if (select) query = query.select(select);
     return query.exec();

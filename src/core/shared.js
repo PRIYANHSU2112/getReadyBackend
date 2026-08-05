@@ -62,5 +62,7 @@ export function createShared(options = {}) {
     authenticate,
     authorize,
     authorizeSelfOrAdmin,
+    /** Optional Slot inventory override (tests inject MemorySlotInventory). */
+    slotInventory: options.slotInventory ?? null,
   };
 }

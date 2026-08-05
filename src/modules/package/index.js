@@ -14,6 +14,7 @@ export function createPackageModule({ categoryRepository, eventBus, cacheService
   const controller = new PackageController(service);
 
   return {
+    repository,
     service,
     routes: createPackageRoutes(controller, { authenticate }),
     docs: packageDocs,

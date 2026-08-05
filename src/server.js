@@ -15,7 +15,13 @@ let server;
 
 // Security Middleware
 function applySecurityMiddleware(app) {
-  app.use(helmet());
+  // Swagger UI needs relaxed COOP/COEP/CSP or Try it out can show empty responses
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
 
   app.use(
     cors({

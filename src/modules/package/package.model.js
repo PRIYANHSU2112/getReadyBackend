@@ -61,7 +61,6 @@ const packageSchema = new mongoose.Schema(
     },
     slug: {
       type: String,
-      required: true,
       unique: true,
       lowercase: true,
       trim: true,
@@ -109,15 +108,6 @@ const packageSchema = new mongoose.Schema(
         'Package must contain at least one service item',
       ],
     },
-
-    categoryIds: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Category',
-        index: true,
-      },
-    ],
-
     thumbnail: {
       url: { type: String, default: null },
       publicId: { type: String, default: null },
