@@ -20,6 +20,7 @@ import { createCartModule } from '../modules/cart/index.js';
 import { createMemberModule } from '../modules/member/index.js';
 import { createSlotModule } from '../modules/slot/index.js';
 import { createBlogModule } from '../modules/blog/index.js';
+import { createWalletModule } from '../modules/wallet/index.js';
 
 export function createRootRouter(shared) {
   const router = Router();
@@ -129,6 +130,12 @@ export function createRootRouter(shared) {
     beauticianProfileRepository: beauticianProfile.profileRepo,
   });
 
+  const wallet = createWalletModule({
+    authenticate: shared.authenticate,
+    cacheService: shared.cacheService,
+    config: config.razorpay,
+  });
+
   const member = createMemberModule({
     authenticate: shared.authenticate,
     cacheService: shared.cacheService,
@@ -140,6 +147,8 @@ export function createRootRouter(shared) {
     serviceRepository: serviceModule.repository,
     packageRepository: packageModule.repository,
     memberRepository: member.repository,
+    pointsProvider: { getBalance: (userId) => wallet.service.getWallet(userId).then((w) => w.points) },
+    cashbackProvider: { getBalance: (userId) => wallet.service.getWallet(userId).then((w) => w.cashbackBalance) },
   });
 
   const slot = createSlotModule({
@@ -176,6 +185,7 @@ export function createRootRouter(shared) {
   apiV1.use('/bank-details', bankDetail.routes);
   apiV1.use('/members', member.routes);
   apiV1.use('/cart', cart.routes);
+  apiV1.use('/wallets', wallet.routes);
   apiV1.use('/slots', slot.routes);
   apiV1.use('/blogs', blog.routes);
 

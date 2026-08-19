@@ -64,9 +64,8 @@ export class CartRepository extends BaseRepository {
             items: [],
             specialInstructions: null,
             benefits: {
-              useWallet: false,
               couponCode: null,
-              useCredits: false,
+              usePoints: false,
               useCashback: false,
               membershipOptIn: false,
             },

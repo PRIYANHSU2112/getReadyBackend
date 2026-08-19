@@ -38,8 +38,7 @@ function lineVisitFee(item) {
  * @param {object} cart
  * @param {{
  *   couponDiscount?: number,
- *   walletBalance?: number,
- *   creditsBalance?: number,
+ *   pointsBalance?: number,
  *   cashbackBalance?: number,
  *   visitFeeWaiveThreshold?: number,
  *   pointsRate?: number,
@@ -79,45 +78,30 @@ export function computeCartPricing(cart, options = {}) {
   const payableBeforeBenefits = roundMoney(subtotal + visitFee);
 
   let couponDiscount = 0;
-  let walletDeduction = 0;
-  let creditsDeduction = 0;
+  let pointsDeduction = 0;
   let cashbackDeduction = 0;
 
   const hasCoupon = Boolean(benefits.couponCode);
-  const usesRewardPool =
-    Boolean(benefits.useWallet) ||
-    Boolean(benefits.useCredits) ||
-    Boolean(benefits.useCashback);
+  const usesPoints = Boolean(benefits.usePoints || benefits.useCredits);
+  const usesCashback = Boolean(benefits.useCashback);
 
-  // Caller enforces XOR; engine still prefers coupon when both somehow present.
-  if (hasCoupon && !usesRewardPool) {
+  // Exactly 1 benefit per order. Evaluated exclusively in priority order: Coupon > Points > Cashback.
+  if (hasCoupon) {
     couponDiscount = roundMoney(
       Math.min(Number(options.couponDiscount) || 0, payableBeforeBenefits),
     );
-  } else if (!hasCoupon && usesRewardPool) {
-    let remaining = payableBeforeBenefits;
-
-    if (benefits.useWallet) {
-      walletDeduction = roundMoney(
-        Math.min(Number(options.walletBalance) || 0, remaining),
-      );
-      remaining = roundMoney(remaining - walletDeduction);
-    }
-    if (benefits.useCredits) {
-      creditsDeduction = roundMoney(
-        Math.min(Number(options.creditsBalance) || 0, remaining),
-      );
-      remaining = roundMoney(remaining - creditsDeduction);
-    }
-    if (benefits.useCashback) {
-      cashbackDeduction = roundMoney(
-        Math.min(Number(options.cashbackBalance) || 0, remaining),
-      );
-    }
+  } else if (usesPoints) {
+    pointsDeduction = roundMoney(
+      Math.min(Number(options.pointsBalance ?? options.creditsBalance) || 0, payableBeforeBenefits),
+    );
+  } else if (usesCashback) {
+    cashbackDeduction = roundMoney(
+      Math.min(Number(options.cashbackBalance) || 0, payableBeforeBenefits),
+    );
   }
 
   const benefitSavings = roundMoney(
-    couponDiscount + walletDeduction + creditsDeduction + cashbackDeduction,
+    couponDiscount + pointsDeduction + cashbackDeduction,
   );
   const grandTotal = roundMoney(Math.max(0, payableBeforeBenefits - benefitSavings));
   const savings = roundMoney(catalogSavings + benefitSavings);
@@ -128,8 +112,7 @@ export function computeCartPricing(cart, options = {}) {
     visitFee,
     visitFeeWaived,
     couponDiscount,
-    walletDeduction,
-    creditsDeduction,
+    pointsDeduction,
     cashbackDeduction,
     grandTotal,
     savings,

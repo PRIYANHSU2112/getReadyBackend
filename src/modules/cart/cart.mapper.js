@@ -99,13 +99,11 @@ function buildRecipients(items) {
 
 function mapBenefits(benefits = {}, extras = {}) {
   return {
-    useWallet: Boolean(benefits.useWallet),
     couponCode: benefits.couponCode || null,
-    useCredits: Boolean(benefits.useCredits),
+    usePoints: Boolean(benefits.usePoints || benefits.useCredits),
     useCashback: Boolean(benefits.useCashback),
     membershipOptIn: Boolean(benefits.membershipOptIn),
-    walletBalance: extras.walletBalance ?? 0,
-    creditsBalance: extras.creditsBalance ?? 0,
+    pointsBalance: extras.pointsBalance ?? extras.creditsBalance ?? 0,
     cashbackBalance: extras.cashbackBalance ?? 0,
   };
 }
@@ -117,8 +115,7 @@ function mapPricing(pricing) {
       visitFee: 0,
       visitFeeWaived: false,
       couponDiscount: 0,
-      walletDeduction: 0,
-      creditsDeduction: 0,
+      pointsDeduction: 0,
       cashbackDeduction: 0,
       grandTotal: 0,
       savings: 0,
@@ -134,8 +131,7 @@ function mapPricing(pricing) {
     visitFee: pricing.visitFee ?? 0,
     visitFeeWaived: Boolean(pricing.visitFeeWaived),
     couponDiscount: pricing.couponDiscount ?? 0,
-    walletDeduction: pricing.walletDeduction ?? 0,
-    creditsDeduction: pricing.creditsDeduction ?? 0,
+    pointsDeduction: pricing.pointsDeduction ?? pricing.creditsDeduction ?? 0,
     cashbackDeduction: pricing.cashbackDeduction ?? 0,
     grandTotal: pricing.grandTotal ?? 0,
     savings: pricing.savings ?? 0,
@@ -153,7 +149,7 @@ function mapPricing(pricing) {
 
 /**
  * @param {object} cart - lean or document
- * @param {{ walletBalance?: number, creditsBalance?: number, cashbackBalance?: number }} [extras]
+ * @param {{ pointsBalance?: number, cashbackBalance?: number }} [extras]
  */
 export function toCartDto(cart, extras = {}) {
   const raw = typeof cart?.toObject === 'function' ? cart.toObject() : cart;

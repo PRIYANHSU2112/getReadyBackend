@@ -89,9 +89,8 @@ const cartItemSchema = new mongoose.Schema(
 
 const benefitsSchema = new mongoose.Schema(
   {
-    useWallet: { type: Boolean, default: false },
     couponCode: { type: String, trim: true, uppercase: true, default: null },
-    useCredits: { type: Boolean, default: false },
+    usePoints: { type: Boolean, default: false },
     useCashback: { type: Boolean, default: false },
     membershipOptIn: { type: Boolean, default: false },
   },
@@ -112,8 +111,7 @@ const pricingSchema = new mongoose.Schema(
     visitFee: { type: Number, default: 0, min: 0 },
     visitFeeWaived: { type: Boolean, default: false },
     couponDiscount: { type: Number, default: 0, min: 0 },
-    walletDeduction: { type: Number, default: 0, min: 0 },
-    creditsDeduction: { type: Number, default: 0, min: 0 },
+    pointsDeduction: { type: Number, default: 0, min: 0 },
     cashbackDeduction: { type: Number, default: 0, min: 0 },
     grandTotal: { type: Number, default: 0, min: 0 },
     savings: { type: Number, default: 0, min: 0 },

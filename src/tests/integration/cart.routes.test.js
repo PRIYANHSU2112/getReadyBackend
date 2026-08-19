@@ -136,7 +136,7 @@ describe('Cart routes (integration)', () => {
     expect(stored).toBeTruthy();
   });
 
-  it('add service, update qty, toggle wallet, clear', async () => {
+  it('add service, update qty, toggle points/cashback, clear', async () => {
     const added = await request(app)
       .post('/api/v1/cart/items')
       .set('Authorization', `Bearer ${customerToken}`)
@@ -166,17 +166,24 @@ describe('Cart routes (integration)', () => {
     const benefits = await request(app)
       .patch('/api/v1/cart/benefits')
       .set('Authorization', `Bearer ${customerToken}`)
-      .send({ useWallet: true });
+      .send({ usePoints: true });
 
     expect(benefits.status).toBe(200);
-    expect(benefits.body.data.benefits.useWallet).toBe(true);
-    // Stub wallet balance is 0
-    expect(benefits.body.data.pricing.walletDeduction).toBe(0);
+    expect(benefits.body.data.benefits.usePoints).toBe(true);
+    // Stub points balance is 0
+    expect(benefits.body.data.pricing.pointsDeduction).toBe(0);
+
+    const cashbackForbidden = await request(app)
+      .patch('/api/v1/cart/benefits')
+      .set('Authorization', `Bearer ${customerToken}`)
+      .send({ useCashback: true });
+
+    expect(cashbackForbidden.status).toBe(403);
 
     const conflict = await request(app)
       .patch('/api/v1/cart/benefits')
       .set('Authorization', `Bearer ${customerToken}`)
-      .send({ couponCode: 'FIRST100' });
+      .send({ usePoints: true, useCashback: true });
 
     expect(conflict.status).toBe(409);
 

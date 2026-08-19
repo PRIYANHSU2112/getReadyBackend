@@ -2,22 +2,9 @@ import { ValidationError } from '../../common/errors/ValidationError.js';
 import { ErrorCodes } from '../../common/constants/error-codes.js';
 
 /**
- * Wallet provider interface (swap with real Wallet module later):
- *   getBalance(userId) => Promise<number>
- *
- * Coupon provider interface (swap with real Coupon module later):
+ * Coupon provider interface:
  *   resolveCoupon(code, { userId, subtotal }) => Promise<{ code, discountAmount } | null>
  */
-
-export class StubWalletProvider {
-  /**
-   * @param {string} _userId
-   * @returns {Promise<number>}
-   */
-  async getBalance(_userId) {
-    return 0;
-  }
-}
 
 export class StubCouponProvider {
   /**
@@ -38,9 +25,9 @@ export class StubCouponProvider {
 }
 
 /**
- * Credits / cashback stubs — balance 0 until loyalty modules exist.
+ * Points / cashback / membership stubs until loyalty modules exist.
  */
-export class StubCreditsProvider {
+export class StubPointsProvider {
   async getBalance(_userId) {
     return 0;
   }
@@ -49,5 +36,15 @@ export class StubCreditsProvider {
 export class StubCashbackProvider {
   async getBalance(_userId) {
     return 0;
+  }
+}
+
+export class StubMembershipProvider {
+  /**
+   * @param {string} _userId
+   * @returns {Promise<boolean>}
+   */
+  async hasActiveMembership(_userId) {
+    return false;
   }
 }

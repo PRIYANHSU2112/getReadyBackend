@@ -30,32 +30,62 @@ function makeCartDoc(overrides = {}) {
 }
 
 describe('CartService (unit)', () => {
-  it('rejects coupon + wallet together', async () => {
+  it('rejects multiple benefits simultaneously in payload', async () => {
     const cartDoc = makeCartDoc();
     const cartRepository = {
       findDocumentByUserId: jest.fn().mockResolvedValue(cartDoc),
       saveDocument: jest.fn().mockImplementation(async (d) => d),
     };
+    const membershipProvider = { hasActiveMembership: jest.fn().mockResolvedValue(true) };
     const service = new CartService(
       cartRepository,
       {},
       {},
       null,
       {
-        walletProvider: { getBalance: async () => 100 },
+        pointsProvider: { getBalance: async () => 100 },
         couponProvider: { resolveCoupon: async () => null },
-        creditsProvider: { getBalance: async () => 0 },
         cashbackProvider: { getBalance: async () => 0 },
+        membershipProvider,
       },
     );
 
     await expect(
       service.updateBenefits('507f1f77bcf86cd799439011', {
-        useWallet: true,
-        couponCode: 'FIRST100',
+        usePoints: true,
+        useCashback: true,
       }),
     ).rejects.toMatchObject({
       code: ErrorCodes.CART_BENEFIT_CONFLICT,
+    });
+  });
+
+  it('rejects cashback benefit if user has no active membership', async () => {
+    const cartDoc = makeCartDoc();
+    const cartRepository = {
+      findDocumentByUserId: jest.fn().mockResolvedValue(cartDoc),
+      saveDocument: jest.fn().mockImplementation(async (d) => d),
+    };
+    const membershipProvider = { hasActiveMembership: jest.fn().mockResolvedValue(false) };
+    const service = new CartService(
+      cartRepository,
+      {},
+      {},
+      null,
+      {
+        pointsProvider: { getBalance: async () => 0 },
+        couponProvider: { resolveCoupon: async () => null },
+        cashbackProvider: { getBalance: async () => 100 },
+        membershipProvider,
+      },
+    );
+
+    await expect(
+      service.updateBenefits('507f1f77bcf86cd799439011', {
+        useCashback: true,
+      }),
+    ).rejects.toMatchObject({
+      code: ErrorCodes.CART_MEMBERSHIP_REQUIRED,
     });
   });
 
@@ -99,9 +129,8 @@ describe('CartService (unit)', () => {
         del: jest.fn(),
       },
       {
-        walletProvider: { getBalance: async () => 0 },
+        pointsProvider: { getBalance: async () => 0 },
         couponProvider: { resolveCoupon: async () => null },
-        creditsProvider: { getBalance: async () => 0 },
         cashbackProvider: { getBalance: async () => 0 },
       },
     );
@@ -152,9 +181,8 @@ describe('CartService (unit)', () => {
         del: jest.fn(),
       },
       {
-        walletProvider: { getBalance: async () => 0 },
+        pointsProvider: { getBalance: async () => 0 },
         couponProvider: { resolveCoupon: async () => null },
-        creditsProvider: { getBalance: async () => 0 },
         cashbackProvider: { getBalance: async () => 0 },
       },
     );
@@ -177,9 +205,8 @@ describe('CartService (unit)', () => {
       findDocumentByUserId: jest.fn().mockResolvedValue(cartDoc),
     };
     const service = new CartService(cartRepository, {}, {}, null, {
-      walletProvider: { getBalance: async () => 0 },
+      pointsProvider: { getBalance: async () => 0 },
       couponProvider: { resolveCoupon: async () => null },
-      creditsProvider: { getBalance: async () => 0 },
       cashbackProvider: { getBalance: async () => 0 },
     });
 

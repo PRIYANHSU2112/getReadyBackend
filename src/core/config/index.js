@@ -65,6 +65,11 @@ const config = Object.freeze({
     provider: env.SMS_PROVIDER || 'console',
   },
   corsOrigins,
+  razorpay: {
+    keyId: env.RAZORPAY_KEY_ID || 'rzp_test_mock_key',
+    keySecret: env.RAZORPAY_KEY_SECRET || 'mock_secret',
+    webhookSecret: env.RAZORPAY_WEBHOOK_SECRET || 'mock_webhook_secret',
+  },
   storage: {
     /** Application uses S3 only */
     provider: StorageProvider.S3,

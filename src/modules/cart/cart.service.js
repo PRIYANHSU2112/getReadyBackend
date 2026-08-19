@@ -136,10 +136,10 @@ export class CartService extends BaseService {
    * @param {object} packageRepository
    * @param {import('../../core/redis/cache.service.js').CacheService|null} cacheService
    * @param {{
-   *   walletProvider: { getBalance(userId: string): Promise<number> },
+   *   pointsProvider: { getBalance(userId: string): Promise<number> },
    *   couponProvider: { resolveCoupon(code: string|null, ctx: object): Promise<{code:string,discountAmount:number}|null> },
-   *   creditsProvider: { getBalance(userId: string): Promise<number> },
    *   cashbackProvider: { getBalance(userId: string): Promise<number> },
+   *   membershipProvider: { hasActiveMembership(userId: string): Promise<boolean> },
    * }} providers
    * @param {import('../member/member.repository.js').MemberRepository|null} memberRepository
    */
@@ -156,10 +156,10 @@ export class CartService extends BaseService {
     this.serviceRepository = serviceRepository;
     this.packageRepository = packageRepository;
     this.memberRepository = memberRepository;
-    this.walletProvider = providers.walletProvider;
+    this.pointsProvider = providers.pointsProvider || providers.creditsProvider;
     this.couponProvider = providers.couponProvider;
-    this.creditsProvider = providers.creditsProvider;
     this.cashbackProvider = providers.cashbackProvider;
+    this.membershipProvider = providers.membershipProvider;
   }
 
   async #resolveRecipient(userId, forMemberId) {
@@ -198,15 +198,16 @@ export class CartService extends BaseService {
   }
 
   #assertBenefitExclusive(benefits) {
-    const hasCoupon = Boolean(benefits?.couponCode);
-    const usesRewards =
-      Boolean(benefits?.useWallet) ||
-      Boolean(benefits?.useCredits) ||
-      Boolean(benefits?.useCashback);
+    const raw = typeof benefits?.toObject === 'function' ? benefits.toObject() : benefits;
+    const hasCoupon = Boolean(raw?.couponCode);
+    const usesPoints = Boolean(raw?.usePoints);
+    const usesCashback = Boolean(raw?.useCashback);
 
-    if (hasCoupon && usesRewards) {
+    const activeCount = (hasCoupon ? 1 : 0) + (usesPoints ? 1 : 0) + (usesCashback ? 1 : 0);
+
+    if (activeCount > 1) {
       throw new AppError(
-        'Only one benefit per order — Points/Wallet or Coupon, not both',
+        'Only one cart benefit (Coupon, Points, or Cashback) can be applied at a time',
         HttpStatus.CONFLICT,
         ErrorCodes.CART_BENEFIT_CONFLICT,
       );
@@ -220,14 +221,12 @@ export class CartService extends BaseService {
   }
 
   async #loadBenefitBalances(userId) {
-    const [walletBalance, creditsBalance, cashbackBalance] = await Promise.all([
-      this.walletProvider?.getBalance(userId) ?? 0,
-      this.creditsProvider?.getBalance(userId) ?? 0,
+    const [pointsBalance, cashbackBalance] = await Promise.all([
+      this.pointsProvider?.getBalance(userId) ?? 0,
       this.cashbackProvider?.getBalance(userId) ?? 0,
     ]);
     return {
-      walletBalance: Number(walletBalance) || 0,
-      creditsBalance: Number(creditsBalance) || 0,
+      pointsBalance: Number(pointsBalance) || 0,
       cashbackBalance: Number(cashbackBalance) || 0,
     };
   }
@@ -245,8 +244,7 @@ export class CartService extends BaseService {
 
     const balances = await this.#loadBenefitBalances(userId);
     const draftPricing = computeCartPricing(cartDoc, {
-      walletBalance: 0,
-      creditsBalance: 0,
+      pointsBalance: 0,
       cashbackBalance: 0,
       couponDiscount: 0,
     });
@@ -560,26 +558,73 @@ export class CartService extends BaseService {
   }
 
   async updateBenefits(userId, payload) {
+    const payloadHasCoupon = Boolean(
+      payload.couponCode != null && String(payload.couponCode).trim() !== '',
+    );
+    const payloadHasPoints = Boolean(payload.usePoints || payload.useCredits);
+    const payloadHasCashback = Boolean(payload.useCashback);
+
+    const payloadActiveCount =
+      (payloadHasCoupon ? 1 : 0) +
+      (payloadHasPoints ? 1 : 0) +
+      (payloadHasCashback ? 1 : 0);
+
+    if (payloadActiveCount > 1) {
+      throw new AppError(
+        'Only one cart benefit (Coupon, Points, or Cashback) can be applied at a time',
+        HttpStatus.CONFLICT,
+        ErrorCodes.CART_BENEFIT_CONFLICT,
+      );
+    }
+
     const cartDoc = await this.#getOrCreateDocument(userId);
     const benefits = {
-      useWallet: cartDoc.benefits?.useWallet ?? false,
       couponCode: cartDoc.benefits?.couponCode ?? null,
-      useCredits: cartDoc.benefits?.useCredits ?? false,
+      usePoints: cartDoc.benefits?.usePoints ?? cartDoc.benefits?.useCredits ?? false,
       useCashback: cartDoc.benefits?.useCashback ?? false,
       membershipOptIn: cartDoc.benefits?.membershipOptIn ?? false,
     };
 
-    if (payload.useWallet !== undefined) benefits.useWallet = payload.useWallet;
-    if (payload.useCredits !== undefined) benefits.useCredits = payload.useCredits;
-    if (payload.useCashback !== undefined) benefits.useCashback = payload.useCashback;
-    if (payload.membershipOptIn !== undefined) {
-      benefits.membershipOptIn = payload.membershipOptIn;
+    if (payload.useCashback === true) {
+      const isMember = await this.membershipProvider?.hasActiveMembership(userId);
+      if (!isMember) {
+        throw new AppError(
+          'Cashback is only available for active membership holders',
+          HttpStatus.FORBIDDEN,
+          ErrorCodes.CART_MEMBERSHIP_REQUIRED,
+        );
+      }
+      benefits.useCashback = true;
+      benefits.usePoints = false;
+      benefits.couponCode = null;
+    } else if (payload.useCashback === false) {
+      benefits.useCashback = false;
     }
+
+    if (payload.usePoints === true || payload.useCredits === true) {
+      benefits.usePoints = true;
+      benefits.useCashback = false;
+      benefits.couponCode = null;
+    } else if (payload.usePoints === false || payload.useCredits === false) {
+      benefits.usePoints = false;
+    }
+
     if (payload.couponCode !== undefined) {
-      benefits.couponCode =
+      const code =
         payload.couponCode == null || payload.couponCode === ''
           ? null
           : String(payload.couponCode).trim().toUpperCase();
+      if (code) {
+        benefits.couponCode = code;
+        benefits.usePoints = false;
+        benefits.useCashback = false;
+      } else {
+        benefits.couponCode = null;
+      }
+    }
+
+    if (payload.membershipOptIn !== undefined) {
+      benefits.membershipOptIn = payload.membershipOptIn;
     }
 
     this.#assertBenefitExclusive(benefits);
@@ -707,9 +752,8 @@ export class CartService extends BaseService {
     cartDoc.items = [];
     cartDoc.specialInstructions = null;
     cartDoc.benefits = {
-      useWallet: false,
       couponCode: null,
-      useCredits: false,
+      usePoints: false,
       useCashback: false,
       membershipOptIn: false,
     };

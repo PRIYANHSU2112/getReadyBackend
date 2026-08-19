@@ -5,10 +5,10 @@ import { CartController } from './cart.controller.js';
 import { createCartRoutes } from './cart.routes.js';
 import { cartDocs } from './cart.docs.js';
 import {
-  StubWalletProvider,
   StubCouponProvider,
-  StubCreditsProvider,
+  StubPointsProvider,
   StubCashbackProvider,
+  StubMembershipProvider,
 } from './cart.benefit-providers.js';
 
 /**
@@ -19,10 +19,10 @@ import {
  *   serviceRepository: object,
  *   packageRepository: object,
  *   memberRepository?: object|null,
- *   walletProvider?: object,
+ *   pointsProvider?: object,
  *   couponProvider?: object,
- *   creditsProvider?: object,
  *   cashbackProvider?: object,
+ *   membershipProvider?: object,
  * }} deps
  */
 export function createCartModule({
@@ -31,10 +31,10 @@ export function createCartModule({
   serviceRepository,
   packageRepository,
   memberRepository = null,
-  walletProvider = new StubWalletProvider(),
+  pointsProvider = new StubPointsProvider(),
   couponProvider = new StubCouponProvider(),
-  creditsProvider = new StubCreditsProvider(),
   cashbackProvider = new StubCashbackProvider(),
+  membershipProvider = new StubMembershipProvider(),
 }) {
   const repository = new CartRepository(CartModel);
   const service = new CartService(
@@ -43,10 +43,10 @@ export function createCartModule({
     packageRepository,
     cacheService,
     {
-      walletProvider,
+      pointsProvider,
       couponProvider,
-      creditsProvider,
       cashbackProvider,
+      membershipProvider,
     },
     memberRepository,
   );

@@ -45,11 +45,10 @@ const updateInstructions = Joi.object({
 }).unknown(false);
 
 const updateBenefits = Joi.object({
-  useWallet: Joi.boolean(),
-  useCredits: Joi.boolean(),
+  couponCode: Joi.string().trim().uppercase().max(40).allow('', null),
+  usePoints: Joi.boolean(),
   useCashback: Joi.boolean(),
   membershipOptIn: Joi.boolean(),
-  couponCode: Joi.string().trim().uppercase().max(40).allow('', null),
 })
   .min(1)
   .unknown(false);

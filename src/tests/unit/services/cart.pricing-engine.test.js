@@ -60,35 +60,34 @@ describe('computeCartPricing', () => {
     expect(pricing.grandTotal).toBe(1000);
   });
 
-  it('applies wallet deduction capped by payable', () => {
+  it('applies points deduction capped by payable', () => {
     const pricing = computeCartPricing(
       {
         items: [serviceLine({ unitPrice: 500 })],
-        benefits: { useWallet: true },
+        benefits: { usePoints: true },
       },
-      { walletBalance: 1200 },
+      { pointsBalance: 1200 },
     );
 
-    expect(pricing.walletDeduction).toBe(500);
+    expect(pricing.pointsDeduction).toBe(500);
     expect(pricing.grandTotal).toBe(0);
   });
 
-  it('prefers coupon path and ignores wallet when both present', () => {
+  it('prefers coupon path over points when both present in engine', () => {
     const pricing = computeCartPricing(
       {
         items: [serviceLine({ unitPrice: 999 })],
-        benefits: { useWallet: true, couponCode: 'FIRST100' },
+        benefits: { usePoints: true, couponCode: 'FIRST100' },
       },
-      { walletBalance: 500, couponDiscount: 100 },
+      { pointsBalance: 500, couponDiscount: 100 },
     );
 
-    // Engine skips both branches when XOR violated; caller rejects first.
-    expect(pricing.couponDiscount).toBe(0);
-    expect(pricing.walletDeduction).toBe(0);
-    expect(pricing.grandTotal).toBe(999);
+    expect(pricing.couponDiscount).toBe(100);
+    expect(pricing.pointsDeduction).toBe(0);
+    expect(pricing.grandTotal).toBe(899);
   });
 
-  it('applies coupon when reward flags are off', () => {
+  it('applies coupon when points/cashback flags are off', () => {
     const pricing = computeCartPricing(
       {
         items: [serviceLine({ unitPrice: 999 })],

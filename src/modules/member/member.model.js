@@ -15,14 +15,12 @@ const memberSchema = new mongoose.Schema(
     },
     name: {
       type: String,
-      required: [true, 'Member name is required'],
       trim: true,
       maxlength: MAX_MEMBER_NAME_LENGTH,
     },
     relationship: {
       type: String,
       enum: Object.values(MemberRelationship),
-      required: true,
       uppercase: true,
       trim: true,
     },
