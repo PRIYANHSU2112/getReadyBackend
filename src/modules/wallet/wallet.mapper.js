@@ -41,3 +41,19 @@ export function toWalletDto(wallet) {
     updatedAt: raw?.updatedAt ?? null,
   };
 }
+
+export function toLoyaltyRuleDto(rule) {
+  const raw = typeof rule?.toObject === 'function' ? rule.toObject() : rule;
+  return {
+    id: idOf(raw?._id || raw?.id),
+    earnRatio: Number(raw?.earnRatio ?? 0.10),
+    redeemRatio: Number(raw?.redeemRatio ?? 0.10),
+    minPointsToRedeem: Number(raw?.minPointsToRedeem ?? 100),
+    maxRedeemPercentage: Number(raw?.maxRedeemPercentage ?? 50),
+    isActive: raw?.isActive !== false,
+    description: raw?.description || '10 Points = ₹1. Earn 10% reward points on all completed bookings.',
+    updatedBy: idOf(raw?.updatedBy),
+    updatedAt: raw?.updatedAt ?? null,
+  };
+}
+

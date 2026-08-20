@@ -20,10 +20,23 @@ export function createCartRoutes(cartController, guards) {
   router.delete('/', asyncHandler(cartController.clear));
 
   router.post(
+    '/sync',
+    validate(cartValidator, 'syncCart'),
+    asyncHandler(cartController.syncCart),
+  );
+
+  router.patch(
+    '/hygiene-kit',
+    validate(cartValidator, 'updateHygieneKit'),
+    asyncHandler(cartController.updateHygieneKit),
+  );
+
+  router.post(
     '/book-for-others',
     validate(cartValidator, 'bookForOthers'),
     asyncHandler(cartController.bookForOthers),
   );
+
 
   router.post(
     '/items',

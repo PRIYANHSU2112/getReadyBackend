@@ -34,6 +34,15 @@ const listTransactionsQuery = Joi.object({
   type: Joi.string().valid(...Object.values(WalletTransactionType)),
 });
 
+const updateLoyaltyRules = Joi.object({
+  earnRatio: Joi.number().min(0).max(1).optional(),
+  redeemRatio: Joi.number().min(0.001).max(10).optional(),
+  minPointsToRedeem: Joi.number().integer().min(0).optional(),
+  maxRedeemPercentage: Joi.number().min(1).max(100).optional(),
+  isActive: Joi.boolean().optional(),
+  description: Joi.string().trim().max(500).allow('', null).optional(),
+}).min(1).unknown(false);
+
 export class WalletValidator extends BaseValidator {
   constructor() {
     super({
@@ -42,8 +51,10 @@ export class WalletValidator extends BaseValidator {
       addPoints,
       deductPoints,
       listTransactionsQuery,
+      updateLoyaltyRules,
     });
   }
 }
 
 export const walletValidator = new WalletValidator();
+

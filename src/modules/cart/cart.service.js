@@ -150,16 +150,61 @@ export class CartService extends BaseService {
     cacheService = null,
     providers = {},
     memberRepository = null,
+    hygieneKitService = null,
   ) {
     super(null, cacheService);
     this.cartRepository = cartRepository;
     this.serviceRepository = serviceRepository;
     this.packageRepository = packageRepository;
     this.memberRepository = memberRepository;
+    this.hygieneKitService = hygieneKitService;
     this.pointsProvider = providers.pointsProvider || providers.creditsProvider;
     this.couponProvider = providers.couponProvider;
     this.cashbackProvider = providers.cashbackProvider;
     this.membershipProvider = providers.membershipProvider;
+  }
+
+  async #ensureHygieneKit(cartDoc) {
+    const currentCount = Number(cartDoc.hygieneKit?.count ?? cartDoc.hygieneKit?.quantity) || 1;
+    if (cartDoc.hygieneKit && cartDoc.hygieneKit.hygieneKitId) {
+      cartDoc.hygieneKit = {
+        hygieneKitId: toObjectId(cartDoc.hygieneKit.hygieneKitId),
+        count: Math.max(1, currentCount),
+      };
+      return cartDoc.hygieneKit;
+    }
+
+    if (this.hygieneKitService) {
+      try {
+        const defaultKit = await this.hygieneKitService.getDefaultKit();
+        if (defaultKit) {
+          cartDoc.hygieneKit = {
+            hygieneKitId: toObjectId(defaultKit.id || defaultKit._id),
+            count: Math.max(1, currentCount),
+          };
+          return cartDoc.hygieneKit;
+        }
+      } catch {
+        // Fallback below
+      }
+    }
+
+    cartDoc.hygieneKit = {
+      hygieneKitId: null,
+      count: Math.max(1, currentCount),
+    };
+    return cartDoc.hygieneKit;
+  }
+
+  async #resolveHygieneKitMeta(cartDoc) {
+    if (!cartDoc?.hygieneKit?.hygieneKitId || !this.hygieneKitService) {
+      return null;
+    }
+    try {
+      return await this.hygieneKitService.getById(cartDoc.hygieneKit.hygieneKitId.toString());
+    } catch {
+      return null;
+    }
   }
 
   async #resolveRecipient(userId, forMemberId) {
@@ -221,15 +266,21 @@ export class CartService extends BaseService {
   }
 
   async #loadBenefitBalances(userId) {
-    const [pointsBalance, cashbackBalance] = await Promise.all([
+    const [pointsBalance, cashbackBalance, loyaltyRules] = await Promise.all([
       this.pointsProvider?.getBalance(userId) ?? 0,
       this.cashbackProvider?.getBalance(userId) ?? 0,
+      this.pointsProvider?.getLoyaltyRules ? this.pointsProvider.getLoyaltyRules() : null,
     ]);
     return {
       pointsBalance: Number(pointsBalance) || 0,
       cashbackBalance: Number(cashbackBalance) || 0,
+      pointsRedeemRatio: Number(loyaltyRules?.redeemRatio ?? 0.10),
+      pointsEarnRatio: Number(loyaltyRules?.earnRatio ?? 0.10),
+      minPointsToRedeem: Number(loyaltyRules?.minPointsToRedeem ?? 0),
+      maxPointsRedeemPercentage: Number(loyaltyRules?.maxRedeemPercentage ?? 100),
     };
   }
+
 
   async #resolveCouponDiscount(userId, cart, subtotal) {
     const code = cart.benefits?.couponCode || null;
@@ -241,12 +292,20 @@ export class CartService extends BaseService {
   async #repriceAndPersist(cartDoc, userId) {
     this.#assertBenefitExclusive(cartDoc.benefits || {});
     this.#touchExpiry(cartDoc);
+    await this.#ensureHygieneKit(cartDoc);
 
-    const balances = await this.#loadBenefitBalances(userId);
+    const [balances, kitMeta] = await Promise.all([
+      this.#loadBenefitBalances(userId),
+      this.#resolveHygieneKitMeta(cartDoc),
+    ]);
+
+    const hygieneKitUnitPrice = Number(kitMeta?.price ?? 49);
+
     const draftPricing = computeCartPricing(cartDoc, {
       pointsBalance: 0,
       cashbackBalance: 0,
       couponDiscount: 0,
+      hygieneKitUnitPrice,
     });
     const couponDiscount = await this.#resolveCouponDiscount(
       userId,
@@ -257,10 +316,11 @@ export class CartService extends BaseService {
     cartDoc.pricing = computeCartPricing(cartDoc, {
       ...balances,
       couponDiscount,
+      hygieneKitUnitPrice,
     });
 
     await this.cartRepository.saveDocument(cartDoc);
-    const dto = toCartDto(cartDoc, balances);
+    const dto = toCartDto(cartDoc, { ...balances, hygieneKitMeta: kitMeta });
     await this.#invalidateAndCache(userId, dto);
     return dto;
   }
@@ -287,13 +347,17 @@ export class CartService extends BaseService {
       return this.#repriceAndPersist(cartDoc, userId);
     }
 
-    const balances = await this.#loadBenefitBalances(userId);
-    const dto = toCartDto(cartDoc, balances);
+    const [balances, kitMeta] = await Promise.all([
+      this.#loadBenefitBalances(userId),
+      this.#resolveHygieneKitMeta(cartDoc),
+    ]);
+    const dto = toCartDto(cartDoc, { ...balances, hygieneKitMeta: kitMeta });
     await this.setCached(key, dto, CART_CACHE_TTL_SECONDS);
     return dto;
   }
 
   async #findBookableService(refId) {
+
     const service = await this.serviceRepository.findActiveById(refId);
     if (
       !service ||
@@ -410,15 +474,18 @@ export class CartService extends BaseService {
   }
 
   async addItem(userId, payload) {
-    const cartDoc = await this.#getOrCreateDocument(userId);
     const quantity = payload.quantity || 1;
 
     if (quantity < 1 || quantity > MAX_ITEM_QUANTITY) {
       throw new ValidationError('Invalid quantity');
     }
 
-    const recipient = await this.#resolveRecipient(userId, payload.forMemberId);
+    const [cartDoc, recipient] = await Promise.all([
+      this.#getOrCreateDocument(userId),
+      this.#resolveRecipient(userId, payload.forMemberId),
+    ]);
     const recipientKey = memberKey(recipient.forMemberId);
+
 
     const existing = cartDoc.items.find(
       (item) =>
@@ -633,9 +700,11 @@ export class CartService extends BaseService {
   }
 
   async updateRecipient(userId, lineId, forMemberId) {
-    const cartDoc = await this.#getOrCreateDocument(userId);
+    const [cartDoc, recipient] = await Promise.all([
+      this.#getOrCreateDocument(userId),
+      this.#resolveRecipient(userId, forMemberId),
+    ]);
     const line = this.#findLine(cartDoc, lineId);
-    const recipient = await this.#resolveRecipient(userId, forMemberId);
 
     // If another SERVICE line already matches ref+recipient, merge quantities
     if (line.itemType === CartItemType.SERVICE) {
@@ -683,10 +752,9 @@ export class CartService extends BaseService {
     }
 
     const uniqueMemberIds = [...new Set((memberIds || []).map(String))];
-    const recipients = [];
-    for (const memberId of uniqueMemberIds) {
-      recipients.push(await this.#resolveRecipient(userId, memberId));
-    }
+    const recipients = await Promise.all(
+      uniqueMemberIds.map((memberId) => this.#resolveRecipient(userId, memberId)),
+    );
 
     const clonesNeeded = selfLines.length * recipients.length;
     if (cartDoc.items.length + clonesNeeded > MAX_CART_ITEMS) {
@@ -747,7 +815,113 @@ export class CartService extends BaseService {
     return this.#repriceAndPersist(cartDoc, userId);
   }
 
+  async updateHygieneKit(userId, payload = {}) {
+    const cartDoc = await this.#getOrCreateDocument(userId);
+    await this.#ensureHygieneKit(cartDoc);
+
+    const count = Number(payload.count ?? payload.quantity);
+    if (count < 1 || count > 20) {
+      throw new ValidationError('Hygiene kit count must be between 1 and 20');
+    }
+
+    if (payload.hygieneKitId) {
+      cartDoc.hygieneKit.hygieneKitId = toObjectId(payload.hygieneKitId);
+    }
+
+    cartDoc.hygieneKit.count = count;
+
+    return this.#repriceAndPersist(cartDoc, userId);
+  }
+
+  async syncCart(userId, payload = {}) {
+    const rawItems = Array.isArray(payload.items) ? payload.items : [];
+
+    if (rawItems.length > MAX_CART_ITEMS) {
+      throw new AppError(
+        `Cart cannot exceed ${MAX_CART_ITEMS} items`,
+        HttpStatus.UNPROCESSABLE,
+        ErrorCodes.CART_ITEM_LIMIT,
+      );
+    }
+
+    const [cartDoc, newCartItems] = await Promise.all([
+      this.#getOrCreateDocument(userId),
+
+      Promise.all(
+        rawItems.map(async (itemPayload) => {
+          const quantity = Math.max(1, Math.min(MAX_ITEM_QUANTITY, Number(itemPayload.quantity) || 1));
+          const recipient = await this.#resolveRecipient(userId, itemPayload.forMemberId);
+
+          if (itemPayload.itemType === CartItemType.SERVICE) {
+            const service = await this.#findBookableService(itemPayload.refId);
+            return {
+              itemType: CartItemType.SERVICE,
+              refId: toObjectId(itemPayload.refId),
+              quantity,
+              snapshot: this.#buildServiceSnapshot(service),
+              packageMeta: null,
+              selectedServices: [],
+              forMemberId: recipient.forMemberId,
+              forMemberSnapshot: recipient.forMemberSnapshot,
+            };
+          } else if (itemPayload.itemType === CartItemType.PACKAGE) {
+            const pkg = await this.#findBookablePackage(itemPayload.refId);
+            const { selectedServices, extraCharge } = this.#resolveSelectedServices(
+              pkg,
+              itemPayload.selectedServiceIds || [],
+            );
+            return {
+              itemType: CartItemType.PACKAGE,
+              refId: toObjectId(itemPayload.refId),
+              quantity,
+              snapshot: this.#buildPackageSnapshot(pkg, extraCharge),
+              packageMeta: {
+                subtitle: packageSubtitle(pkg),
+                selectionRule: {
+                  minSelect: pkg.minSelectCount ?? 1,
+                  maxSelect: pkg.maxSelectCount ?? (pkg.items?.length || 1),
+                },
+              },
+              selectedServices,
+              forMemberId: recipient.forMemberId,
+              forMemberSnapshot: recipient.forMemberSnapshot,
+            };
+          }
+          return null;
+        }),
+      ),
+    ]);
+
+    cartDoc.items = newCartItems.filter(Boolean);
+
+    if (payload.hygieneKit) {
+      const kitCount = Math.max(1, Math.min(20, Number(payload.hygieneKit.count ?? payload.hygieneKit.quantity) || 1));
+      cartDoc.hygieneKit = {
+        hygieneKitId: payload.hygieneKit.hygieneKitId ? toObjectId(payload.hygieneKit.hygieneKitId) : (cartDoc.hygieneKit?.hygieneKitId || null),
+        count: kitCount,
+      };
+    } else {
+      await this.#ensureHygieneKit(cartDoc);
+    }
+
+    if (payload.benefits) {
+      cartDoc.benefits = {
+        couponCode: payload.benefits.couponCode ? payload.benefits.couponCode.trim().toUpperCase() : null,
+        usePoints: Boolean(payload.benefits.usePoints),
+        useCashback: Boolean(payload.benefits.useCashback),
+        membershipOptIn: Boolean(payload.benefits.membershipOptIn),
+      };
+    }
+
+    if (payload.specialInstructions !== undefined) {
+      cartDoc.specialInstructions = payload.specialInstructions ? payload.specialInstructions.trim() : null;
+    }
+
+    return this.#repriceAndPersist(cartDoc, userId);
+  }
+
   async clear(userId) {
+
     const cartDoc = await this.#getOrCreateDocument(userId);
     cartDoc.items = [];
     cartDoc.specialInstructions = null;
@@ -761,3 +935,4 @@ export class CartService extends BaseService {
     return this.#repriceAndPersist(cartDoc, userId);
   }
 }
+

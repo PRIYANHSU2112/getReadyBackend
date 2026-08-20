@@ -64,6 +64,43 @@ const bookForOthers = Joi.object({
     .default(BookForOthersMode.SAME_SERVICES),
 }).unknown(false);
 
+const updateHygieneKit = Joi.object({
+  count: Joi.number().integer().min(1).max(20).optional(),
+  quantity: Joi.number().integer().min(1).max(20).optional(),
+  hygieneKitId: objectId.allow(null).optional(),
+}).or('count', 'quantity').unknown(false);
+
+const syncCartItem = Joi.object({
+  itemType: Joi.string()
+    .valid(...Object.values(CartItemType))
+    .required(),
+  refId: objectId.required(),
+  quantity: Joi.number().integer().min(1).max(MAX_ITEM_QUANTITY).default(1),
+  forMemberId: objectId.allow(null).optional(),
+  selectedServiceIds: Joi.array().items(objectId).default([]),
+}).unknown(false);
+
+const syncCart = Joi.object({
+  items: Joi.array().items(syncCartItem).max(50).default([]),
+  hygieneKit: Joi.object({
+    count: Joi.number().integer().min(1).max(20).optional(),
+    quantity: Joi.number().integer().min(1).max(20).optional(),
+    hygieneKitId: objectId.allow(null).optional(),
+  }).optional(),
+
+  benefits: Joi.object({
+    couponCode: Joi.string().trim().uppercase().max(40).allow('', null),
+    usePoints: Joi.boolean(),
+    useCashback: Joi.boolean(),
+    membershipOptIn: Joi.boolean(),
+  }).optional(),
+  specialInstructions: Joi.string()
+    .trim()
+    .max(MAX_SPECIAL_INSTRUCTIONS_LENGTH)
+    .allow('', null)
+    .optional(),
+}).unknown(false);
+
 const lineIdParams = Joi.object({
   lineId: objectId.required(),
 });
@@ -73,6 +110,8 @@ export class CartValidator extends BaseValidator {
     super({
       addCartItem,
       updateCartItemQuantity,
+      updateHygieneKit,
+      syncCart,
       updatePackageSelections,
       updateInstructions,
       updateBenefits,
@@ -84,3 +123,4 @@ export class CartValidator extends BaseValidator {
 }
 
 export const cartValidator = new CartValidator();
+

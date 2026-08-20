@@ -87,6 +87,24 @@ const cartItemSchema = new mongoose.Schema(
   { _id: true },
 );
 
+const cartHygieneKitSchema = new mongoose.Schema(
+  {
+    hygieneKitId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'HygieneKit',
+      default: null,
+    },
+    count: {
+      type: Number,
+      default: 1,
+      min: 1,
+      max: 20,
+    },
+  },
+  { _id: false },
+);
+
+
 const benefitsSchema = new mongoose.Schema(
   {
     couponCode: { type: String, trim: true, uppercase: true, default: null },
@@ -107,6 +125,8 @@ const upsellSchema = new mongoose.Schema(
 
 const pricingSchema = new mongoose.Schema(
   {
+    itemsSubtotal: { type: Number, default: 0, min: 0 },
+    hygieneKitTotal: { type: Number, default: 0, min: 0 },
     subtotal: { type: Number, default: 0, min: 0 },
     visitFee: { type: Number, default: 0, min: 0 },
     visitFeeWaived: { type: Boolean, default: false },
@@ -136,6 +156,10 @@ const cartSchema = new mongoose.Schema(
       type: [cartItemSchema],
       default: [],
     },
+    hygieneKit: {
+      type: cartHygieneKitSchema,
+      default: null,
+    },
     specialInstructions: {
       type: String,
       trim: true,
@@ -155,6 +179,7 @@ const cartSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
 
 cartSchema.index({ 'items.refId': 1 });
 

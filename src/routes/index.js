@@ -21,8 +21,10 @@ import { createMemberModule } from '../modules/member/index.js';
 import { createSlotModule } from '../modules/slot/index.js';
 import { createBlogModule } from '../modules/blog/index.js';
 import { createWalletModule } from '../modules/wallet/index.js';
+import { createHygieneKitModule } from '../modules/hygiene-kit/index.js';
 
 export function createRootRouter(shared) {
+
   const router = Router();
 
   router.get('/health', (req, res) => healthController.health(req, res));
@@ -132,6 +134,7 @@ export function createRootRouter(shared) {
 
   const wallet = createWalletModule({
     authenticate: shared.authenticate,
+    checkPermission: rbac.checkPermission,
     cacheService: shared.cacheService,
     config: config.razorpay,
   });
@@ -141,15 +144,27 @@ export function createRootRouter(shared) {
     cacheService: shared.cacheService,
   });
 
+  const hygieneKit = createHygieneKitModule({
+    authenticate: shared.authenticate,
+    checkPermission: rbac.checkPermission,
+    cacheService: shared.cacheService,
+    storageService: shared.storageService,
+  });
+
   const cart = createCartModule({
     authenticate: shared.authenticate,
     cacheService: shared.cacheService,
     serviceRepository: serviceModule.repository,
     packageRepository: packageModule.repository,
     memberRepository: member.repository,
-    pointsProvider: { getBalance: (userId) => wallet.service.getWallet(userId).then((w) => w.points) },
+    hygieneKitService: hygieneKit.service,
+    pointsProvider: {
+      getBalance: (userId) => wallet.service.getWallet(userId).then((w) => w.points),
+      getLoyaltyRules: () => wallet.service.getLoyaltyRules(),
+    },
     cashbackProvider: { getBalance: (userId) => wallet.service.getWallet(userId).then((w) => w.cashbackBalance) },
   });
+
 
   const slot = createSlotModule({
     authenticate: shared.authenticate,
@@ -167,6 +182,7 @@ export function createRootRouter(shared) {
   });
 
   // Mount API V1 Routes
+
   const apiV1 = Router();
   apiV1.use('/auth', auth.routes);
   apiV1.use('/users', user.routes);
@@ -188,8 +204,10 @@ export function createRootRouter(shared) {
   apiV1.use('/wallets', wallet.routes);
   apiV1.use('/slots', slot.routes);
   apiV1.use('/blogs', blog.routes);
+  apiV1.use('/hygiene-kits', hygieneKit.routes);
 
   router.use('/api/v1', apiV1);
 
   return router;
 }
+

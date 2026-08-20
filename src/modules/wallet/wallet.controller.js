@@ -15,8 +15,22 @@ export class WalletController extends BaseController {
       'addPoints',
       'deductPoints',
       'listTransactions',
+      'getLoyaltyRules',
+      'updateLoyaltyRules',
     ]);
   }
+
+  async getLoyaltyRules(req, res) {
+    const rules = await this.walletService.getLoyaltyRules();
+    return this.ok(res, rules);
+  }
+
+  async updateLoyaltyRules(req, res) {
+    const adminUserId = req.user?.id || null;
+    const rules = await this.walletService.updateLoyaltyRules(req.body, adminUserId);
+    return this.ok(res, rules);
+  }
+
 
   async getWallet(req, res) {
     const userId = req.user.id;

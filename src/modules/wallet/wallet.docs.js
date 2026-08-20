@@ -48,9 +48,54 @@ const walletTransactionExample = {
   createdAt: '2026-08-07T10:00:00.000Z',
 };
 
+const loyaltyRuleExample = {
+  id: '64f0c2a1b4e1c2d3e4f50999',
+  earnRatio: 0.10,
+  redeemRatio: 0.10,
+  minPointsToRedeem: 100,
+  maxRedeemPercentage: 50,
+  isActive: true,
+  description: '10 Points = ₹1. Earn 10% reward points on all completed bookings.',
+  updatedBy: OBJECT_ID,
+  updatedAt: '2026-08-07T10:00:00.000Z',
+};
+
 export const walletDocs = {
   paths: {
+    '/api/v1/wallets/loyalty-rules': {
+      get: {
+        tags: ['Wallet'],
+        summary: 'Get platform loyalty & points conversion rules',
+        description: 'Public/Client endpoint to fetch current points earn/redeem conversion rates.',
+        responses: {
+          ...okResponse(successExample(loyaltyRuleExample)),
+          ...withErrors(500),
+        },
+      },
+      put: {
+        tags: ['Wallet'],
+        summary: 'Update platform loyalty rules (Admin)',
+        description: `${authOnly}\n\n**Permission:** \`wallets.update\`\n\nSets points earn/redeem rates. E.g. redeemRatio: 0.10 means 10 points = ₹1.`,
+        security: bearerSecurity,
+        requestBody: jsonBody({
+          type: 'object',
+          properties: {
+            earnRatio: { type: 'number', minimum: 0, maximum: 1, example: 0.10 },
+            redeemRatio: { type: 'number', minimum: 0.001, maximum: 10, example: 0.10 },
+            minPointsToRedeem: { type: 'number', minimum: 0, example: 100 },
+            maxRedeemPercentage: { type: 'number', minimum: 1, maximum: 100, example: 50 },
+            isActive: { type: 'boolean', example: true },
+            description: { type: 'string', example: '10 Points = ₹1' },
+          },
+        }),
+        responses: {
+          ...okResponse(successExample(loyaltyRuleExample)),
+          ...withErrors(401, 403, 422, 500),
+        },
+      },
+    },
     '/api/v1/wallets/me': {
+
       get: {
         tags: ['Wallet'],
         summary: 'Get my wallet balance and points',

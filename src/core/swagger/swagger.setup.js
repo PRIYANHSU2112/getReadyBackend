@@ -8,21 +8,10 @@ import { openApiComponents } from './swagger.common.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-/**
- * Mount Swagger UI. Docs come from the central registry by default.
- * @param {import('express').Express} app
- * @param {object[]} [moduleDocs]
- */
-export function setupSwagger(app, moduleDocs = swaggerDocs) {
-  if (!config.swaggerEnabled) return;
-
-  // Auto token capture + refresh helper for Try it out
-  app.get('/swagger-assets/auth-helper.js', (_req, res) => {
-    res.type('application/javascript');
-    res.sendFile(path.join(__dirname, 'swagger-auth-helper.js'));
-  });
-
+export function generateSwaggerSpec(moduleDocs = swaggerDocs) {
   const options = {
+
+
     definition: {
       openapi: '3.0.3',
       info: {
@@ -43,7 +32,6 @@ export function setupSwagger(app, moduleDocs = swaggerDocs) {
           '- Do **not** leave trailing commas in request bodies.',
         ].join('\n'),
       },
-      // Relative "/" keeps Try it out on the same host as /api-docs (avoids silent empty responses)
       servers: [
         { url: '/', description: 'Same origin as this Swagger page (recommended)' },
         { url: config.appUrl, description: 'Configured APP_URL' },
@@ -51,72 +39,24 @@ export function setupSwagger(app, moduleDocs = swaggerDocs) {
         { url: 'http://localhost:3000', description: 'Local port 3000' },
       ],
       components: openApiComponents,
-      // Default security; public routes override with security: []
       security: [{ bearerAuth: [] }],
       tags: [
         { name: 'Health', description: 'Liveness and readiness' },
         { name: 'Auth - Admin', description: 'Admin / Super Admin password auth (public)' },
         { name: 'Auth - Mobile', description: 'Customer / Beautician OTP auth (public)' },
         { name: 'Auth', description: 'Authenticated auth helpers' },
-        { name: 'Cart', description: 'Customer cart — Bearer auth only (items, benefits, pricing, book-for-others)' },
-        { name: 'Members', description: 'Family & friends profiles — Bearer auth only (book-for-others)' },
+        { name: 'Users', description: 'User profile, preferences, addresses, and admin CRUD' },
+        { name: 'Addresses', description: 'Customer saved delivery/service addresses' },
+        { name: 'Notifications', description: 'In-app notification inbox, unread counts, and push preferences' },
+        { name: 'RBAC', description: 'Roles and permissions management (Super Admin only)' },
+        { name: 'Banners', description: 'App home banners (carousel, promo cards)' },
+        { name: 'Filters', description: 'Quick-filter pills and search facets' },
+        { name: 'Categories', description: 'Service catalog categories and nested hierarchies' },
+        { name: 'Services', description: 'Salon services, pricing, variants, and admin approval workflows' },
+        { name: 'Packages', description: 'Curated service bundles and discount packages' },
+        { name: 'Skills', description: 'Beautician skills taxonomy and service mappings' },
         {
-          name: 'Slots',
-          description:
-            'Admin-created bookable windows + public available-by-date. Soft-hold/confirm happens in Booking + payment (later).',
-        },
-        {
-          name: 'Blogs',
-          description:
-            'CMS blogs — public home/list/detail; auth like; admin CRUD (`blogs.*`). Categories reuse existing Categories module.',
-        },
-        { name: 'Users - Self', description: 'Own profile — any authenticated user' },
-        {
-          name: 'Users - Admin / Beautician',
-          description: 'Staff read (`users.read`). Default: Admin + Beautician',
-        },
-        {
-          name: 'Users - Admin',
-          description: 'User management (`users.create` / `users.update` / `users.delete`)',
-        },
-        {
-          name: 'RBAC',
-          description:
-            'Roles & permissions — Admin (`roles.*` / `permissions.*`). Super Admin bypasses.',
-        },
-        { name: 'Notifications', description: 'Current user notifications' },
-        {
-          name: 'Addresses',
-          description: 'Own addresses — Bearer auth only (no RBAC permission keys)',
-        },
-        {
-          name: 'Banners',
-          description:
-            'CMS banners — public GET /active; admin CRUD (`banners.*`). Super Admin bypasses.',
-        },
-        {
-          name: 'Filters',
-          description:
-            'Generic filter groups/values — public slim GET /public; admin CRUD (`filters.*`).',
-        },
-        {
-          name: 'Categories',
-          description: 'Service categories.',
-        },
-        {
-          name: 'Services',
-          description: 'Salon services.',
-        },
-        {
-          name: 'Service Change Requests',
-          description: 'Admin panel review queue for beautician service updates.',
-        },
-        {
-          name: 'Skills',
-          description: 'Admin-managed skills master list + public beautician selection (`GET /skills/active`).',
-        },
-        {
-          name: 'Beautician Profile',
+          name: 'Beautician Profiles',
           description: 'Beautician profile management, selfie KYC upload, submission, and admin review queue.',
         },
         {
@@ -131,13 +71,43 @@ export function setupSwagger(app, moduleDocs = swaggerDocs) {
           name: 'Bank Details',
           description: 'Beautician payout bank account details, passbook image, and admin verification.',
         },
+        {
+          name: 'Wallet',
+          description: 'Customer wallet balance, top-up, Razorpay payments, and loyalty rules.',
+        },
+        {
+          name: 'Cart',
+          description: 'Shopping cart, item quantities, mandatory hygiene kit, coupons, and points redemption.',
+        },
+        {
+          name: 'Hygiene Kits',
+          description: 'Safety & hygiene kit options, pricing, and included items.',
+        },
       ],
       paths: Object.assign({}, ...moduleDocs.map((d) => d.paths || {})),
     },
     apis: [],
   };
 
-  const spec = swaggerJsdoc(options);
+  return swaggerJsdoc(options);
+}
+
+/**
+ * Mount Swagger UI. Docs come from the central registry by default.
+ * @param {import('express').Express} app
+ * @param {object[]} [moduleDocs]
+ */
+export function setupSwagger(app, moduleDocs = swaggerDocs) {
+  if (!config.swaggerEnabled) return;
+
+  // Auto token capture + refresh helper for Try it out
+  app.get('/swagger-assets/auth-helper.js', (_req, res) => {
+    res.type('application/javascript');
+    res.sendFile(path.join(__dirname, 'swagger-auth-helper.js'));
+  });
+
+  const spec = generateSwaggerSpec(moduleDocs);
+
   app.use(
     '/api-docs',
     swaggerUi.serve,

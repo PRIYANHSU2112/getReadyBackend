@@ -1,128 +1,87 @@
+import { PricingEngine } from '../../common/pricing/pricing.engine.js';
 import {
   CART_VISIT_FEE_WAIVE_THRESHOLD,
   CART_POINTS_RATE,
   CART_CURRENCY,
 } from '../../common/constants/cart.js';
-import { CartItemType } from '../../common/constants/enums.js';
-
-function roundMoney(value) {
-  return Math.round((Number(value) || 0) * 100) / 100;
-}
-
-function lineUnitTotal(item) {
-  const unit = Number(item?.snapshot?.unitPrice) || 0;
-  const extra = Number(item?.snapshot?.extraCharge) || 0;
-  const qty = Number(item?.quantity) || 0;
-  return (unit + extra) * qty;
-}
-
-function lineMrpTotal(item) {
-  const mrp = item?.snapshot?.mrp;
-  const unit = Number(item?.snapshot?.unitPrice) || 0;
-  const base = mrp != null && mrp > unit ? Number(mrp) : unit;
-  const extra = Number(item?.snapshot?.extraCharge) || 0;
-  const qty = Number(item?.quantity) || 0;
-  return (base + extra) * qty;
-}
-
-function lineVisitFee(item) {
-  if (item?.itemType !== CartItemType.SERVICE) return 0;
-  const fee = Number(item?.snapshot?.homeVisitFee) || 0;
-  const qty = Number(item?.quantity) || 0;
-  return fee * qty;
-}
 
 /**
- * Pure cart pricing. No I/O — pass resolved benefit amounts in.
+ * Pure cart pricing delegated to centralized backend PricingEngine.
+ * Single backend source of truth.
  *
  * @param {object} cart
- * @param {{
- *   couponDiscount?: number,
- *   pointsBalance?: number,
- *   cashbackBalance?: number,
- *   visitFeeWaiveThreshold?: number,
- *   pointsRate?: number,
- *   currency?: string,
- *   now?: Date,
- * }} [options]
+ * @param {object} [options]
  */
 export function computeCartPricing(cart, options = {}) {
   const items = Array.isArray(cart?.items) ? cart.items : [];
   const benefits = cart?.benefits || {};
 
-  const visitFeeWaiveThreshold =
-    options.visitFeeWaiveThreshold ?? CART_VISIT_FEE_WAIVE_THRESHOLD;
-  const pointsRate = options.pointsRate ?? CART_POINTS_RATE;
-  const currency = options.currency ?? CART_CURRENCY;
-  const now = options.now ?? new Date();
+  const kitCount = items.length > 0
+    ? (Number(cart?.hygieneKit?.count ?? cart?.hygieneKit?.quantity) || 1)
+    : (Number(cart?.hygieneKit?.count ?? cart?.hygieneKit?.quantity) || 0);
 
-  const subtotal = roundMoney(items.reduce((sum, item) => sum + lineUnitTotal(item), 0));
-  const catalogMrpTotal = roundMoney(items.reduce((sum, item) => sum + lineMrpTotal(item), 0));
-  const catalogSavings = roundMoney(Math.max(0, catalogMrpTotal - subtotal));
+  const bill = PricingEngine.calculateBill({
+    items,
+    hygieneKit: {
+      count: kitCount,
+      unitPrice: options.hygieneKitUnitPrice ?? 49,
+    },
+    membership: {
+      isMember: options.isMember || false,
+      optInMembership: Boolean(benefits.membershipOptIn),
+      membershipPlan: options.membershipPlan || null,
+    },
+    coupon: {
+      couponDiscount: Number(options.couponDiscount) || 0,
+      coupon: options.coupon || null,
+    },
+    points: {
+      usePoints: Boolean(benefits.usePoints || benefits.useCredits),
+      pointsBalance: Number(options.pointsBalance ?? options.creditsBalance) || 0,
+      pointsRedeemRatio: options.pointsRedeemRatio,
+      pointsEarnRatio: options.pointsEarnRatio ?? options.pointsRate ?? CART_POINTS_RATE,
+      minPointsToRedeem: options.minPointsToRedeem ?? 0,
+      maxPointsRedeemPercentage: options.maxPointsRedeemPercentage ?? 100,
+    },
+    cashback: {
+      useCashback: Boolean(benefits.useCashback),
+      cashbackBalance: Number(options.cashbackBalance) || 0,
+    },
+    config: {
+      visitFeeThreshold: options.visitFeeWaiveThreshold ?? CART_VISIT_FEE_WAIVE_THRESHOLD,
+      currency: options.currency ?? CART_CURRENCY,
+    },
+  });
 
-  let visitFee = roundMoney(items.reduce((sum, item) => sum + lineVisitFee(item), 0));
-  let visitFeeWaived = false;
+  const visitFeeWaiveThreshold = options.visitFeeWaiveThreshold ?? CART_VISIT_FEE_WAIVE_THRESHOLD;
   let upsell = null;
-
-  if (visitFee > 0 && subtotal >= visitFeeWaiveThreshold) {
-    visitFee = 0;
-    visitFeeWaived = true;
-  } else if (visitFee > 0 && subtotal < visitFeeWaiveThreshold) {
-    const amountToWaiveVisitFee = roundMoney(visitFeeWaiveThreshold - subtotal);
+  if (bill.visitFee > 0 && bill.subtotal < visitFeeWaiveThreshold) {
+    const amountToWaive = Math.round((visitFeeWaiveThreshold - bill.subtotal) * 100) / 100;
     upsell = {
-      amountToWaiveVisitFee,
-      message: `Add ₹${amountToWaiveVisitFee} more to waive the ₹${visitFee} service charge`,
+      amountToWaiveVisitFee: amountToWaive,
+      message: `Add ₹${amountToWaive} more to waive the ₹${bill.visitFee} service charge`,
     };
   }
 
-  const payableBeforeBenefits = roundMoney(subtotal + visitFee);
-
-  let couponDiscount = 0;
-  let pointsDeduction = 0;
-  let cashbackDeduction = 0;
-
-  const hasCoupon = Boolean(benefits.couponCode);
-  const usesPoints = Boolean(benefits.usePoints || benefits.useCredits);
-  const usesCashback = Boolean(benefits.useCashback);
-
-  // Exactly 1 benefit per order. Evaluated exclusively in priority order: Coupon > Points > Cashback.
-  if (hasCoupon) {
-    couponDiscount = roundMoney(
-      Math.min(Number(options.couponDiscount) || 0, payableBeforeBenefits),
-    );
-  } else if (usesPoints) {
-    pointsDeduction = roundMoney(
-      Math.min(Number(options.pointsBalance ?? options.creditsBalance) || 0, payableBeforeBenefits),
-    );
-  } else if (usesCashback) {
-    cashbackDeduction = roundMoney(
-      Math.min(Number(options.cashbackBalance) || 0, payableBeforeBenefits),
-    );
-  }
-
-  const benefitSavings = roundMoney(
-    couponDiscount + pointsDeduction + cashbackDeduction,
-  );
-  const grandTotal = roundMoney(Math.max(0, payableBeforeBenefits - benefitSavings));
-  const savings = roundMoney(catalogSavings + benefitSavings);
-  const earnPoints = Math.max(0, Math.floor(grandTotal * pointsRate));
-
   return {
-    subtotal,
-    visitFee,
-    visitFeeWaived,
-    couponDiscount,
-    pointsDeduction,
-    cashbackDeduction,
-    grandTotal,
-    savings,
-    earnPoints,
+    itemsSubtotal: bill.itemsSubtotal,
+    hygieneKitTotal: bill.hygieneKitTotal,
+    subtotal: bill.subtotal,
+    visitFee: bill.visitFee,
+    visitFeeWaived: bill.isVisitFeeWaived,
+    couponDiscount: bill.couponDiscount,
+    pointsDeduction: bill.pointsValueDeducted,
+    cashbackDeduction: bill.cashbackDeducted,
+    grandTotal: bill.grandTotal,
+    savings: bill.totalSavings,
+    earnPoints: bill.earnPoints,
     upsell,
-    currency,
-    computedAt: now,
+    currency: bill.currency,
+    computedAt: options.now ?? bill.computedAt,
   };
 }
 
 export const CartPricingEngine = {
   compute: computeCartPricing,
 };
+

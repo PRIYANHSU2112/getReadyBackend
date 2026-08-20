@@ -19,6 +19,7 @@ import {
  *   serviceRepository: object,
  *   packageRepository: object,
  *   memberRepository?: object|null,
+ *   hygieneKitService?: object|null,
  *   pointsProvider?: object,
  *   couponProvider?: object,
  *   cashbackProvider?: object,
@@ -31,6 +32,7 @@ export function createCartModule({
   serviceRepository,
   packageRepository,
   memberRepository = null,
+  hygieneKitService = null,
   pointsProvider = new StubPointsProvider(),
   couponProvider = new StubCouponProvider(),
   cashbackProvider = new StubCashbackProvider(),
@@ -49,8 +51,10 @@ export function createCartModule({
       membershipProvider,
     },
     memberRepository,
+    hygieneKitService,
   );
   const controller = new CartController(service);
+
 
   return {
     service,

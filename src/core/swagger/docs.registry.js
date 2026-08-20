@@ -11,10 +11,13 @@ import { packageDocs } from '../../modules/package/package.docs.js';
 import { skillDocs } from '../../modules/skill/skill.docs.js';
 import { beauticianProfileDocs } from '../../modules/beautician-profile/beautician-profile.docs.js';
 import { bankDetailDocs } from '../../modules/bank-detail/bank-detail.docs.js';
+import { walletDocs } from '../../modules/wallet/wallet.docs.js';
+
 import { cartDocs } from '../../modules/cart/cart.docs.js';
 import { memberDocs } from '../../modules/member/member.docs.js';
 import { slotDocs } from '../../modules/slot/slot.docs.js';
 import { blogDocs } from '../../modules/blog/blog.docs.js';
+import { hygieneKitDocs } from '../../modules/hygiene-kit/hygiene-kit.docs.js';
 import { healthDocs } from './health.docs.js';
 
 /**
@@ -36,8 +39,12 @@ export const swaggerDocs = [
   skillDocs,
   beauticianProfileDocs,
   bankDetailDocs,
+  walletDocs,
   memberDocs,
   cartDocs,
   slotDocs,
   blogDocs,
+  hygieneKitDocs,
 ];
+
+

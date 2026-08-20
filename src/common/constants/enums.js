@@ -182,3 +182,9 @@ export const BlogStatus = Object.freeze({
   PUBLISHED: 'PUBLISHED',
   ARCHIVED: 'ARCHIVED',
 });
+
+export const HygieneKitStatus = Object.freeze({
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+});
+

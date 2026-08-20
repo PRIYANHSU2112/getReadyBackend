@@ -97,6 +97,25 @@ function buildRecipients(items) {
   return recipients;
 }
 
+function mapHygieneKit(kit, kitMeta = null) {
+  if (!kit) return null;
+  const kitId = idOf(kit.hygieneKitId || kit._id || kit.id);
+  const count = Number(kit.count ?? kit.quantity) || 1;
+  const unitPrice = Number(kitMeta?.price ?? kit.unitPrice ?? 49);
+  return {
+    hygieneKitId: kitId,
+    title: kitMeta?.title || kit.title || 'Standard Safety & Hygiene Kit',
+    count,
+    quantity: count,
+    unitPrice,
+    totalPrice: count * unitPrice,
+    isRequired: kitMeta?.isRequired !== undefined ? kitMeta.isRequired : (kit.isRequired !== false),
+    isDefault: kitMeta?.isDefault !== undefined ? kitMeta.isDefault : true,
+  };
+}
+
+
+
 function mapBenefits(benefits = {}, extras = {}) {
   return {
     couponCode: benefits.couponCode || null,
@@ -111,6 +130,8 @@ function mapBenefits(benefits = {}, extras = {}) {
 function mapPricing(pricing) {
   if (!pricing) {
     return {
+      itemsSubtotal: 0,
+      hygieneKitTotal: 0,
       subtotal: 0,
       visitFee: 0,
       visitFeeWaived: false,
@@ -127,6 +148,8 @@ function mapPricing(pricing) {
   }
 
   return {
+    itemsSubtotal: pricing.itemsSubtotal ?? pricing.subtotal ?? 0,
+    hygieneKitTotal: pricing.hygieneKitTotal ?? 0,
     subtotal: pricing.subtotal ?? 0,
     visitFee: pricing.visitFee ?? 0,
     visitFeeWaived: Boolean(pricing.visitFeeWaived),
@@ -159,6 +182,7 @@ export function toCartDto(cart, extras = {}) {
     id: idOf(raw?._id || raw?.id),
     userId: idOf(raw?.userId),
     items,
+    hygieneKit: mapHygieneKit(raw?.hygieneKit, extras.hygieneKitMeta),
     itemCount: items.reduce((sum, item) => sum + (item.quantity || 0), 0),
     recipients: buildRecipients(items),
     specialInstructions: raw?.specialInstructions ?? null,
@@ -170,3 +194,5 @@ export function toCartDto(cart, extras = {}) {
     updatedAt: raw?.updatedAt ?? null,
   };
 }
+
+

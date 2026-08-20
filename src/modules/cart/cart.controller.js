@@ -11,6 +11,8 @@ export class CartController extends BaseController {
       'getCart',
       'addItem',
       'updateItemQuantity',
+      'updateHygieneKit',
+      'syncCart',
       'removeItem',
       'updatePackageSelections',
       'updateRecipient',
@@ -22,6 +24,7 @@ export class CartController extends BaseController {
   }
 
   async getCart(req, res) {
+
     const cart = await this.cartService.getCart(req.user.id);
     return this.ok(res, cart);
   }
@@ -40,7 +43,18 @@ export class CartController extends BaseController {
     return this.ok(res, cart);
   }
 
+  async updateHygieneKit(req, res) {
+    const cart = await this.cartService.updateHygieneKit(req.user.id, req.body);
+    return this.ok(res, cart);
+  }
+
+  async syncCart(req, res) {
+    const cart = await this.cartService.syncCart(req.user.id, req.body);
+    return this.ok(res, cart);
+  }
+
   async removeItem(req, res) {
+
     const cart = await this.cartService.removeItem(req.user.id, req.params.lineId);
     return this.ok(res, cart);
   }

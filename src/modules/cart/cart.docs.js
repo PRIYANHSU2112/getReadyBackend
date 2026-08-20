@@ -61,7 +61,18 @@ const cartExample = {
       lineTotal: 2999,
     },
   ],
+  hygieneKit: {
+    hygieneKitId: '64f0c2a1b4e1c2d3e4f50650',
+    title: 'Standard Safety & Hygiene Kit',
+    count: 1,
+    quantity: 1,
+    unitPrice: 49,
+    totalPrice: 49,
+    isRequired: true,
+    isDefault: true,
+  },
   itemCount: 1,
+
   recipients: [
     {
       memberId: null,
@@ -268,6 +279,79 @@ export const cartDocs = {
         },
       },
     },
+    '/api/v1/cart/sync': {
+      post: {
+        tags: ['Cart'],
+        summary: 'Unified batch sync cart state (Optimistic UI / Go to Pay)',
+        description:
+          `${authOnly}\n\nReplaces cart items and updates hygiene kit count in a single roundtrip. ` +
+          'Live database prices and restrictions are validated, Redis cache updated, and full fresh cart DTO returned.',
+        security: bearerSecurity,
+        requestBody: jsonBody({
+          type: 'object',
+          properties: {
+            items: {
+              type: 'array',
+              items: {
+                type: 'object',
+                required: ['itemType', 'refId'],
+                properties: {
+                  itemType: { type: 'string', enum: Object.values(CartItemType) },
+                  refId: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' },
+                  quantity: { type: 'number', minimum: 1, maximum: MAX_ITEM_QUANTITY, default: 1 },
+                  forMemberId: { type: 'string', pattern: '^[a-fA-F0-9]{24}$', nullable: true },
+                  selectedServiceIds: { type: 'array', items: { type: 'string' } },
+                },
+              },
+            },
+            hygieneKit: {
+              type: 'object',
+              properties: {
+                hygieneKitId: { type: 'string', nullable: true },
+                quantity: { type: 'number', minimum: 1, maximum: 20, default: 1 },
+              },
+            },
+            benefits: {
+              type: 'object',
+              properties: {
+                couponCode: { type: 'string', nullable: true },
+                usePoints: { type: 'boolean' },
+                useCashback: { type: 'boolean' },
+                membershipOptIn: { type: 'boolean' },
+              },
+            },
+            specialInstructions: { type: 'string', nullable: true },
+          },
+        }),
+        responses: {
+          ...okResponse(successExample(cartExample)),
+          ...withErrors(401, 404, 422, 500),
+        },
+      },
+    },
+    '/api/v1/cart/hygiene-kit': {
+      patch: {
+        tags: ['Cart'],
+        summary: 'Update hygiene kit count / selection',
+        description:
+          `${authOnly}\n\nUpdates mandatory hygiene kit quantity (min 1, max 20). ` +
+          'Cannot be set to 0 when mandatory.',
+        security: bearerSecurity,
+        requestBody: jsonBody({
+          type: 'object',
+          required: ['quantity'],
+          properties: {
+            quantity: { type: 'number', minimum: 1, maximum: 20, example: 2 },
+            hygieneKitId: { type: 'string', pattern: '^[a-fA-F0-9]{24}$', nullable: true },
+          },
+        }),
+        responses: {
+          ...okResponse(successExample(cartExample)),
+          ...withErrors(401, 404, 422, 500),
+        },
+      },
+    },
+
     '/api/v1/cart/items/{lineId}': {
       patch: {
         tags: ['Cart'],

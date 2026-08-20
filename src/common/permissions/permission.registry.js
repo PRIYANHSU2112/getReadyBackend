@@ -224,7 +224,45 @@ export const PERMISSION_CATALOG = Object.freeze([
     action: 'delete',
     description: 'Soft-delete blogs',
   },
+  {
+    key: 'hygiene_kits.read',
+    module: 'hygiene_kits',
+    action: 'read',
+    description: 'List and view hygiene kits (admin)',
+  },
+  {
+    key: 'hygiene_kits.create',
+    module: 'hygiene_kits',
+    action: 'create',
+    description: 'Create hygiene kits',
+  },
+  {
+    key: 'hygiene_kits.update',
+    module: 'hygiene_kits',
+    action: 'update',
+    description: 'Update hygiene kits and set default',
+  },
+  {
+    key: 'hygiene_kits.delete',
+    module: 'hygiene_kits',
+    action: 'delete',
+    description: 'Soft-delete hygiene kits',
+  },
+  {
+    key: 'wallets.read',
+    module: 'wallets',
+    action: 'read',
+    description: 'List and view wallet balances and loyalty rules (admin)',
+  },
+  {
+    key: 'wallets.update',
+    module: 'wallets',
+    action: 'update',
+    description: 'Update platform loyalty rules and points conversion (admin)',
+  },
 ]);
+
+
 
 /**
  * Paths are relative to `/api/v1` (no trailing slash).
@@ -386,7 +424,47 @@ export const ROUTE_PERMISSIONS = Object.freeze([
   { method: 'POST', pathPattern: '/blogs', permission: 'blogs.create' },
   { method: 'PATCH', pathPattern: '/blogs/:id', permission: 'blogs.update' },
   { method: 'DELETE', pathPattern: '/blogs/:id', permission: 'blogs.delete' },
+
+  // Hygiene Kits — public default/active/detail; admin manage CRUD
+  { method: 'GET', pathPattern: '/hygiene-kits/default', permission: null },
+  { method: 'GET', pathPattern: '/hygiene-kits/active', permission: null },
+  { method: 'GET', pathPattern: '/hygiene-kits/:id', permission: null },
+  { method: 'GET', pathPattern: '/hygiene-kits', permission: 'hygiene_kits.read' },
+  { method: 'POST', pathPattern: '/hygiene-kits', permission: 'hygiene_kits.create' },
+  { method: 'PATCH', pathPattern: '/hygiene-kits/:id/default', permission: 'hygiene_kits.update' },
+  { method: 'PATCH', pathPattern: '/hygiene-kits/:id/status', permission: 'hygiene_kits.update' },
+  { method: 'POST', pathPattern: '/hygiene-kits/:id/restore', permission: 'hygiene_kits.update' },
+  { method: 'PATCH', pathPattern: '/hygiene-kits/:id', permission: 'hygiene_kits.update' },
+  { method: 'PUT', pathPattern: '/hygiene-kits/:id', permission: 'hygiene_kits.update' },
+  { method: 'DELETE', pathPattern: '/hygiene-kits/:id', permission: 'hygiene_kits.delete' },
+
+  // Cart — auth-only (user owned)
+  { method: 'GET', pathPattern: '/cart', permission: null },
+  { method: 'DELETE', pathPattern: '/cart', permission: null },
+  { method: 'POST', pathPattern: '/cart/sync', permission: null },
+  { method: 'PATCH', pathPattern: '/cart/hygiene-kit', permission: null },
+  { method: 'POST', pathPattern: '/cart/items', permission: null },
+  { method: 'PATCH', pathPattern: '/cart/items/:lineId', permission: null },
+  { method: 'DELETE', pathPattern: '/cart/items/:lineId', permission: null },
+  { method: 'PATCH', pathPattern: '/cart/items/:lineId/selections', permission: null },
+  { method: 'PATCH', pathPattern: '/cart/items/:lineId/recipient', permission: null },
+  { method: 'POST', pathPattern: '/cart/book-for-others', permission: null },
+  { method: 'PATCH', pathPattern: '/cart/instructions', permission: null },
+  { method: 'PATCH', pathPattern: '/cart/benefits', permission: null },
+
+  // Wallets & Loyalty
+  { method: 'GET', pathPattern: '/wallets/loyalty-rules', permission: null },
+  { method: 'PUT', pathPattern: '/wallets/loyalty-rules', permission: 'wallets.update' },
+  { method: 'GET', pathPattern: '/wallets/me', permission: null },
+  { method: 'POST', pathPattern: '/wallets/topup/create-order', permission: null },
+  { method: 'POST', pathPattern: '/wallets/topup/verify', permission: null },
+  { method: 'GET', pathPattern: '/wallets/transactions', permission: null },
+  { method: 'POST', pathPattern: '/wallets/points/add', permission: 'wallets.update' },
+  { method: 'POST', pathPattern: '/wallets/points/deduct', permission: 'wallets.update' },
 ]);
+
+
+
 
 const API_PREFIX = '/api/v1';
 

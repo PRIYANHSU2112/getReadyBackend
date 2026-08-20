@@ -8,8 +8,21 @@ import { walletValidator } from './wallet.validation.js';
  * @param {import('./wallet.controller.js').WalletController} walletController
  * @param {{ authenticate: Function }} guards
  */
-export function createWalletRoutes(walletController, guards) {
+export function createWalletRoutes(walletController, guards = {}) {
   const router = Router();
+
+  // Public loyalty rules read (used by client cart / promo tooltips)
+  router.get('/loyalty-rules', asyncHandler(walletController.getLoyaltyRules));
+
+  // Admin loyalty rules update
+  router.put(
+    '/loyalty-rules',
+    guards.authenticate,
+    guards.checkPermission || ((req, res, next) => next()),
+    validate(walletValidator, 'updateLoyaltyRules'),
+    asyncHandler(walletController.updateLoyaltyRules),
+  );
+
 
   // Public webhook route
   router.post(
@@ -19,6 +32,7 @@ export function createWalletRoutes(walletController, guards) {
 
   // Authenticated routes
   router.use(guards.authenticate);
+
 
   router.get('/me', asyncHandler(walletController.getWallet));
 

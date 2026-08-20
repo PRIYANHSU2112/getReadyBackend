@@ -11,26 +11,35 @@ import {
   WalletTransactionCategory,
   WalletTransactionStatus,
 } from './wallet.enum.js';
-import { toWalletDto, toWalletTransactionDto } from './wallet.mapper.js';
+import {
+  toWalletDto,
+  toWalletTransactionDto,
+  toLoyaltyRuleDto,
+} from './wallet.mapper.js';
 
 const WALLET_CACHE_TTL_SECONDS = 300;
+const LOYALTY_CACHE_TTL_SECONDS = 600;
+
 
 export class WalletService extends BaseService {
   /**
    * @param {import('./wallet.repository.js').WalletRepository} walletRepository
    * @param {import('./wallet.repository.js').WalletTransactionRepository} transactionRepository
+   * @param {import('./wallet.repository.js').LoyaltyRuleRepository} loyaltyRuleRepository
    * @param {import('../../core/redis/cache.service.js').CacheService|null} cacheService
    * @param {{ razorpayKeyId?: string, razorpayKeySecret?: string, razorpayWebhookSecret?: string }} [config]
    */
   constructor(
     walletRepository,
     transactionRepository,
+    loyaltyRuleRepository,
     cacheService = null,
     config = {},
   ) {
     super(null, cacheService);
     this.walletRepository = walletRepository;
     this.transactionRepository = transactionRepository;
+    this.loyaltyRuleRepository = loyaltyRuleRepository;
     this.razorpayKeyId = config.keyId || config.razorpayKeyId || process.env.RAZORPAY_KEY_ID || 'rzp_test_mock_key';
     this.razorpayKeySecret = config.keySecret || config.razorpayKeySecret || process.env.RAZORPAY_KEY_SECRET || 'mock_secret';
     this.razorpayWebhookSecret = config.webhookSecret || config.razorpayWebhookSecret || process.env.RAZORPAY_WEBHOOK_SECRET || 'mock_webhook_secret';
@@ -54,12 +63,62 @@ export class WalletService extends BaseService {
     return this.cacheKey('wallet', 'user', userId);
   }
 
+  #loyaltyCacheKey() {
+    return this.cacheKey('loyalty', 'rules');
+  }
+
   async #invalidateWalletCache(userId) {
     const key = this.#cacheKey(userId);
     await this.invalidateCache(key);
   }
 
+  async getLoyaltyRules() {
+    const key = this.#loyaltyCacheKey();
+    const cached = await this.getCached(key);
+    if (cached) return cached;
+
+    const rule = await this.loyaltyRuleRepository.findRule();
+    const dto = toLoyaltyRuleDto(rule);
+    await this.setCached(key, dto, LOYALTY_CACHE_TTL_SECONDS);
+    return dto;
+  }
+
+  async updateLoyaltyRules(payload, adminUserId = null) {
+    const rule = await this.loyaltyRuleRepository.updateRule(payload, adminUserId);
+    const dto = toLoyaltyRuleDto(rule);
+    const key = this.#loyaltyCacheKey();
+    await this.invalidateCache(key);
+    await this.setCached(key, dto, LOYALTY_CACHE_TTL_SECONDS);
+    return dto;
+  }
+
+
+  async calculatePointsRedemption(points, payableAmount) {
+    const rules = await this.getLoyaltyRules();
+    if (!rules.isActive) {
+      return { pointsUsed: 0, discountAmount: 0, redeemRatio: rules.redeemRatio };
+    }
+
+    const availablePoints = Math.max(0, Math.floor(Number(points) || 0));
+    if (availablePoints < rules.minPointsToRedeem) {
+      return { pointsUsed: 0, discountAmount: 0, redeemRatio: rules.redeemRatio };
+    }
+
+    const maxPointsValue = Math.floor(availablePoints * rules.redeemRatio);
+    const maxDiscountAllowed = Math.round((payableAmount * rules.maxRedeemPercentage) / 100);
+    const effectiveDiscount = Math.min(maxPointsValue, payableAmount, maxDiscountAllowed);
+
+    const pointsUsed = Math.ceil(effectiveDiscount / rules.redeemRatio);
+
+    return {
+      pointsUsed,
+      discountAmount: effectiveDiscount,
+      redeemRatio: rules.redeemRatio,
+    };
+  }
+
   async getWallet(userId) {
+
     const key = this.#cacheKey(userId);
     const cached = await this.getCached(key);
     if (cached) return cached;
@@ -289,13 +348,12 @@ export class WalletService extends BaseService {
     }
 
     const result = await this.#runInSession(async (session) => {
-      const wallet = await this.walletRepository.getOrCreateForUser(userId, session);
       const updatedWallet = await this.walletRepository.atomicAddPoints(userId, pts, session);
 
       const tx = await this.transactionRepository.createTransaction(
         {
-          walletId: wallet._id,
-          userId: wallet.userId,
+          walletId: updatedWallet._id,
+          userId: updatedWallet.userId,
           type: WalletTransactionType.CREDIT,
           category: WalletTransactionCategory.POINTS_EARNED,
           status: WalletTransactionStatus.SUCCESS,
@@ -327,21 +385,12 @@ export class WalletService extends BaseService {
     }
 
     const result = await this.#runInSession(async (session) => {
-      const wallet = await this.walletRepository.getOrCreateForUser(userId, session);
-      if (wallet.points < pts) {
-        throw new AppError(
-          `Insufficient points balance. Available: ${wallet.points}, Requested: ${pts}`,
-          HttpStatus.UNPROCESSABLE,
-          ErrorCodes.WALLET_INSUFFICIENT_POINTS,
-        );
-      }
-
       const updatedWallet = await this.walletRepository.atomicDeductPoints(userId, pts, session);
 
       const tx = await this.transactionRepository.createTransaction(
         {
-          walletId: wallet._id,
-          userId: wallet.userId,
+          walletId: updatedWallet._id,
+          userId: updatedWallet.userId,
           type: WalletTransactionType.DEBIT,
           category: WalletTransactionCategory.POINTS_REDEEMED,
           status: WalletTransactionStatus.SUCCESS,
@@ -365,6 +414,7 @@ export class WalletService extends BaseService {
     await this.#invalidateWalletCache(userId);
     return result;
   }
+
 
   async addCashback(userId, { amount, description = 'Cashback Credited', referenceId = null }) {
     const value = Math.max(0, Number(amount) || 0);

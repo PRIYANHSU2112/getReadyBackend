@@ -1,9 +1,11 @@
 import mongoose from 'mongoose';
 import { BaseRepository } from '../../common/base/BaseRepository.js';
 import { WalletModel, WalletTransactionModel } from './wallet.model.js';
+import { LoyaltyRuleModel } from './loyalty-rule.model.js';
 import { AppError } from '../../common/errors/AppError.js';
 import { HttpStatus } from '../../common/constants/http-status.js';
 import { ErrorCodes } from '../../common/constants/error-codes.js';
+
 
 function toObjectId(id) {
   if (!id) return id;
@@ -112,7 +114,42 @@ export class WalletRepository extends BaseRepository {
   }
 }
 
+export class LoyaltyRuleRepository extends BaseRepository {
+  /**
+   * @param {import('mongoose').Model} loyaltyRuleModel
+   */
+  constructor(loyaltyRuleModel = LoyaltyRuleModel) {
+    super(loyaltyRuleModel);
+  }
+
+  async findRule(session = null) {
+    const query = this.model.findOne();
+    if (session) query.session(session);
+    let rule = await query.exec();
+    if (!rule) {
+      const docs = await this.model.create([{}], { session });
+      rule = docs[0];
+    }
+    return rule;
+  }
+
+  async updateRule(payload, adminUserId = null, session = null) {
+    const update = {
+      ...payload,
+      ...(adminUserId ? { updatedBy: toObjectId(adminUserId) } : {}),
+    };
+    const query = this.model.findOneAndUpdate(
+      {},
+      { $set: update },
+      { new: true, upsert: true, setDefaultsOnInsert: true },
+    );
+    if (session) query.session(session);
+    return query.exec();
+  }
+}
+
 export class WalletTransactionRepository extends BaseRepository {
+
   constructor(transactionModel = WalletTransactionModel) {
     super(transactionModel);
   }
