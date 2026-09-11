@@ -39,6 +39,7 @@ jobs:
           - worker-service
 
     steps:
+
       # ---------------------------------------------------------
       # 1. Checkout source code
       # ---------------------------------------------------------
@@ -79,8 +80,11 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
-          context: ./services/${{ matrix.service }}
+          # IMPORTANT:
+          # Dockerfiles use packages/ and services/ from repo root.
+          context: .
           file: ./services/${{ matrix.service }}/Dockerfile
+
           push: true
 
           tags: |
