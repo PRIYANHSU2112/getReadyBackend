@@ -1,12 +1,6 @@
 name: Production Deployment (AWS SSM)
 
 on:
-  workflow_run:
-    workflows: ['Build and Push Backend Images']
-    types:
-      - completed
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       commit_sha:
@@ -32,7 +26,6 @@ jobs:
   deploy-production:
     name: Deploy to EC2 via AWS SSM
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       # ---------------------------------------------------------
@@ -54,8 +47,6 @@ jobs:
 
           if [ -n "${RAW_INPUT}" ]; then
             LOOKUP_REF="${RAW_INPUT}"
-          elif [ -n "${{ github.event.workflow_run.head_sha }}" ]; then
-            LOOKUP_REF="${{ github.event.workflow_run.head_sha }}"
           else
             LOOKUP_REF="HEAD"
           fi
@@ -157,43 +148,84 @@ jobs:
           done
 
       # ---------------------------------------------------------
-      # 5. Dispatch deployment to EC2 via AWS SSM SendCommand
+      # 5. Package deployment artifact & dispatch AWS SSM SendCommand
       # ---------------------------------------------------------
-      - name: Execute Deployment via AWS SSM SendCommand
+      - name: Package Deployment Artifact & Dispatch AWS SSM SendCommand
         id: ssm_deploy
         env:
           TARGET_SHA: ${{ steps.vars.outputs.target_sha }}
         run: |
           echo "================================================================="
-          echo "📡 Dispatching AWS SSM SendCommand"
+          echo "📦 Packaging deployment configuration and scripts..."
+          echo "================================================================="
+          
+          # Verify local deploy directory
+          if [ ! -d "deploy" ]; then
+            echo "❌ ERROR: deploy directory not found in repository root."
+            exit 1
+          fi
+
+          # Create compressed deployment archive
+          tar -czf /tmp/deploy-bundle.tar.gz -C deploy .
+          BUNDLE_SIZE=$(wc -c < /tmp/deploy-bundle.tar.gz)
+          echo "✅ Deployment bundle created: ${BUNDLE_SIZE} bytes"
+
+          # Encode bundle to Base64
+          BUNDLE_B64=$(base64 -w 0 /tmp/deploy-bundle.tar.gz)
+          rm -f /tmp/deploy-bundle.tar.gz
+
+          echo "📡 Preparing AWS SSM SendCommand payload..."
           echo "   Target Instance ID : ${{ env.EC2_INSTANCE_ID }}"
           echo "   Document Name      : AWS-RunShellScript"
           echo "   Target Full SHA    : ${TARGET_SHA}"
-          echo "================================================================="
 
-          COMMAND_JSON=$(jq -n \
+          # Construct SSM parameter JSON file
+          jq -n \
             --arg sha "${TARGET_SHA}" \
+            --arg b64 "${BUNDLE_B64}" \
             '{
               commands: [
                 "set -eo pipefail",
+                "echo \"=================================================================\"",
+                "echo \"🚀 EC2 PRODUCTION DEPLOYMENT INITIALIZING\"",
+                "echo \"   Target Full SHA  : \($sha)\"",
+                "echo \"   Working Directory: /opt/getready\"",
+                "echo \"   Timestamp        : $(date -u +\"%Y-%m-%dT%H:%M:%SZ\")\"",
+                "echo \"=================================================================\"",
+                "echo \"📁 [1/6] Preparing /opt/getready directory...\"",
+                "mkdir -p /opt/getready",
                 "cd /opt/getready",
+                "echo \"📦 [2/6] Staging deployment bundle from artifact...\"",
+                "echo \($b64) | base64 -d > /tmp/deploy-bundle.tar.gz",
+                "echo \"📂 [3/6] Extracting deployment configuration and scripts...\"",
+                "tar -xzf /tmp/deploy-bundle.tar.gz -C /opt/getready/",
+                "rm -f /tmp/deploy-bundle.tar.gz",
+                "echo \"🔍 [4/6] Verifying deployment files...\"",
+                "for f in deploy-production.sh health-check.sh rollback-production.sh docker-compose.production.yml; do if [ ! -s \"$f\" ]; then echo \"❌ ERROR: Missing or empty file: /opt/getready/$f\"; exit 1; fi; echo \"  • Found: $f\"; done",
+                "if [ ! -d \"monitoring\" ]; then echo \"❌ ERROR: Missing /opt/getready/monitoring directory\"; exit 1; fi",
+                "echo \"  • Found: monitoring configuration directory\"",
+                "echo \"🔑 [5/6] Setting executable permissions on scripts...\"",
                 "chmod +x deploy-production.sh health-check.sh rollback-production.sh",
+                "if [ ! -f \".env.production\" ]; then echo \"❌ ERROR: /opt/getready/.env.production not found! Please create it from .env.production.example.\"; exit 1; fi",
+                "echo \"🚢 [6/6] Executing deploy-production.sh \($sha)...\"",
                 "./deploy-production.sh \($sha)"
               ]
-            }')
+            }' > /tmp/ssm_parameters.json
 
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "${{ env.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
             --comment "Production deployment for Git SHA ${TARGET_SHA}" \
-            --parameters "${COMMAND_JSON}" \
+            --parameters file:///tmp/ssm_parameters.json \
             --timeout-seconds 600 \
             --region "${{ env.AWS_REGION }}" \
             --query "Command.CommandId" \
             --output text)
 
+          rm -f /tmp/ssm_parameters.json
+
           echo "command_id=${COMMAND_ID}" >> "$GITHUB_OUTPUT"
-          echo "✅ SSM Command dispatched. Command ID: ${COMMAND_ID}"
+          echo "✅ SSM Command dispatched successfully. Command ID: ${COMMAND_ID}"
 
       # ---------------------------------------------------------
       # 6. Wait for SSM command completion and stream execution logs
