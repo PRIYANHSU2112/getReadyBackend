@@ -1531,6 +1531,9 @@ Authorization: Bearer <your_jwt_token>
             },
           },
         },
+        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
+      },
+    },
     '/api/v1/bookings/{id}/reschedule': {
       patch: {
         tags: ['Calendar', 'Bookings'],
