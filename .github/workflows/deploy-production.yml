@@ -148,18 +148,18 @@ jobs:
           done
 
       # ---------------------------------------------------------
-      # 5. Package deployment artifact & dispatch AWS SSM SendCommand
+      # 5. Package deployment artifact, dispatch SSM, and track execution
       # ---------------------------------------------------------
-      - name: Package Deployment Artifact & Dispatch AWS SSM SendCommand
-        id: ssm_deploy
+      - name: Dispatch AWS SSM SendCommand and Track Execution
         env:
           TARGET_SHA: ${{ steps.vars.outputs.target_sha }}
+          EC2_INSTANCE_ID: ${{ env.EC2_INSTANCE_ID }}
+          AWS_REGION: ${{ env.AWS_REGION }}
         run: |
           echo "================================================================="
-          echo "📦 Packaging deployment configuration and scripts..."
+          echo "📦 [1/4] Packaging deployment configuration and scripts..."
           echo "================================================================="
           
-          # Verify local deploy directory
           if [ ! -d "deploy" ]; then
             echo "❌ ERROR: deploy directory not found in repository root."
             exit 1
@@ -174,12 +174,14 @@ jobs:
           BUNDLE_B64=$(base64 -w 0 /tmp/deploy-bundle.tar.gz)
           rm -f /tmp/deploy-bundle.tar.gz
 
-          echo "📡 Preparing AWS SSM SendCommand payload..."
-          echo "   Target Instance ID : ${{ env.EC2_INSTANCE_ID }}"
+          echo "================================================================="
+          echo "📡 [2/4] Constructing AWS SSM SendCommand payload..."
+          echo "   Target Instance ID : ${EC2_INSTANCE_ID}"
           echo "   Document Name      : AWS-RunShellScript"
           echo "   Target Full SHA    : ${TARGET_SHA}"
+          echo "================================================================="
 
-          # Construct SSM parameter JSON file
+          # Construct SSM parameter JSON file safely using jq
           jq -n \
             --arg sha "${TARGET_SHA}" \
             --arg b64 "${BUNDLE_B64}" \
@@ -196,7 +198,7 @@ jobs:
                 "mkdir -p /opt/getready",
                 "cd /opt/getready",
                 "echo \"📦 [2/6] Staging deployment bundle from artifact...\"",
-                "echo \($b64) | base64 -d > /tmp/deploy-bundle.tar.gz",
+                "cat <<'\''EOF_BUNDLE'\'' | base64 -d > /tmp/deploy-bundle.tar.gz\n\($b64)\nEOF_BUNDLE",
                 "echo \"📂 [3/6] Extracting deployment configuration and scripts...\"",
                 "tar -xzf /tmp/deploy-bundle.tar.gz -C /opt/getready/",
                 "rm -f /tmp/deploy-bundle.tar.gz",
@@ -206,76 +208,133 @@ jobs:
                 "echo \"  • Found: monitoring configuration directory\"",
                 "echo \"🔑 [5/6] Setting executable permissions on scripts...\"",
                 "chmod +x deploy-production.sh health-check.sh rollback-production.sh",
-                "if [ ! -f \".env.production\" ]; then echo \"❌ ERROR: /opt/getready/.env.production not found! Please create it from .env.production.example.\"; exit 1; fi",
+                "if [ ! -f \".env.production\" ]; then echo \"❌ ERROR: /opt/getready/.env.production not found!\"; exit 1; fi",
                 "echo \"🚢 [6/6] Executing deploy-production.sh \($sha)...\"",
                 "./deploy-production.sh \($sha)"
-              ]
+              ],
+              executionTimeout: ["900"]
             }' > /tmp/ssm_parameters.json
 
+          # Dispatch SendCommand targeting exclusively the configured instance
           COMMAND_ID=$(aws ssm send-command \
-            --instance-ids "${{ env.EC2_INSTANCE_ID }}" \
+            --instance-ids "${EC2_INSTANCE_ID}" \
             --document-name "AWS-RunShellScript" \
             --comment "Production deployment for Git SHA ${TARGET_SHA}" \
             --parameters file:///tmp/ssm_parameters.json \
             --timeout-seconds 600 \
-            --region "${{ env.AWS_REGION }}" \
+            --region "${AWS_REGION}" \
             --query "Command.CommandId" \
             --output text)
 
           rm -f /tmp/ssm_parameters.json
 
-          echo "command_id=${COMMAND_ID}" >> "$GITHUB_OUTPUT"
-          echo "✅ SSM Command dispatched successfully. Command ID: ${COMMAND_ID}"
+          if [ -z "${COMMAND_ID}" ] || [ "${COMMAND_ID}" == "None" ]; then
+            echo "❌ ERROR: Failed to send SSM command. No CommandId returned."
+            exit 1
+          fi
 
-      # ---------------------------------------------------------
-      # 6. Wait for SSM command completion and stream execution logs
-      # ---------------------------------------------------------
-      - name: Wait for SSM Command Completion & Stream Logs
-        env:
-          COMMAND_ID: ${{ steps.ssm_deploy.outputs.command_id }}
-        run: |
-          echo "⏳ Waiting for SSM Command ${COMMAND_ID} execution on EC2 instance ${{ env.EC2_INSTANCE_ID }}..."
+          echo "✅ SSM Command dispatched successfully!"
+          echo "   Command ID : ${COMMAND_ID}"
+          echo "   Target ID  : ${EC2_INSTANCE_ID}"
 
-          STATUS="Pending"
-          MAX_ATTEMPTS=60
+          echo "================================================================="
+          echo "🔎 [3/4] Immediate Invocation Verification Probe (5s delay)..."
+          echo "================================================================="
+          sleep 5
+
+          INITIAL_RESP=$(aws ssm get-command-invocation \
+            --command-id "${COMMAND_ID}" \
+            --instance-id "${EC2_INSTANCE_ID}" \
+            --region "${AWS_REGION}" \
+            --output json 2>&1 || true)
+
+          echo "Initial Invocation Query Result:"
+          echo "${INITIAL_RESP}" | jq '{Status: .Status, StatusDetails: .StatusDetails, ResponseCode: .ResponseCode, StandardOutputContent: .StandardOutputContent, StandardErrorContent: .StandardErrorContent}' 2>/dev/null || echo "${INITIAL_RESP}"
+
+          echo "================================================================="
+          echo "⏳ [4/4] Tracking SSM Command Execution Progress..."
+          echo "   Polling interval: 10 seconds | Max wait: 15 minutes (90 attempts)"
+          echo "================================================================="
+
+          MAX_ATTEMPTS=90
           ATTEMPT=0
+          STATUS="Pending"
 
-          while [[ "${STATUS}" == "Pending" || "${STATUS}" == "InProgress" || "${STATUS}" == "Delayed" ]]; do
+          while true; do
             ATTEMPT=$((ATTEMPT + 1))
-            if [ ${ATTEMPT} -gt ${MAX_ATTEMPTS} ]; then
-              echo "❌ ERROR: Timed out waiting for SSM command execution (10 minutes)."
+            
+            INVOCATION_RAW=$(aws ssm get-command-invocation \
+              --command-id "${COMMAND_ID}" \
+              --instance-id "${EC2_INSTANCE_ID}" \
+              --region "${AWS_REGION}" \
+              --output json 2>&1 || true)
+
+            # Check if JSON was returned
+            if echo "${INVOCATION_RAW}" | jq -e . >/dev/null 2>&1; then
+              STATUS=$(echo "${INVOCATION_RAW}" | jq -r '.Status // "Pending"')
+              STATUS_DETAILS=$(echo "${INVOCATION_RAW}" | jq -r '.StatusDetails // ""')
+              echo "   [Attempt ${ATTEMPT}/${MAX_ATTEMPTS}] Status: '${STATUS}' (${STATUS_DETAILS})"
+            else
+              # Handle non-JSON response (e.g. InvocationDoesNotExist during early propagation)
+              if echo "${INVOCATION_RAW}" | grep -q "InvocationDoesNotExist"; then
+                echo "   [Attempt ${ATTEMPT}/${MAX_ATTEMPTS}] Initializing invocation record in SSM backend..."
+                STATUS="Pending"
+              else
+                echo "   [Attempt ${ATTEMPT}/${MAX_ATTEMPTS}] Query notice: ${INVOCATION_RAW}"
+                STATUS="Pending"
+              fi
+            fi
+
+            # Check for terminal statuses
+            case "${STATUS}" in
+              "Success")
+                echo "================================================================="
+                echo "🎉 SSM COMMAND COMPLETED SUCCESSFULLY ON EC2!"
+                echo "================================================================="
+                echo "--- STDOUT ---"
+                echo "${INVOCATION_RAW}" | jq -r '.StandardOutputContent // ""'
+                STDERR=$(echo "${INVOCATION_RAW}" | jq -r '.StandardErrorContent // ""')
+                if [ -n "${STDERR}" ] && [ "${STDERR}" != "null" ]; then
+                  echo "--- STDERR ---"
+                  echo "${STDERR}"
+                fi
+                echo "================================================================="
+                echo "✅ Production deployment verified successfully on EC2!"
+                exit 0
+                ;;
+
+              "Failed"|"Cancelled"|"TimedOut"|"DeliveryTimedOut"|"Undeliverable")
+                echo "================================================================="
+                echo "❌ SSM COMMAND TERMINATED WITH STATUS: '${STATUS}'"
+                echo "================================================================="
+                echo "--- STDOUT ---"
+                echo "${INVOCATION_RAW}" | jq -r '.StandardOutputContent // ""'
+                echo "--- STDERR ---"
+                echo "${INVOCATION_RAW}" | jq -r '.StandardErrorContent // ""'
+                echo "================================================================="
+                exit 1
+                ;;
+
+              *)
+                # Non-terminal status: Pending, InProgress, Delayed
+                ;;
+            esac
+
+            if [ ${ATTEMPT} -ge ${MAX_ATTEMPTS} ]; then
+              echo "================================================================="
+              echo "❌ ERROR: Timed out waiting for SSM command execution after 15 minutes."
+              echo "   Command ID : ${COMMAND_ID}"
+              echo "   Target ID  : ${EC2_INSTANCE_ID}"
+              echo "   Last Status: ${STATUS}"
+              echo "================================================================="
+              if echo "${INVOCATION_RAW}" | jq -e . >/dev/null 2>&1; then
+                echo "--- RECENT STDOUT ---"
+                echo "${INVOCATION_RAW}" | jq -r '.StandardOutputContent // ""'
+                echo "--- RECENT STDERR ---"
+                echo "${INVOCATION_RAW}" | jq -r '.StandardErrorContent // ""'
+              fi
               exit 1
             fi
 
             sleep 10
-
-            INVOCATION_JSON=$(aws ssm get-command-invocation \
-              --command-id "${COMMAND_ID}" \
-              --instance-id "${{ env.EC2_INSTANCE_ID }}" \
-              --region "${{ env.AWS_REGION }}" \
-              --output json 2>/dev/null || echo '{"Status":"Pending"}')
-
-            STATUS=$(echo "${INVOCATION_JSON}" | jq -r '.Status // "Pending"')
-            echo "   • Attempt ${ATTEMPT}/${MAX_ATTEMPTS}: Status is '${STATUS}'"
           done
-
-          echo "================================================================="
-          echo "📋 EC2 SSM DEPLOYMENT OUTPUT (Status: ${STATUS})"
-          echo "================================================================="
-
-          echo "--- STDOUT ---"
-          echo "${INVOCATION_JSON}" | jq -r '.StandardOutputContent // ""'
-
-          STDERR=$(echo "${INVOCATION_JSON}" | jq -r '.StandardErrorContent // ""')
-          if [ -n "${STDERR}" ] && [ "${STDERR}" != "null" ]; then
-            echo "--- STDERR ---"
-            echo "${STDERR}"
-          fi
-          echo "================================================================="
-
-          if [ "${STATUS}" != "Success" ]; then
-            echo "❌ ERROR: SSM Command failed with status '${STATUS}'."
-            exit 1
-          fi
-
-          echo "🎉 Production deployment successfully completed and verified on EC2!"
