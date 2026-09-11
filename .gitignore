@@ -5,17 +5,7 @@ build/
 uploads/*
 !uploads/.gitkeep
 
-# Environment files & secrets
-.env
-.env.*
-**/.env
-**/.env.*
-!.env.example
-!.env.development.example
-!.env.production.example
-!**/.env.example
-!**/.env.development.example
-!**/.env.production.example
+# Temporary deployment state files
 deployment-state.env
 **/deployment-state.env
 *.pem
