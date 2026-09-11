@@ -2,7 +2,7 @@ name: Production Deployment (AWS SSM)
 
 on:
   workflow_run:
-    workflows: ['Build & Push to ECR']
+    workflows: ['Build and Push Backend Images']
     types:
       - completed
     branches:
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       commit_sha:
-        description: 'Git Commit SHA to deploy (leave empty to use latest main commit)'
+        description: 'Git Commit SHA to deploy (short or full 40-character SHA, leave empty for latest main commit)'
         required: false
         default: ''
 
@@ -35,22 +35,55 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
+      # ---------------------------------------------------------
+      # 1. Checkout repository with full history
+      # ---------------------------------------------------------
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Determine Target Commit SHA
+      # ---------------------------------------------------------
+      # 2. Resolve target Commit SHA (supports short or full SHA)
+      # ---------------------------------------------------------
+      - name: Resolve Target Commit SHA
         id: vars
         run: |
-          if [ -n "${{ github.event.inputs.commit_sha }}" ]; then
-            TARGET_SHA="${{ github.event.inputs.commit_sha }}"
-          elif [ -n "${{ github.event.workflow_run.head_sha }}" ]; then
-            TARGET_SHA="${{ github.event.workflow_run.head_sha }}"
-          else
-            TARGET_SHA="${{ github.sha }}"
-          fi
-          echo "target_sha=${TARGET_SHA}" >> "$GITHUB_OUTPUT"
-          echo "🚀 Deploying Commit SHA: ${TARGET_SHA}"
+          RAW_INPUT="${{ github.event.inputs.commit_sha }}"
+          RAW_INPUT="$(echo -e "${RAW_INPUT}" | tr -d '[:space:]')"
 
+          if [ -n "${RAW_INPUT}" ]; then
+            LOOKUP_REF="${RAW_INPUT}"
+          elif [ -n "${{ github.event.workflow_run.head_sha }}" ]; then
+            LOOKUP_REF="${{ github.event.workflow_run.head_sha }}"
+          else
+            LOOKUP_REF="HEAD"
+          fi
+
+          echo "Resolving Git commit revision for reference: '${LOOKUP_REF}'..."
+          
+          # Safely resolve full 40-character commit SHA using git rev-parse
+          if ! FULL_SHA="$(git rev-parse --verify "${LOOKUP_REF}^{commit}" 2>/dev/null)"; then
+            echo "❌ ERROR: Cannot resolve '${LOOKUP_REF}' to a valid Git commit."
+            echo "   Please provide a valid commit SHA or ensure the commit exists on remote."
+            exit 1
+          fi
+
+          # Validate that the resolved SHA is exactly 40 hexadecimal characters
+          if [[ ! "${FULL_SHA}" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "❌ ERROR: Resolved value '${FULL_SHA}' is not a valid 40-character Git SHA."
+            exit 1
+          fi
+
+          echo "Input SHA: ${LOOKUP_REF}"
+          echo "Resolved full SHA: ${FULL_SHA}"
+
+          echo "target_sha=${FULL_SHA}" >> "$GITHUB_OUTPUT"
+          echo "TARGET_SHA=${FULL_SHA}" >> "$GITHUB_ENV"
+
+      # ---------------------------------------------------------
+      # 3. Configure AWS credentials using GitHub OIDC
+      # ---------------------------------------------------------
       - name: Configure AWS Credentials (GitHub OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -58,11 +91,17 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
 
-      - name: Verify All 12 Microservice Images Exist in ECR
+      # ---------------------------------------------------------
+      # 4. Verify all 12 microservice images exist in ECR
+      # ---------------------------------------------------------
+      - name: Verify All 12 Microservice Images in ECR
         env:
           TARGET_SHA: ${{ steps.vars.outputs.target_sha }}
         run: |
-          echo "🔍 Verifying all 12 ECR images for SHA ${TARGET_SHA}..."
+          echo "================================================================="
+          echo "🔍 Verifying all 12 ECR images for full SHA: ${TARGET_SHA}"
+          echo "================================================================="
+          
           SERVICES=(
             "api-gateway"
             "auth-service"
@@ -77,33 +116,61 @@ jobs:
             "content-service"
             "worker-service"
           )
-          
-          MISSING=0
-          for svc in "${SERVICES[@]}"; do
-            TAG="${svc}-${TARGET_SHA}"
-            echo -n "  • Checking ${TAG} in ECR ... "
-            if aws ecr describe-images --repository-name "${{ env.ECR_REPOSITORY }}" --image-ids imageTag="${TAG}" --region "${{ env.AWS_REGION }}" >/dev/null 2>&1; then
-              echo "✅ FOUND"
-            else
-              echo "❌ MISSING"
-              MISSING=$((MISSING + 1))
+
+          # Polling loop: waits for images to become available (resilient against build timing)
+          MAX_ATTEMPTS=40
+          ATTEMPT=0
+
+          while true; do
+            ATTEMPT=$((ATTEMPT + 1))
+            MISSING_SERVICES=()
+
+            for svc in "${SERVICES[@]}"; do
+              TAG="${svc}-${TARGET_SHA}"
+              if ! aws ecr describe-images \
+                --repository-name "${{ env.ECR_REPOSITORY }}" \
+                --image-ids imageTag="${TAG}" \
+                --region "${{ env.AWS_REGION }}" >/dev/null 2>&1; then
+                MISSING_SERVICES+=("${TAG}")
+              fi
+            done
+
+            if [ ${#MISSING_SERVICES[@]} -eq 0 ]; then
+              echo "✅ All 12 microservice images confirmed present in ECR for full SHA: ${TARGET_SHA}"
+              for svc in "${SERVICES[@]}"; do
+                echo "  • Verified: ${svc}-${TARGET_SHA}"
+              done
+              break
             fi
+
+            if [ ${ATTEMPT} -ge ${MAX_ATTEMPTS} ]; then
+              echo "❌ ERROR: Timed out waiting for images in ECR after ${MAX_ATTEMPTS} attempts."
+              echo "Missing images (${#MISSING_SERVICES[@]}/12):"
+              for missing in "${MISSING_SERVICES[@]}"; do
+                echo "  - ${missing}"
+              done
+              exit 1
+            fi
+
+            echo "⏳ [Attempt ${ATTEMPT}/${MAX_ATTEMPTS}] ${#MISSING_SERVICES[@]}/12 images not yet in ECR. Waiting 15s..."
+            sleep 15
           done
 
-          if [ ${MISSING} -ne 0 ]; then
-            echo "❌ ERROR: ${MISSING} required image(s) are missing in ECR for SHA ${TARGET_SHA}."
-            exit 1
-          fi
-          echo "✅ All 12 images verified in ECR."
-
+      # ---------------------------------------------------------
+      # 5. Dispatch deployment to EC2 via AWS SSM SendCommand
+      # ---------------------------------------------------------
       - name: Execute Deployment via AWS SSM SendCommand
         id: ssm_deploy
         env:
           TARGET_SHA: ${{ steps.vars.outputs.target_sha }}
         run: |
-          echo "📡 Sending SSM Command to EC2 Instance: ${{ env.EC2_INSTANCE_ID }}"
-          
-          # Prepare SSM RunShellScript command
+          echo "================================================================="
+          echo "📡 Dispatching AWS SSM SendCommand"
+          echo "   Target Instance ID : ${{ env.EC2_INSTANCE_ID }}"
+          echo "   Document Name      : AWS-RunShellScript"
+          echo "   Target Full SHA    : ${TARGET_SHA}"
+          echo "================================================================="
+
           COMMAND_JSON=$(jq -n \
             --arg sha "${TARGET_SHA}" \
             '{
@@ -128,31 +195,34 @@ jobs:
           echo "command_id=${COMMAND_ID}" >> "$GITHUB_OUTPUT"
           echo "✅ SSM Command dispatched. Command ID: ${COMMAND_ID}"
 
+      # ---------------------------------------------------------
+      # 6. Wait for SSM command completion and stream execution logs
+      # ---------------------------------------------------------
       - name: Wait for SSM Command Completion & Stream Logs
         env:
           COMMAND_ID: ${{ steps.ssm_deploy.outputs.command_id }}
         run: |
           echo "⏳ Waiting for SSM Command ${COMMAND_ID} execution on EC2 instance ${{ env.EC2_INSTANCE_ID }}..."
-          
+
           STATUS="Pending"
           MAX_ATTEMPTS=60
           ATTEMPT=0
-          
+
           while [[ "${STATUS}" == "Pending" || "${STATUS}" == "InProgress" || "${STATUS}" == "Delayed" ]]; do
             ATTEMPT=$((ATTEMPT + 1))
             if [ ${ATTEMPT} -gt ${MAX_ATTEMPTS} ]; then
               echo "❌ ERROR: Timed out waiting for SSM command execution (10 minutes)."
               exit 1
             fi
-            
+
             sleep 10
-            
+
             INVOCATION_JSON=$(aws ssm get-command-invocation \
               --command-id "${COMMAND_ID}" \
               --instance-id "${{ env.EC2_INSTANCE_ID }}" \
               --region "${{ env.AWS_REGION }}" \
               --output json 2>/dev/null || echo '{"Status":"Pending"}')
-              
+
             STATUS=$(echo "${INVOCATION_JSON}" | jq -r '.Status // "Pending"')
             echo "   • Attempt ${ATTEMPT}/${MAX_ATTEMPTS}: Status is '${STATUS}'"
           done
@@ -160,10 +230,10 @@ jobs:
           echo "================================================================="
           echo "📋 EC2 SSM DEPLOYMENT OUTPUT (Status: ${STATUS})"
           echo "================================================================="
-          
+
           echo "--- STDOUT ---"
           echo "${INVOCATION_JSON}" | jq -r '.StandardOutputContent // ""'
-          
+
           STDERR=$(echo "${INVOCATION_JSON}" | jq -r '.StandardErrorContent // ""')
           if [ -n "${STDERR}" ] && [ "${STDERR}" != "null" ]; then
             echo "--- STDERR ---"
@@ -176,4 +246,4 @@ jobs:
             exit 1
           fi
 
-          echo "🎉 Deployment successfully verified on EC2!"
+          echo "🎉 Production deployment successfully completed and verified on EC2!"
