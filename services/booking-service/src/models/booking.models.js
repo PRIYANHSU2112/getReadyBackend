@@ -14,6 +14,7 @@ export const BOOKING_STATUS = Object.freeze({
   SERVICES_COMPLETED: 'SERVICES_COMPLETED',
   COMPLETION_PENDING: 'COMPLETION_PENDING',
   COMPLETED: 'COMPLETED',
+  RESCHEDULED: 'RESCHEDULED',
   CANCELLED: 'CANCELLED',
   PAYMENT_FAILED: 'PAYMENT_FAILED',
   FAILED: 'FAILED',
@@ -277,7 +278,12 @@ const bookingSchema = new mongoose.Schema(
 
 bookingSchema.index({ accountOwnerId: 1, createdAt: -1 });
 bookingSchema.index({ status: 1, scheduledDate: 1 });
-bookingSchema.index({ 'beauticianAssignments.beauticianId': 1 });
+bookingSchema.index({ scheduledDate: 1, 'beauticianAssignments.beauticianId': 1 });
+bookingSchema.index({ scheduledDate: 1, status: 1 });
+bookingSchema.index({ scheduledStartTime: 1, scheduledEndTime: 1 });
+bookingSchema.index({ 'items.serviceId': 1 });
+bookingSchema.index({ 'addressSnapshot.city': 1 });
+bookingSchema.index({ 'addressSnapshot.pincode': 1 });
 
 bookingSchema.methods.toJSON = function toJSON() {
   const obj = this.toObject();

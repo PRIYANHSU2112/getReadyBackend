@@ -66,6 +66,7 @@ describe('Booking Service — Complete Multi-Customer & Multi-Beautician Busines
       findUserBookings: jest.fn().mockResolvedValue({ items: [], total: 0 }),
       findAndCount: jest.fn().mockResolvedValue({ items: [], total: 0 }),
       findBeauticianAssignments: jest.fn(),
+      findOverlappingBookings: jest.fn().mockResolvedValue([]),
       updateAssignments: jest.fn(),
       updateItemStatus: jest.fn(),
     };

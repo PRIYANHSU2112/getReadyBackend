@@ -77,9 +77,12 @@ export function createGatewayRouter(serviceOverrides = {}) {
   router.use('/api/v1/hygiene-kits', createServiceProxy(services.catalog, 'catalog-service'));
   router.use('/api/v1/coupons', createServiceProxy(services.catalog, 'catalog-service'));
 
-  // 5. Booking Service (/api/v1/slots, bookings, reports, settings)
+  // 5. Booking & Calendar Service (/api/v1/slots, bookings, calendar, reports, settings)
   router.use('/api/v1/slots', createServiceProxy(services.booking, 'booking-service'));
+  router.use('/api/v1/calendar', createServiceProxy(services.booking, 'booking-service'));
   router.use('/api/v1/bookings', createServiceProxy(services.booking, 'booking-service'));
+  router.use('/admin/calendar', createServiceProxy(services.booking, 'booking-service'));
+  router.use('/admin/bookings', createServiceProxy(services.booking, 'booking-service'));
   router.use('/api/v1/reports', createServiceProxy(services.booking, 'booking-service'));
   router.use('/api/v1/settings', createServiceProxy(services.booking, 'booking-service'));
 

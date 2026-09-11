@@ -114,6 +114,7 @@ Authorization: Bearer <your_jwt_token>
     { name: 'Hygiene Kits', description: 'Safety & Hygiene Kit Management' },
     { name: 'Slots', description: 'Time Slots & Real-time Hold/Release' },
     { name: 'Bookings', description: 'Order Bookings, Scheduling & Status' },
+    { name: 'Calendar', description: 'Admin Schedule Calendar, Multi-View, Availability & Conflicts' },
     { name: 'Cart', description: 'Shopping Cart, Multi-person booking & Instructions' },
     { name: 'Payments', description: 'Razorpay Checkout & Webhooks' },
     { name: 'Wallet & Loyalty', description: 'Recharge, Cashback & Loyalty Points' },
@@ -1530,6 +1531,128 @@ Authorization: Bearer <your_jwt_token>
             },
           },
         },
+    '/api/v1/bookings/{id}/reschedule': {
+      patch: {
+        tags: ['Calendar', 'Bookings'],
+        summary: 'Reschedule Booking with Conflict Detection & Admin Audit',
+        security: [{ BearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['date', 'startTime'],
+                properties: {
+                  date: { type: 'string', example: '2026-09-15' },
+                  startTime: { type: 'string', example: '14:00' },
+                  endTime: { type: 'string', example: '15:00' },
+                  beauticianId: { type: 'string' },
+                  beauticianName: { type: 'string' },
+                  reason: { type: 'string', example: 'Customer requested afternoon slot' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { $ref: '#/components/responses/SuccessEnvelope' },
+          409: { description: 'Beautician time conflict' },
+        },
+      },
+    },
+    '/api/v1/bookings/{id}/complete': {
+      post: {
+        tags: ['Calendar', 'Bookings'],
+        summary: 'Admin Direct Booking Completion',
+        security: [{ BearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { notes: { type: 'string', example: 'Admin completed service' } },
+              },
+            },
+          },
+        },
+        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
+      },
+    },
+
+    // ------------------------------------------------------------------------
+    // CALENDAR SERVICE
+    // ------------------------------------------------------------------------
+    '/api/v1/calendar': {
+      get: {
+        tags: ['Calendar'],
+        summary: 'Query Schedule Calendar (Month, Week, Day, Agenda with Day-level Counts & Conflict Indicators)',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'view', in: 'query', schema: { type: 'string', enum: ['month', 'week', 'day', 'agenda'], default: 'month' } },
+          { name: 'startDate', in: 'query', schema: { type: 'string', example: '2026-09-01' } },
+          { name: 'endDate', in: 'query', schema: { type: 'string', example: '2026-09-30' } },
+          { name: 'date', in: 'query', schema: { type: 'string', example: '2026-09-11' } },
+          { name: 'beauticianId', in: 'query', schema: { type: 'string' } },
+          { name: 'serviceId', in: 'query', schema: { type: 'string' } },
+          { name: 'status', in: 'query', schema: { type: 'string' } },
+          { name: 'locationId', in: 'query', schema: { type: 'string' } },
+          { name: 'search', in: 'query', schema: { type: 'string' } },
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 500 } },
+        ],
+        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
+      },
+    },
+    '/api/v1/calendar/today': {
+      get: {
+        tags: ['Calendar'],
+        summary: "Get Today's Appointments with Real-time Conflict Indicators (Right Sidebar)",
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'date', in: 'query', schema: { type: 'string', example: '2026-09-11' } },
+          { name: 'beauticianId', in: 'query', schema: { type: 'string' } },
+        ],
+        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
+      },
+    },
+    '/api/v1/calendar/summary': {
+      get: {
+        tags: ['Calendar'],
+        summary: 'Get Calendar KPI Summary & Dynamic Trend Statistics from Database',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'startDate', in: 'query', schema: { type: 'string', example: '2026-09-01' } },
+          { name: 'endDate', in: 'query', schema: { type: 'string', example: '2026-09-30' } },
+        ],
+        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
+      },
+    },
+    '/api/v1/calendar/availability': {
+      get: {
+        tags: ['Calendar'],
+        summary: 'Get Beautician Available Time Slots',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'date', in: 'query', required: true, schema: { type: 'string', example: '2026-09-11' } },
+          { name: 'beauticianId', in: 'query', schema: { type: 'string' } },
+          { name: 'serviceId', in: 'query', schema: { type: 'string' } },
+          { name: 'durationMinutes', in: 'query', schema: { type: 'integer', default: 60 } },
+        ],
+        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
+      },
+    },
+    '/api/v1/calendar/conflicts': {
+      get: {
+        tags: ['Calendar'],
+        summary: 'Get Detected Booking Overlaps and Schedule Conflicts',
+        security: [{ BearerAuth: [] }],
+        parameters: [
+          { name: 'startDate', in: 'query', schema: { type: 'string' } },
+          { name: 'endDate', in: 'query', schema: { type: 'string' } },
+        ],
         responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
       },
     },

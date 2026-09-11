@@ -18,15 +18,18 @@ import {
 import { SlotInventory } from './inventory/slot.inventory.js';
 import { SlotService } from './services/slot.service.js';
 import { BookingService } from './services/booking.service.js';
+import { CalendarService } from './services/calendar.service.js';
 
 import {
   SlotController,
   BookingController,
 } from './controllers/booking.controllers.js';
+import { CalendarController } from './controllers/calendar.controller.js';
 
 import {
   createSlotRoutes,
   createBookingRoutes,
+  createCalendarRoutes,
   createReportsRoutes,
   createSettingsRoutes,
 } from './routes/booking.routes.js';
@@ -76,15 +79,27 @@ export function createApp(deps = {}) {
   const bookingService =
     deps.bookingService ||
     new BookingService(bookingRepo, slotRepo, outboxRepo, slotInventory, deps.eventPublisher || null);
+  const calendarService =
+    deps.calendarService ||
+    new CalendarService(bookingRepo, slotRepo, deps.eventPublisher || null);
 
   const slotCtrl = new SlotController(slotService);
   const bookingCtrl = new BookingController(bookingService);
+  const calendarCtrl = new CalendarController(calendarService);
 
   // Mount routes
+  const calendarRouter = createCalendarRoutes(calendarCtrl);
+  const bookingRouter = createBookingRoutes(bookingCtrl, calendarCtrl);
+
   app.use('/api/v1/slots', createSlotRoutes(slotCtrl));
-  app.use('/api/v1/bookings', createBookingRoutes(bookingCtrl));
+  app.use('/api/v1/calendar', calendarRouter);
+  app.use('/api/v1/bookings', bookingRouter);
   app.use('/api/v1/reports', createReportsRoutes(bookingCtrl));
   app.use('/api/v1/settings', createSettingsRoutes(bookingCtrl));
+
+  // Admin route aliases for direct matching
+  app.use('/admin/calendar', calendarRouter);
+  app.use('/admin/bookings', bookingRouter);
 
   // 404
   app.use((req, res) => {
@@ -99,7 +114,7 @@ export function createApp(deps = {}) {
     return ApiResponse.error(res, message, statusCode, err.code || ErrorCodes.INTERNAL_ERROR, err.details, req.requestId);
   });
 
-  return { app, bookingService };
+  return { app, bookingService, calendarService };
 }
 
 export default createApp;

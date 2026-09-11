@@ -311,6 +311,31 @@ export class BookingService {
     const traceCtx = getTraceContext();
     const eventId = crypto.randomUUID();
 
+    const targetDate = scheduledDate || new Date().toISOString().split('T')[0];
+    const targetStartTime = scheduledStartTime ? new Date(scheduledStartTime) : new Date();
+    const targetEndTime = scheduledEndTime ? new Date(scheduledEndTime) : new Date(Date.now() + 60 * 60 * 1000);
+
+    // Conflict Check for Assigned Beauticians
+    if (typeof this.bookingRepo.findOverlappingBookings === 'function') {
+      for (const assignment of assignmentResult.assignments || []) {
+        if (assignment.beauticianId) {
+          const overlapping = await this.bookingRepo.findOverlappingBookings({
+            date: targetDate,
+            startTime: targetStartTime,
+            endTime: targetEndTime,
+            beauticianId: assignment.beauticianId,
+          });
+          if (overlapping && overlapping.length > 0) {
+            throw new AppError(
+              `Beautician ${assignment.beauticianName || assignment.beauticianId} is already booked during this time interval.`,
+              HttpStatus.CONFLICT,
+              'BEAUTICIAN_TIME_CONFLICT',
+            );
+          }
+        }
+      }
+    }
+
     // 7. Atomic ACID Transaction for Booking + Outbox + Slot
     const result = await this.#runInSession(async (session) => {
       if (slotId) {

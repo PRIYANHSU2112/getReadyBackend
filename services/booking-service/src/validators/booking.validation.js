@@ -178,4 +178,46 @@ export const bookingValidator = {
     cashbackEnabled: Joi.boolean().optional(),
     pointsEnabled: Joi.boolean().optional(),
   }),
+
+  calendarQuery: Joi.object({
+    view: Joi.string().valid('month', 'week', 'day', 'agenda').optional(),
+    startDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    endDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    beauticianId: Joi.string().optional().allow(''),
+    serviceId: Joi.string().optional().allow(''),
+    status: Joi.string().optional().allow(''),
+    locationId: Joi.string().optional().allow(''),
+    search: Joi.string().trim().optional().allow(''),
+    page: Joi.number().min(1).optional(),
+    limit: Joi.number().min(1).max(1000).optional(),
+  }),
+
+  calendarSummaryQuery: Joi.object({
+    startDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    endDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    beauticianId: Joi.string().optional().allow(''),
+    serviceId: Joi.string().optional().allow(''),
+    locationId: Joi.string().optional().allow(''),
+  }),
+
+  availabilityQuery: Joi.object({
+    date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+    beauticianId: Joi.string().optional().allow('', null),
+    serviceId: Joi.string().optional().allow('', null),
+    durationMinutes: Joi.number().min(15).max(480).default(60),
+  }),
+
+  rescheduleBooking: Joi.object({
+    date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+    startTime: Joi.string().pattern(/^\d{2}:\d{2}$/).required(),
+    endTime: Joi.string().pattern(/^\d{2}:\d{2}$/).optional(),
+    beauticianId: Joi.string().optional().allow('', null),
+    beauticianName: Joi.string().optional().allow('', null),
+    reason: Joi.string().trim().optional().allow('', null),
+  }),
+
+  completeBooking: Joi.object({
+    notes: Joi.string().trim().optional().allow('', null),
+  }),
 };
