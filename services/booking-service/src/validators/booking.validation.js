@@ -1,0 +1,181 @@
+import Joi from 'joi';
+
+export const bookingValidator = {
+  createSlot: Joi.object({
+    date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+    startAt: Joi.date().iso().required(),
+    endAt: Joi.date().iso().required(),
+    minBookings: Joi.number().min(1).default(1),
+    maxBookings: Joi.number().min(1).default(1),
+    beauticianId: Joi.string().optional().allow(null),
+    serviceIds: Joi.array().items(Joi.string()).optional(),
+    notes: Joi.string().trim().optional().allow(null, ''),
+  }),
+
+  bulkCreateSlots: Joi.object({
+    date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
+    startHour: Joi.number().min(0).max(23).default(9),
+    endHour: Joi.number().min(1).max(24).default(19),
+    slotDurationMinutes: Joi.number().valid(30, 45, 60, 90, 120).default(60),
+    maxBookings: Joi.number().min(1).default(1),
+    beauticianId: Joi.string().optional().allow(null),
+    serviceIds: Joi.array().items(Joi.string()).optional(),
+  }),
+
+  holdSlot: Joi.object({
+    slotId: Joi.string().required(),
+    partySize: Joi.number().min(1).default(1),
+    ttlSeconds: Joi.number().min(60).max(1800).default(300),
+  }),
+
+  releaseSlot: Joi.object({
+    slotId: Joi.string().required(),
+    holdToken: Joi.string().required(),
+    partySize: Joi.number().min(1).default(1),
+  }),
+
+  previewBooking: Joi.object({
+    items: Joi.array().items(
+      Joi.object({
+        serviceId: Joi.string().optional(),
+        refId: Joi.string().optional(),
+        name: Joi.string().optional(),
+        serviceName: Joi.string().optional(),
+        basePrice: Joi.number().min(0).optional(),
+        unitPrice: Joi.number().min(0).optional(),
+        price: Joi.number().min(0).optional(),
+        quantity: Joi.number().min(1).default(1),
+        customerProfileId: Joi.string().optional().allow(null),
+        forMemberId: Joi.string().optional().allow(null),
+        upgradeSelected: Joi.boolean().default(false),
+        upgradeServiceId: Joi.string().optional().allow(null),
+        upgradeServiceName: Joi.string().optional().allow(null),
+        upgradePriceDifference: Joi.number().min(0).default(0),
+        durationMinutes: Joi.number().optional(),
+      }),
+    ).min(1).required(),
+    participants: Joi.array().items(
+      Joi.object({
+        customerProfileId: Joi.string().optional(),
+        id: Joi.string().optional(),
+        name: Joi.string().required(),
+        relationship: Joi.string().default('Self'),
+        gender: Joi.string().default('FEMALE'),
+        age: Joi.number().optional().allow(null),
+        mobileNumber: Joi.string().optional().allow(null, ''),
+      }),
+    ).optional(),
+    hygieneKitQuantity: Joi.number().min(1).default(1),
+    membershipOptIn: Joi.boolean().default(false),
+    userHasMembership: Joi.boolean().default(false),
+    couponCode: Joi.string().optional().allow(null, ''),
+    useWallet: Joi.boolean().default(false),
+    walletBalance: Joi.number().min(0).default(0),
+    usePoints: Joi.boolean().default(false),
+    pointsBalance: Joi.number().min(0).default(0),
+    useCashback: Joi.boolean().default(false),
+    cashbackBalance: Joi.number().min(0).default(0),
+    schedulingMode: Joi.string().valid('INSTANT', 'SCHEDULED').default('SCHEDULED'),
+    preferredBeauticianCount: Joi.number().min(1).max(5).default(1),
+  }),
+
+  createBooking: Joi.object({
+    idempotencyKey: Joi.string().optional().allow(null, ''),
+    schedulingMode: Joi.string().valid('INSTANT', 'SCHEDULED').default('SCHEDULED'),
+    slotId: Joi.string().optional().allow(null),
+    scheduledDate: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    scheduledStartTime: Joi.date().iso().optional().allow(null),
+    scheduledEndTime: Joi.date().iso().optional().allow(null),
+    holdToken: Joi.string().optional().allow(null),
+    addressId: Joi.string().required(),
+    addressSnapshot: Joi.object().required(),
+    participants: Joi.array().items(
+      Joi.object({
+        customerProfileId: Joi.string().optional(),
+        id: Joi.string().optional(),
+        name: Joi.string().required(),
+        relationship: Joi.string().default('Self'),
+        gender: Joi.string().default('FEMALE'),
+        age: Joi.number().optional().allow(null),
+        mobileNumber: Joi.string().optional().allow(null, ''),
+        skinType: Joi.string().optional().allow(null, ''),
+        hairType: Joi.string().optional().allow(null, ''),
+        allergies: Joi.array().items(Joi.string()).optional(),
+        notes: Joi.string().optional().allow(null, ''),
+      }),
+    ).min(1).required(),
+    items: Joi.array().items(
+      Joi.object({
+        itemType: Joi.string().valid('SERVICE', 'PACKAGE').default('SERVICE'),
+        serviceId: Joi.string().optional(),
+        refId: Joi.string().optional(),
+        name: Joi.string().optional(),
+        serviceName: Joi.string().optional(),
+        basePrice: Joi.number().min(0).optional(),
+        unitPrice: Joi.number().min(0).optional(),
+        price: Joi.number().min(0).optional(),
+        quantity: Joi.number().min(1).default(1),
+        customerProfileId: Joi.string().optional().allow(null),
+        forMemberId: Joi.string().optional().allow(null),
+        upgradeSelected: Joi.boolean().default(false),
+        upgradeServiceId: Joi.string().optional().allow(null),
+        upgradeServiceName: Joi.string().optional().allow(null),
+        upgradePriceDifference: Joi.number().min(0).default(0),
+        durationMinutes: Joi.number().optional(),
+      }),
+    ).min(1).required(),
+    hygieneKitQuantity: Joi.number().min(1).default(1),
+    membershipOptIn: Joi.boolean().default(false),
+    userHasMembership: Joi.boolean().default(false),
+    couponCode: Joi.string().optional().allow(null, ''),
+    useWallet: Joi.boolean().default(false),
+    walletBalance: Joi.number().min(0).default(0),
+    usePoints: Joi.boolean().default(false),
+    pointsBalance: Joi.number().min(0).default(0),
+    useCashback: Joi.boolean().default(false),
+    cashbackBalance: Joi.number().min(0).default(0),
+    paymentMethod: Joi.string().valid('online', 'wallet', 'cod', 'mixed').default('online'),
+    preferredBeauticianCount: Joi.number().min(1).max(5).default(1),
+    specialInstructions: Joi.string().trim().optional().allow(null, ''),
+  }),
+
+  verifyOtp: Joi.object({
+    otp: Joi.string().length(4).required(),
+  }),
+
+  completeItem: Joi.object({
+    notes: Joi.string().trim().optional().allow(null, ''),
+  }),
+
+  cancelBooking: Joi.object({
+    reason: Joi.string().trim().default('User requested cancellation'),
+    isDelayed: Joi.boolean().default(false),
+  }),
+
+  adminAssign: Joi.object({
+    assignments: Joi.array().items(
+      Joi.object({
+        beauticianId: Joi.string().required(),
+        beauticianName: Joi.string().required(),
+        assignedItemIds: Joi.array().items(Joi.string()).required(),
+      }),
+    ).min(1).required(),
+  }),
+
+  updateSettings: Joi.object({
+    multipleBeauticianEnabled: Joi.boolean().optional(),
+    maxBeauticiansPerBooking: Joi.number().min(1).max(10).optional(),
+    serviceUpgradeEnabled: Joi.boolean().optional(),
+    minUpgradeDifference: Joi.number().min(0).optional(),
+    maxUpgradeDifference: Joi.number().min(0).optional(),
+    hygieneKitMandatory: Joi.boolean().optional(),
+    hygieneKitPrice: Joi.number().min(0).optional(),
+    hygieneKitDefaultQuantity: Joi.number().min(1).optional(),
+    instantServiceEnabled: Joi.boolean().optional(),
+    instantServiceMembersOnly: Joi.boolean().optional(),
+    cancellationPolicy: Joi.object().optional(),
+    couponEnabled: Joi.boolean().optional(),
+    cashbackEnabled: Joi.boolean().optional(),
+    pointsEnabled: Joi.boolean().optional(),
+  }),
+};

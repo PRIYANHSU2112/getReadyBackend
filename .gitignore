@@ -4,9 +4,17 @@ dist/
 build/
 uploads/*
 !uploads/.gitkeep
+
+# Environment files & secrets
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!.env.development.example
+!.env.production.example
+*.pem
+*.key
+*.cert
+
 *.log
 npm-debug.log*
 .DS_Store

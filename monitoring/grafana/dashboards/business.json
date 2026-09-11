@@ -1,0 +1,78 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "title": "GETREADY - BUSINESS",
+  "tags": ["getready", "business"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Bookings Created & Confirmed",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(bookings_created_total[5m]))",
+          "legendFormat": "Bookings Created / sec"
+        },
+        {
+          "expr": "sum(rate(bookings_confirmed_total[5m]))",
+          "legendFormat": "Bookings Confirmed / sec"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Payment Success vs Failures",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(payments_success_total[5m]))",
+          "legendFormat": "Payments Succeeded"
+        },
+        {
+          "expr": "sum(rate(payments_failed_total[5m]))",
+          "legendFormat": "Payments Failed"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Wallet Credits vs Debits",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(wallet_credits_total[5m])) by (category)",
+          "legendFormat": "Credits ({{category}})"
+        },
+        {
+          "expr": "sum(rate(wallet_debits_total[5m])) by (category)",
+          "legendFormat": "Debits ({{category}})"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Notifications Dispatched",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(notifications_sent_total[5m])) by (channel)",
+          "legendFormat": "Sent ({{channel}})"
+        },
+        {
+          "expr": "sum(rate(notifications_failed_total[5m])) by (channel)",
+          "legendFormat": "Failed ({{channel}})"
+        }
+      ]
+    }
+  ]
+}

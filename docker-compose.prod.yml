@@ -1,81 +1,299 @@
-x-logging: &default-logging
+version: '3.8'
+
+x-logging: &prod-logging
   driver: json-file
   options:
     max-size: '10m'
-    max-file: '3'
+    max-file: '5'
 
-x-deploy-limits: &default-deploy
+x-deploy-limits: &prod-deploy
   resources:
     limits:
-      memory: 512M
-      cpus: '1.0'
+      memory: 768M
+      cpus: '1.5'
+    reservations:
+      memory: 256M
+      cpus: '0.25'
+
+networks:
+  getready-prod-network:
+    driver: bridge
+    internal: false
+  getready-internal-network:
+    driver: bridge
+    internal: true
+
+volumes:
+  prometheus_prod_data:
+  grafana_prod_data:
+  uploads_prod_data:
 
 services:
-  app:
+  # =========================================================================
+  # PRODUCTION API GATEWAY (Public Facing Entrypoint)
+  # =========================================================================
+
+  api-gateway:
     build:
       context: .
+      dockerfile: services/api-gateway/Dockerfile
       target: production
-    container_name: salon-api
-    restart: unless-stopped
+    container_name: getready-prod-api-gateway
+    restart: always
     ports:
-      # Host port from .env PORT (e.g. 5000) → container always listens on 3000
       - '${PORT:-3000}:3000'
     env_file:
-      - .env
+      - .env.production
     environment:
       NODE_ENV: production
-      # Override .env PORT so the app listens on the mapped container port
       PORT: 3000
-      APP_URL: http://localhost:${PORT:-3000}
-      # MongoDB: use DATABASE_URI / MONGODB_URI from .env (Atlas)
-      # Redis: Redis Cloud connection string, set in server .env
-      REDIS_URL: ${REDIS_URL}
-      REDIS_ENABLED: 'true'
-    volumes:
-      - uploads_data:/app/uploads
-    logging: *default-logging
-    deploy: *default-deploy
+      GATEWAY_PORT: 3000
+      SWAGGER_ENABLED: 'false'
+      AUTH_SERVICE_URL: http://auth-service:3001
+      USER_SERVICE_URL: http://user-service:3002
+      BEAUTICIAN_SERVICE_URL: http://beautician-service:3003
+      CATALOG_SERVICE_URL: http://catalog-service:3004
+      BOOKING_SERVICE_URL: http://booking-service:3005
+      CART_SERVICE_URL: http://cart-service:3006
+      PAYMENT_SERVICE_URL: http://payment-service:3007
+      WALLET_SERVICE_URL: http://wallet-service:3008
+      NOTIFICATION_SERVICE_URL: http://notification-service:3009
+      CONTENT_SERVICE_URL: http://content-service:3010
+      WORKER_SERVICE_URL: http://worker-service:3011
+    logging: *prod-logging
+    deploy: *prod-deploy
     networks:
-      - salon-network
+      - getready-prod-network
+      - getready-internal-network
+    depends_on:
+      - auth-service
+      - user-service
+
+  # =========================================================================
+  # INTERNAL MICROSERVICES (Zero Public Ports Exposed)
+  # =========================================================================
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+      target: production
+    container_name: getready-prod-auth-service
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      USER_SERVICE_URL: http://user-service:3002
+    logging: *prod-logging
+    deploy: *prod-deploy
+    networks:
+      - getready-internal-network
+
+  user-service:
+    build:
+      context: .
+      dockerfile: services/user-service/Dockerfile
+      target: production
+    container_name: getready-prod-user-service
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+    logging: *prod-logging
+    deploy: *prod-deploy
+    networks:
+      - getready-internal-network
+
+  beautician-service:
+    build:
+      context: .
+      dockerfile: services/beautician-service/Dockerfile
+      target: production
+    container_name: getready-prod-beautician-service
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 3003
+    logging: *prod-logging
+    deploy: *prod-deploy
+    networks:
+      - getready-internal-network
+
+  catalog-service:
+    build:
+      context: .
+      dockerfile: services/catalog-service/Dockerfile
+      target: production
+    container_name: getready-prod-catalog-service
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 3004
+    logging: *prod-logging
+    deploy: *prod-deploy
+    networks:
+      - getready-internal-network
+
+  booking-service:
+    build:
+      context: .
+      dockerfile: services/booking-service/Dockerfile
+      target: production
+    container_name: getready-prod-booking-service
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 3005
+      USER_SERVICE_URL: http://user-service:3002
+      BEAUTICIAN_SERVICE_URL: http://beautician-service:3003
+      CATALOG_SERVICE_URL: http://catalog-service:3004
+    logging: *prod-logging
+    deploy: *prod-deploy
+    networks:
+      - getready-internal-network
+
+  cart-service:
+    build:
+      context: .
+      dockerfile: services/cart-service/Dockerfile
+      target: production
+    container_name: getready-prod-cart-service
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 3006
+      CATALOG_SERVICE_URL: http://catalog-service:3004
+    logging: *prod-logging
+    deploy: *prod-deploy
+    networks:
+      - getready-internal-network
+
+  payment-service:
+    build:
+      context: .
+      dockerfile: services/payment-service/Dockerfile
+      target: production
+    container_name: getready-prod-payment-service
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 3007
+    logging: *prod-logging
+    deploy: *prod-deploy
+    networks:
+      - getready-internal-network
+
+  wallet-service:
+    build:
+      context: .
+      dockerfile: services/wallet-service/Dockerfile
+      target: production
+    container_name: getready-prod-wallet-service
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 3008
+    logging: *prod-logging
+    deploy: *prod-deploy
+    networks:
+      - getready-internal-network
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: services/notification-service/Dockerfile
+      target: production
+    container_name: getready-prod-notification-service
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 3009
+    logging: *prod-logging
+    deploy: *prod-deploy
+    networks:
+      - getready-internal-network
+
+  content-service:
+    build:
+      context: .
+      dockerfile: services/content-service/Dockerfile
+      target: production
+    container_name: getready-prod-content-service
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 3010
+    logging: *prod-logging
+    deploy: *prod-deploy
+    networks:
+      - getready-internal-network
+
+  worker-service:
+    build:
+      context: .
+      dockerfile: services/worker-service/Dockerfile
+      target: production
+    container_name: getready-prod-worker-service
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 3011
+    logging: *prod-logging
+    deploy: *prod-deploy
+    networks:
+      - getready-internal-network
+
+  # =========================================================================
+  # PRODUCTION OBSERVABILITY (Secured with Non-Default Credentials)
+  # =========================================================================
 
   prometheus:
     image: prom/prometheus:v2.54.1
-    container_name: salon-prometheus
-    restart: unless-stopped
+    container_name: getready-prod-prometheus
+    restart: always
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus
-    ports:
-      - '9090:9090'
-    logging: *default-logging
-    deploy: *default-deploy
+      - prometheus_prod_data:/prometheus
+    logging: *prod-logging
+    deploy: *prod-deploy
     networks:
-      - salon-network
+      - getready-internal-network
 
   grafana:
     image: grafana/grafana:11.2.0
-    container_name: salon-grafana
-    restart: unless-stopped
+    container_name: getready-prod-grafana
+    restart: always
+    env_file:
+      - .env.production
     environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-getready_admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
     volumes:
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
-      - grafana_data:/var/lib/grafana
-    ports:
-      - '3001:3000'
-    depends_on:
-      - prometheus
-    logging: *default-logging
-    deploy: *default-deploy
+      - grafana_prod_data:/var/lib/grafana
+    logging: *prod-logging
+    deploy: *prod-deploy
     networks:
-      - salon-network
-
-volumes:
-  uploads_data:
-  prometheus_data:
-  grafana_data:
-
-networks:
-  salon-network:
-    driver: bridge
+      - getready-internal-network

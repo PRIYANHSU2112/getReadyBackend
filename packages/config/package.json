@@ -1,0 +1,12 @@
+{
+  "name": "@getready/config",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "dependencies": {
+    "dotenv": "^16.4.7"
+  },
+  "exports": {
+    ".": "./index.js"
+  }
+}

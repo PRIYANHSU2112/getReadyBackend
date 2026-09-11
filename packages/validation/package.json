@@ -1,0 +1,13 @@
+{
+  "name": "@getready/validation",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "dependencies": {
+    "joi": "^17.13.3",
+    "@getready/errors": "^1.0.0"
+  },
+  "exports": {
+    ".": "./index.js"
+  }
+}

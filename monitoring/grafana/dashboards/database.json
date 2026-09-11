@@ -1,0 +1,38 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "title": "GETREADY - DATABASE",
+  "tags": ["getready", "database"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Database Query Latency per Service",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(database_query_duration_seconds_bucket[1m])) by (le, service))",
+          "legendFormat": "p95 Query Latency ({{service}})"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Active Database Connections",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "database_connections_active",
+          "legendFormat": "{{service}} active connections"
+        }
+      ]
+    }
+  ]
+}

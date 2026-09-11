@@ -1,0 +1,19 @@
+{
+  "name": "@getready/booking-service",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/server.js",
+  "dependencies": {
+    "express": "^4.21.2",
+    "mongoose": "^8.9.3",
+    "ioredis": "^5.4.2",
+    "uuid": "^11.0.3",
+    "@getready/errors": "^1.0.0",
+    "@getready/logger": "^1.0.0",
+    "@getready/tracing": "^1.0.0",
+    "@getready/metrics": "^1.0.0",
+    "@getready/config": "^1.0.0",
+    "@getready/rabbitmq": "^1.0.0",
+    "@getready/validation": "^1.0.0"
+  }
+}

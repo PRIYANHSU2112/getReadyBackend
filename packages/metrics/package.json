@@ -1,0 +1,12 @@
+{
+  "name": "@getready/metrics",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "dependencies": {
+    "prom-client": "^15.1.3"
+  },
+  "exports": {
+    ".": "./index.js"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "@getready/api-gateway",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/server.js",
+  "dependencies": {
+    "express": "^4.21.2",
+    "express-http-proxy": "^2.1.1",
+    "helmet": "^8.0.0",
+    "cors": "^2.8.5",
+    "compression": "^1.7.5",
+    "express-rate-limit": "^7.5.0",
+    "jsonwebtoken": "^9.0.2",
+    "swagger-ui-express": "^5.0.1",
+    "swagger-jsdoc": "^6.2.8",
+    "@getready/errors": "^1.0.0",
+    "@getready/logger": "^1.0.0",
+    "@getready/tracing": "^1.0.0",
+    "@getready/metrics": "^1.0.0",
+    "@getready/config": "^1.0.0",
+    "@getready/storage": "^1.0.0"
+  }
+}

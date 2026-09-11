@@ -12,7 +12,7 @@ Copy `.env.example` to `.env` and set secrets:
 | Variable | Description |
 |----------|-------------|
 | `NODE_ENV` | `development` \| `test` \| `staging` \| `production` |
-| `MONGODB_URI` | MongoDB connection string |
+| `DATABASE_URI` | MongoDB Atlas connection string |
 | `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` | Redis connection |
 | `JWT_SECRET` | Min 16 characters |
 | `AWS_BUCKET_NAME` / `AWS_*` | S3 storage (required for uploads) |
@@ -31,7 +31,7 @@ Services:
 | Service | Port |
 |---------|------|
 | API | 3000 |
-| MongoDB | 27017 |
+| MongoDB | Atlas Cloud (DATABASE_URI) |
 | Redis | 6379 |
 | Prometheus | 9090 |
 | Grafana | 3001 (admin/admin) |

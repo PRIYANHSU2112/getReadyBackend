@@ -5,52 +5,50 @@
  * Usage:
  *   node scripts/seed-super-admin.js
  *   npm run seed:super-admin
- *
- * Optional env overrides:
- *   SUPER_ADMIN_EMAIL=superadmin@salon.com
- *   SUPER_ADMIN_PASSWORD=SuperAdmin@123
- *   SUPER_ADMIN_NAME=Super Admin
  */
+import dotenv from 'dotenv';
+dotenv.config();
+
 import crypto from 'crypto';
 import mongoose from 'mongoose';
-import config from '../src/core/config/index.js';
-import { UserRole } from '../src/common/constants/enums.js';
-import { UserModel } from '../src/modules/user/user.model.js';
-import { PermissionModel } from '../src/modules/rbac/permission.model.js';
-import { RoleModel } from '../src/modules/rbac/role.model.js';
-import { PermissionRepository } from '../src/modules/rbac/permission.repository.js';
-import { RoleRepository } from '../src/modules/rbac/role.repository.js';
-import { RbacService } from '../src/modules/rbac/rbac.service.js';
-import { getPermissionKeys } from '../src/common/permissions/permission.registry.js';
+import { UserModel } from '../services/user-service/src/models/user.model.js';
+import { PermissionModel } from '../services/user-service/src/models/permission.model.js';
+import { RoleModel } from '../services/user-service/src/models/role.model.js';
+import { PermissionRepository, RoleRepository } from '../services/user-service/src/repositories/rbac.repository.js';
+import { RbacService, SYSTEM_PERMISSIONS } from '../services/user-service/src/services/rbac.service.js';
+
+const mongoUri = process.env.DATABASE_URI;
+if (!mongoUri) {
+  console.error('[ERROR]: DATABASE_URI environment variable is required.');
+  process.exit(1);
+}
 
 const SUPER_ADMIN = {
-  name: process.env.SUPER_ADMIN_NAME || 'Super Admin',
-  email: (process.env.SUPER_ADMIN_EMAIL || 'superadmin@salon.com').toLowerCase().trim(),
-  password: process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin@123',
-  role: UserRole.SUPER_ADMIN,
+  name: process.env.SUPER_ADMIN_NAME || 'GetReady Super Admin',
+  email: (process.env.SUPER_ADMIN_EMAIL || 'admin@getready.com').toLowerCase().trim(),
+  password: process.env.SUPER_ADMIN_PASSWORD || 'Admin@123',
+  role: 'super_admin',
 };
 
 async function ensureRbac() {
   const service = new RbacService(
     new RoleRepository(RoleModel),
     new PermissionRepository(PermissionModel),
-    null,
   );
-  const result = await service.seedDefaults();
+  await service.seedDefaults();
+  const { items: roles } = await service.listRoles();
+  const { items: permissions } = await service.listPermissions();
   console.log(
-    `RBAC ready: ${result.permissions} permission(s), roles: ${result.roles.map((r) => r.slug).join(', ')}`,
+    `RBAC ready: ${permissions.length} permission(s), roles: ${roles.map((r) => r.slug).join(', ')}`,
   );
   return service;
 }
 
-/**
- * Assign every registry permission key to the super_admin role (forced DB write).
- */
-async function grantAllPermissionsToSuperAdminRole(rbacService) {
-  const allKeys = getPermissionKeys();
+async function grantAllPermissionsToSuperAdminRole() {
+  const allKeys = SYSTEM_PERMISSIONS.map((p) => p.key);
 
   const updated = await RoleModel.findOneAndUpdate(
-    { slug: UserRole.SUPER_ADMIN },
+    { slug: 'super_admin' },
     {
       $set: {
         name: 'Super Admin',
@@ -68,9 +66,8 @@ async function grantAllPermissionsToSuperAdminRole(rbacService) {
     throw new Error('Failed to update super_admin role permissions');
   }
 
-  // Keep admin role fully permissioned as well
   await RoleModel.findOneAndUpdate(
-    { slug: UserRole.ADMIN },
+    { slug: 'admin' },
     {
       $set: {
         permissions: allKeys,
@@ -82,15 +79,9 @@ async function grantAllPermissionsToSuperAdminRole(rbacService) {
     { new: true },
   );
 
-  if (rbacService?.invalidateCache) {
-    await rbacService.invalidateCache(`rbac:role-auth:${UserRole.SUPER_ADMIN}`);
-    await rbacService.invalidateCache(`rbac:role-auth:${UserRole.ADMIN}`);
-  }
-
   console.log(`DB: ${mongoose.connection.name}`);
   console.log(
-    `Super Admin role permissions saved (${updated.permissions?.length ?? 0}):`,
-    updated.permissions,
+    `Super Admin role permissions saved (${updated.permissions?.length ?? 0})`,
   );
   return allKeys;
 }
@@ -105,13 +96,13 @@ async function generateUniqueReferralCode() {
 }
 
 async function seedSuperAdmin() {
-  await mongoose.connect(config.mongodbUri);
+  console.log(`Connecting to MongoDB...`);
+  await mongoose.connect(mongoUri);
   console.log('Connected to MongoDB');
 
-  const rbacService = await ensureRbac();
-  await grantAllPermissionsToSuperAdminRole(rbacService);
+  await ensureRbac();
+  await grantAllPermissionsToSuperAdminRole();
 
-  // Prefer exact email; otherwise reuse any existing super_admin (avoids phone:null unique clash)
   let existing = await UserModel.findOne({
     email: SUPER_ADMIN.email,
     deletedAt: null,
@@ -119,7 +110,7 @@ async function seedSuperAdmin() {
 
   if (!existing) {
     existing = await UserModel.findOne({
-      role: UserRole.SUPER_ADMIN,
+      role: 'super_admin',
       deletedAt: null,
     }).select('+password');
   }
@@ -127,7 +118,7 @@ async function seedSuperAdmin() {
   if (existing) {
     existing.name = SUPER_ADMIN.name;
     existing.email = SUPER_ADMIN.email;
-    existing.role = UserRole.SUPER_ADMIN;
+    existing.role = 'super_admin';
     existing.isActive = true;
     existing.password = SUPER_ADMIN.password;
     if (!existing.emailVerifiedAt) existing.emailVerifiedAt = new Date();
@@ -143,25 +134,23 @@ async function seedSuperAdmin() {
       emailVerifiedAt: new Date(),
       isActive: true,
     });
-    // Avoid sparse unique index clash on phone: null
     user.set('phone', undefined);
     await user.save();
 
     console.log(`Created Super Admin: ${user.email} (id=${user._id})`);
   }
 
-  console.log('---');
-  console.log(`Login (admin): POST /api/v1/auth/admin/login`);
-  console.log(`  email:    ${SUPER_ADMIN.email}`);
-  console.log(
-    `  password: ${process.env.SUPER_ADMIN_PASSWORD ? '(from SUPER_ADMIN_PASSWORD)' : SUPER_ADMIN.password}`,
-  );
-  console.log('---');
+  console.log('--------------------------------------------------');
+  console.log(`Super Admin Credentials:`);
+  console.log(`  Email:    ${SUPER_ADMIN.email}`);
+  console.log(`  Password: ${SUPER_ADMIN.password}`);
+  console.log(`  Login:    POST /api/v1/auth/admin/login`);
+  console.log('--------------------------------------------------');
 
   await mongoose.disconnect();
 }
 
 seedSuperAdmin().catch((err) => {
-  console.error(err);
+  console.error('Super Admin Seed Error:', err.message);
   process.exit(1);
 });

@@ -1,0 +1,403 @@
+version: '3.8'
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: '20m'
+    max-file: '5'
+
+x-deploy-limits: &default-deploy
+  resources:
+    limits:
+      memory: 512M
+      cpus: '1.0'
+
+networks:
+  getready-network:
+    driver: bridge
+
+volumes:
+  redis_data:
+  rabbitmq_data:
+  prometheus_data:
+  grafana_data:
+
+services:
+  # =========================================================================
+  # INFRASTRUCTURE SERVICES (MongoDB is hosted on MongoDB Atlas)
+  # =========================================================================
+
+  redis:
+    image: redis:7-alpine
+    container_name: getready-redis
+    restart: always
+    command: redis-server --requirepass ${REDIS_PASSWORD:-change_in_production}
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - getready-network
+    logging: *default-logging
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: getready-rabbitmq
+    restart: always
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-admin123}
+    networks:
+      - getready-network
+    logging: *default-logging
+
+  # =========================================================================
+  # OBSERVABILITY STACK
+  # =========================================================================
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: getready-prometheus
+    restart: always
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - '9090:9090'
+    networks:
+      - getready-network
+    logging: *default-logging
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: getready-grafana
+    restart: always
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin123}
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - '3001:3000'
+    depends_on:
+      - prometheus
+    networks:
+      - getready-network
+    logging: *default-logging
+
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: getready-loki
+    restart: always
+    ports:
+      - '3100:3100'
+    volumes:
+      - ./monitoring/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - getready-network
+    logging: *default-logging
+
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: getready-promtail
+    restart: always
+    volumes:
+      - ./monitoring/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    networks:
+      - getready-network
+    logging: *default-logging
+
+  # =========================================================================
+  # API GATEWAY
+  # =========================================================================
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
+    container_name: getready-api-gateway
+    restart: always
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      AUTH_SERVICE_URL: http://auth-service:3001
+      USER_SERVICE_URL: http://user-service:3002
+      BEAUTICIAN_SERVICE_URL: http://beautician-service:3003
+      CATALOG_SERVICE_URL: http://catalog-service:3004
+      BOOKING_SERVICE_URL: http://booking-service:3005
+      CART_SERVICE_URL: http://cart-service:3006
+      PAYMENT_SERVICE_URL: http://payment-service:3007
+      WALLET_SERVICE_URL: http://wallet-service:3008
+      NOTIFICATION_SERVICE_URL: http://notification-service:3009
+      CONTENT_SERVICE_URL: http://content-service:3010
+      WORKER_SERVICE_URL: http://worker-service:3011
+      JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URI: ${DATABASE_URI}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-*}
+    depends_on:
+      - auth-service
+      - user-service
+    networks:
+      - getready-network
+    logging: *default-logging
+
+  # =========================================================================
+  # MICROSERVICES (Atlas Cloud MongoDB)
+  # =========================================================================
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+    container_name: getready-auth-service
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URI: ${DATABASE_URI}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://admin:admin123@rabbitmq:5672}
+      USER_SERVICE_URL: http://user-service:3002
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+    depends_on:
+      - rabbitmq
+    networks:
+      - getready-network
+    logging: *default-logging
+
+  user-service:
+    build:
+      context: .
+      dockerfile: services/user-service/Dockerfile
+    container_name: getready-user-service
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      DATABASE_URI: ${DATABASE_URI}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://admin:admin123@rabbitmq:5672}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_in_production}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - rabbitmq
+      - redis
+    networks:
+      - getready-network
+    logging: *default-logging
+
+  beautician-service:
+    build:
+      context: .
+      dockerfile: services/beautician-service/Dockerfile
+    container_name: getready-beautician-service
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3003
+      DATABASE_URI: ${DATABASE_URI}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://admin:admin123@rabbitmq:5672}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_in_production}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - rabbitmq
+      - redis
+    networks:
+      - getready-network
+    logging: *default-logging
+
+  catalog-service:
+    build:
+      context: .
+      dockerfile: services/catalog-service/Dockerfile
+    container_name: getready-catalog-service
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3004
+      DATABASE_URI: ${DATABASE_URI}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://admin:admin123@rabbitmq:5672}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_in_production}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - rabbitmq
+      - redis
+    networks:
+      - getready-network
+    logging: *default-logging
+
+  booking-service:
+    build:
+      context: .
+      dockerfile: services/booking-service/Dockerfile
+    container_name: getready-booking-service
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3005
+      DATABASE_URI: ${DATABASE_URI}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://admin:admin123@rabbitmq:5672}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_in_production}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - rabbitmq
+      - redis
+    networks:
+      - getready-network
+    logging: *default-logging
+
+  cart-service:
+    build:
+      context: .
+      dockerfile: services/cart-service/Dockerfile
+    container_name: getready-cart-service
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3006
+      DATABASE_URI: ${DATABASE_URI}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://admin:admin123@rabbitmq:5672}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_in_production}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - rabbitmq
+      - redis
+    networks:
+      - getready-network
+    logging: *default-logging
+
+  payment-service:
+    build:
+      context: .
+      dockerfile: services/payment-service/Dockerfile
+    container_name: getready-payment-service
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3007
+      DATABASE_URI: ${DATABASE_URI}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://admin:admin123@rabbitmq:5672}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_in_production}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - rabbitmq
+      - redis
+    networks:
+      - getready-network
+    logging: *default-logging
+
+  wallet-service:
+    build:
+      context: .
+      dockerfile: services/wallet-service/Dockerfile
+    container_name: getready-wallet-service
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3008
+      DATABASE_URI: ${DATABASE_URI}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://admin:admin123@rabbitmq:5672}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_in_production}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - rabbitmq
+      - redis
+    networks:
+      - getready-network
+    logging: *default-logging
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: services/notification-service/Dockerfile
+    container_name: getready-notification-service
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3009
+      DATABASE_URI: ${DATABASE_URI}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://admin:admin123@rabbitmq:5672}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_in_production}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - rabbitmq
+      - redis
+    networks:
+      - getready-network
+    logging: *default-logging
+
+  content-service:
+    build:
+      context: .
+      dockerfile: services/content-service/Dockerfile
+    container_name: getready-content-service
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3010
+      DATABASE_URI: ${DATABASE_URI}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://admin:admin123@rabbitmq:5672}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_in_production}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - rabbitmq
+      - redis
+    networks:
+      - getready-network
+    logging: *default-logging
+
+  worker-service:
+    build:
+      context: .
+      dockerfile: services/worker-service/Dockerfile
+    container_name: getready-worker-service
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3011
+      DATABASE_URI: ${DATABASE_URI}
+      RABBITMQ_URL: ${RABBITMQ_URL:-amqp://admin:admin123@rabbitmq:5672}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-change_in_production}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - rabbitmq
+      - redis
+    networks:
+      - getready-network
+    logging: *default-logging

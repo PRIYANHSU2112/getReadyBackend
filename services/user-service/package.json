@@ -1,0 +1,21 @@
+{
+  "name": "@getready/user-service",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/server.js",
+  "dependencies": {
+    "express": "^4.21.2",
+    "mongoose": "^8.9.3",
+    "bcryptjs": "^2.4.3",
+    "multer": "^1.4.5-lts.1",
+    "@aws-sdk/client-s3": "^3.700.0",
+    "@getready/errors": "^1.0.0",
+    "@getready/logger": "^1.0.0",
+    "@getready/tracing": "^1.0.0",
+    "@getready/metrics": "^1.0.0",
+    "@getready/config": "^1.0.0",
+    "@getready/rabbitmq": "^1.0.0",
+    "@getready/validation": "^1.0.0",
+    "@getready/storage": "^1.0.0"
+  }
+}
