@@ -1,0 +1,62 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "title": "GETREADY - RABBITMQ",
+  "tags": ["getready", "rabbitmq"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Published Messages Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(rabbitmq_published_total[1m])) by (service, event_type)",
+          "legendFormat": "{{service}} - {{event_type}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Consumed Messages Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(rabbitmq_consumed_total[1m])) by (service, event_type)",
+          "legendFormat": "{{service}} - {{event_type}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Retry Queue Message Count",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(rabbitmq_retry_count_total[1m])) by (service)",
+          "legendFormat": "Retries {{service}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Dead Letter Queue (DLQ) Accumulation",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(rabbitmq_dlq_messages_total[1m])) by (service, queue)",
+          "legendFormat": "DLQ {{service}} ({{queue}})"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,179 @@
+name: Production Deployment (AWS SSM)
+
+on:
+  workflow_run:
+    workflows: ['Build & Push to ECR']
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'Git Commit SHA to deploy (leave empty to use latest main commit)'
+        required: false
+        default: ''
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-south-1
+  ROLE_TO_ASSUME: arn:aws:iam::154458646293:role/getready-github-actions
+  EC2_INSTANCE_ID: i-0a4e7008ca42520d2
+  ECR_REPOSITORY: getready-backend
+
+jobs:
+  deploy-production:
+    name: Deploy to EC2 via AWS SSM
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Determine Target Commit SHA
+        id: vars
+        run: |
+          if [ -n "${{ github.event.inputs.commit_sha }}" ]; then
+            TARGET_SHA="${{ github.event.inputs.commit_sha }}"
+          elif [ -n "${{ github.event.workflow_run.head_sha }}" ]; then
+            TARGET_SHA="${{ github.event.workflow_run.head_sha }}"
+          else
+            TARGET_SHA="${{ github.sha }}"
+          fi
+          echo "target_sha=${TARGET_SHA}" >> "$GITHUB_OUTPUT"
+          echo "🚀 Deploying Commit SHA: ${TARGET_SHA}"
+
+      - name: Configure AWS Credentials (GitHub OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: Verify All 12 Microservice Images Exist in ECR
+        env:
+          TARGET_SHA: ${{ steps.vars.outputs.target_sha }}
+        run: |
+          echo "🔍 Verifying all 12 ECR images for SHA ${TARGET_SHA}..."
+          SERVICES=(
+            "api-gateway"
+            "auth-service"
+            "user-service"
+            "beautician-service"
+            "catalog-service"
+            "booking-service"
+            "cart-service"
+            "payment-service"
+            "wallet-service"
+            "notification-service"
+            "content-service"
+            "worker-service"
+          )
+          
+          MISSING=0
+          for svc in "${SERVICES[@]}"; do
+            TAG="${svc}-${TARGET_SHA}"
+            echo -n "  • Checking ${TAG} in ECR ... "
+            if aws ecr describe-images --repository-name "${{ env.ECR_REPOSITORY }}" --image-ids imageTag="${TAG}" --region "${{ env.AWS_REGION }}" >/dev/null 2>&1; then
+              echo "✅ FOUND"
+            else
+              echo "❌ MISSING"
+              MISSING=$((MISSING + 1))
+            fi
+          done
+
+          if [ ${MISSING} -ne 0 ]; then
+            echo "❌ ERROR: ${MISSING} required image(s) are missing in ECR for SHA ${TARGET_SHA}."
+            exit 1
+          fi
+          echo "✅ All 12 images verified in ECR."
+
+      - name: Execute Deployment via AWS SSM SendCommand
+        id: ssm_deploy
+        env:
+          TARGET_SHA: ${{ steps.vars.outputs.target_sha }}
+        run: |
+          echo "📡 Sending SSM Command to EC2 Instance: ${{ env.EC2_INSTANCE_ID }}"
+          
+          # Prepare SSM RunShellScript command
+          COMMAND_JSON=$(jq -n \
+            --arg sha "${TARGET_SHA}" \
+            '{
+              commands: [
+                "set -eo pipefail",
+                "cd /opt/getready",
+                "chmod +x deploy-production.sh health-check.sh rollback-production.sh",
+                "./deploy-production.sh \($sha)"
+              ]
+            }')
+
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "${{ env.EC2_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Production deployment for Git SHA ${TARGET_SHA}" \
+            --parameters "${COMMAND_JSON}" \
+            --timeout-seconds 600 \
+            --region "${{ env.AWS_REGION }}" \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "command_id=${COMMAND_ID}" >> "$GITHUB_OUTPUT"
+          echo "✅ SSM Command dispatched. Command ID: ${COMMAND_ID}"
+
+      - name: Wait for SSM Command Completion & Stream Logs
+        env:
+          COMMAND_ID: ${{ steps.ssm_deploy.outputs.command_id }}
+        run: |
+          echo "⏳ Waiting for SSM Command ${COMMAND_ID} execution on EC2 instance ${{ env.EC2_INSTANCE_ID }}..."
+          
+          STATUS="Pending"
+          MAX_ATTEMPTS=60
+          ATTEMPT=0
+          
+          while [[ "${STATUS}" == "Pending" || "${STATUS}" == "InProgress" || "${STATUS}" == "Delayed" ]]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            if [ ${ATTEMPT} -gt ${MAX_ATTEMPTS} ]; then
+              echo "❌ ERROR: Timed out waiting for SSM command execution (10 minutes)."
+              exit 1
+            fi
+            
+            sleep 10
+            
+            INVOCATION_JSON=$(aws ssm get-command-invocation \
+              --command-id "${COMMAND_ID}" \
+              --instance-id "${{ env.EC2_INSTANCE_ID }}" \
+              --region "${{ env.AWS_REGION }}" \
+              --output json 2>/dev/null || echo '{"Status":"Pending"}')
+              
+            STATUS=$(echo "${INVOCATION_JSON}" | jq -r '.Status // "Pending"')
+            echo "   • Attempt ${ATTEMPT}/${MAX_ATTEMPTS}: Status is '${STATUS}'"
+          done
+
+          echo "================================================================="
+          echo "📋 EC2 SSM DEPLOYMENT OUTPUT (Status: ${STATUS})"
+          echo "================================================================="
+          
+          echo "--- STDOUT ---"
+          echo "${INVOCATION_JSON}" | jq -r '.StandardOutputContent // ""'
+          
+          STDERR=$(echo "${INVOCATION_JSON}" | jq -r '.StandardErrorContent // ""')
+          if [ -n "${STDERR}" ] && [ "${STDERR}" != "null" ]; then
+            echo "--- STDERR ---"
+            echo "${STDERR}"
+          fi
+          echo "================================================================="
+
+          if [ "${STATUS}" != "Success" ]; then
+            echo "❌ ERROR: SSM Command failed with status '${STATUS}'."
+            exit 1
+          fi
+
+          echo "🎉 Deployment successfully verified on EC2!"
