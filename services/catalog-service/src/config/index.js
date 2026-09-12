@@ -9,7 +9,7 @@ export const config = loadServiceConfig('catalog-service', {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
     bucket: process.env.AWS_BUCKET_NAME || '',
-    endpoint: process.env.AWS_S3_ENDPOINT || '',
+    endpoint: process.env.AWS_ENDPOINT || process.env.AWS_S3_ENDPOINT || '',
   },
 });
 

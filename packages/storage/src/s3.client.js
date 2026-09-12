@@ -18,6 +18,7 @@ export function createS3Client(configOverrides = {}) {
     configOverrides.endpoint ||
     process.env.LINODE_OBJECT_STORAGE_ENDPOINT ||
     process.env.AWS_ENDPOINT ||
+    process.env.AWS_S3_ENDPOINT ||
     'https://sgp1.digitaloceanspaces.com';
 
   const accessKeyId =

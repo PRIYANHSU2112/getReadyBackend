@@ -34,7 +34,11 @@ limits_config:
 
 compactor:
   working_directory: /var/loki/compactor
+  compactor_ring:
+    kvstore:
+      store: inmemory
   retention_enabled: true
+  delete_request_store: filesystem
   compaction_interval: 10m
 
 ruler:

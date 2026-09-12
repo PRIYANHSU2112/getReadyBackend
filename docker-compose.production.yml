@@ -261,6 +261,12 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-change_in_production}
       REDIS_ENABLED: 'true'
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_REGION: ${AWS_REGION:-sgp1}
+      AWS_BUCKET_NAME: ${AWS_BUCKET_NAME:-getready-production}
+      AWS_ENDPOINT: ${AWS_ENDPOINT:-${AWS_S3_ENDPOINT:-https://sgp1.digitaloceanspaces.com}}
+      AWS_S3_ENDPOINT: ${AWS_S3_ENDPOINT:-${AWS_ENDPOINT:-https://sgp1.digitaloceanspaces.com}}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       METRICS_ENABLED: 'true'
     depends_on:
@@ -338,14 +344,18 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-change_in_production}
       REDIS_ENABLED: 'true'
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_REGION: ${AWS_REGION:-sgp1}
+      AWS_BUCKET_NAME: ${AWS_BUCKET_NAME:-getready-production}
+      AWS_ENDPOINT: ${AWS_ENDPOINT:-${AWS_S3_ENDPOINT:-https://sgp1.digitaloceanspaces.com}}
+      AWS_S3_ENDPOINT: ${AWS_S3_ENDPOINT:-${AWS_ENDPOINT:-https://sgp1.digitaloceanspaces.com}}
       JWT_SECRET: ${JWT_SECRET}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       METRICS_ENABLED: 'true'
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - rabbitmq
+      - redis
     networks:
       - getready-network
     deploy: *microservice-deploy
@@ -374,18 +384,17 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-change_in_production}
       REDIS_ENABLED: 'true'
       JWT_SECRET: ${JWT_SECRET}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       AWS_REGION: ${AWS_REGION:-sgp1}
       AWS_BUCKET_NAME: ${AWS_BUCKET_NAME:-getready-production}
-      AWS_S3_ENDPOINT: ${AWS_S3_ENDPOINT:-https://sgp1.digitaloceanspaces.com}
+      AWS_ENDPOINT: ${AWS_ENDPOINT:-${AWS_S3_ENDPOINT:-https://sgp1.digitaloceanspaces.com}}
+      AWS_S3_ENDPOINT: ${AWS_S3_ENDPOINT:-${AWS_ENDPOINT:-https://sgp1.digitaloceanspaces.com}}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       METRICS_ENABLED: 'true'
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - rabbitmq
+      - redis
     networks:
       - getready-network
     deploy: *microservice-deploy
@@ -413,6 +422,12 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-change_in_production}
       REDIS_ENABLED: 'true'
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_REGION: ${AWS_REGION:-sgp1}
+      AWS_BUCKET_NAME: ${AWS_BUCKET_NAME:-getready-production}
+      AWS_ENDPOINT: ${AWS_ENDPOINT:-${AWS_S3_ENDPOINT:-https://sgp1.digitaloceanspaces.com}}
+      AWS_S3_ENDPOINT: ${AWS_S3_ENDPOINT:-${AWS_ENDPOINT:-https://sgp1.digitaloceanspaces.com}}
       JWT_SECRET: ${JWT_SECRET}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       METRICS_ENABLED: 'true'
@@ -633,19 +648,18 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-change_in_production}
       REDIS_ENABLED: 'true'
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       AWS_REGION: ${AWS_REGION:-sgp1}
       AWS_BUCKET_NAME: ${AWS_BUCKET_NAME:-getready-production}
-      AWS_S3_ENDPOINT: ${AWS_S3_ENDPOINT:-https://sgp1.digitaloceanspaces.com}
+      AWS_ENDPOINT: ${AWS_ENDPOINT:-${AWS_S3_ENDPOINT:-https://sgp1.digitaloceanspaces.com}}
+      AWS_S3_ENDPOINT: ${AWS_S3_ENDPOINT:-${AWS_ENDPOINT:-https://sgp1.digitaloceanspaces.com}}
       JWT_SECRET: ${JWT_SECRET}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       METRICS_ENABLED: 'true'
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - rabbitmq
+      - redis
     networks:
       - getready-network
     deploy: *microservice-deploy
