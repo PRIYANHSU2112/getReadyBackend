@@ -70,14 +70,16 @@ fi
 
 # 3. Pull target rollback images
 echo "📦 Pulling rollback images for tag: ${TARGET_TAG}..."
-ECR_REGISTRY="${ECR_REGISTRY}" IMAGE_TAG="${TARGET_TAG}" docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" pull
+export ECR_REGISTRY="${ECR_REGISTRY}"
+export IMAGE_TAG="${TARGET_TAG}"
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" pull
 
 # 4. Deploy rollback containers
 echo "🚀 Applying rollback containers..."
-ECR_REGISTRY="${ECR_REGISTRY}" IMAGE_TAG="${TARGET_TAG}" docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --remove-orphans
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --remove-orphans
 
 # 5. Wait for containers to stabilize and execute health check
-echo "⏳ Waiting 15 seconds for containers to stabilize..."
+echo "⏳ Waiting 15 seconds for rollback containers to stabilize..."
 sleep 15
 
 HEALTH_SCRIPT="./health-check.sh"

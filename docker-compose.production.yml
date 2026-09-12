@@ -1,5 +1,3 @@
-version: '3.8'
-
 # =============================================================================
 # GET READY BACKEND — PRODUCTION DOCKER COMPOSE
 # Architecture: Single Linux Server / VM (AWS EC2, DigitalOcean, Azure, GCP, Hetzner)

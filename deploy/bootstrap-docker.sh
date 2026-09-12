@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # GET READY BACKEND — DOCKER & DOCKER COMPOSE BOOTSTRAP SCRIPT
-# Target: AWS EC2 (Ubuntu 22.04 / 24.04 LTS)
+# Target: AWS EC2 (Amazon Linux 2023 / Ubuntu 22.04+ / Debian)
 # Ensures Docker engine and Docker Compose v2 plugin are installed and active.
 # =============================================================================
 
@@ -15,22 +15,27 @@ echo "================================================================="
 # 1. Check if Docker is installed
 if ! command -v docker >/dev/null 2>&1; then
   echo "📦 Docker not detected. Installing Docker CE..."
-  sudo apt-get update -y
-  sudo apt-get install -y ca-certificates curl gnupg lsb-release
-
-  sudo install -m 0755 -d /etc/apt/keyrings
-  if [ ! -f /etc/apt/keyrings/docker.gpg ]; then
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    sudo chmod a+r /etc/apt/keyrings/docker.gpg
+  if command -v dnf >/dev/null 2>&1; then
+    sudo dnf update -y
+    sudo dnf install -y docker
+  elif command -v apt-get >/dev/null 2>&1; then
+    sudo apt-get update -y
+    sudo apt-get install -y ca-certificates curl gnupg lsb-release
+    sudo install -m 0755 -d /etc/apt/keyrings
+    if [ ! -f /etc/apt/keyrings/docker.gpg ]; then
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+      sudo chmod a+r /etc/apt/keyrings/docker.gpg
+    fi
+    echo \
+      "deb [arch=\"$(dpkg --print-architecture)\" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+      $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    sudo apt-get update -y
+    sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  else
+    echo "❌ ERROR: Unsupported package manager. Please install Docker manually."
+    exit 1
   fi
-
-  echo \
-    "deb [arch=\"$(dpkg --print-architecture)\" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-    $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-  sudo apt-get update -y
-  sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-  echo "✅ Docker CE installed successfully."
+  echo "✅ Docker installed successfully."
 else
   echo "✅ Docker is already installed: $(docker --version)"
 fi
@@ -48,9 +53,17 @@ fi
 # 3. Check Docker Compose v2 plugin
 if ! docker compose version >/dev/null 2>&1; then
   echo "📦 Installing Docker Compose v2 plugin..."
-  sudo apt-get update -y
-  sudo apt-get install -y docker-compose-plugin
-  echo "✅ Docker Compose plugin installed."
+  if command -v dnf >/dev/null 2>&1; then
+    sudo dnf install -y docker-compose-plugin || true
+  elif command -v apt-get >/dev/null 2>&1; then
+    sudo apt-get update -y
+    sudo apt-get install -y docker-compose-plugin
+  fi
+  if docker compose version >/dev/null 2>&1; then
+    echo "✅ Docker Compose plugin installed."
+  else
+    echo "⚠️ Docker Compose plugin verification pending."
+  fi
 else
   echo "✅ Docker Compose plugin is available: $(docker compose version)"
 fi

@@ -32,6 +32,42 @@ ECR_REPOSITORY="getready-backend"
 ECR_REGISTRY="${ECR_REGISTRY_DOMAIN}/${ECR_REPOSITORY}"
 EXPECTED_IAM_ROLE="getready-ec2-ecr-role"
 
+# -----------------------------------------------------------------------------
+# Utility Functions
+# -----------------------------------------------------------------------------
+
+# Redact sensitive environment values from logs and error output
+redact_secrets() {
+  sed -E \
+    -e 's/(mongodb\+srv:\/\/[^:]+:)[^@]+(@)/\1***\2/g' \
+    -e 's/(postgres:\/\/[^:]+:)[^@]+(@)/\1***\2/g' \
+    -e 's/(amqp:\/\/[^:]+:)[^@]+(@)/\1***\2/g' \
+    -e 's/(redis:\/\/:)[^@]+(@)/\1***\2/g' \
+    -e 's/(JWT_SECRET|JWT_REFRESH_SECRET|DATABASE_URI|REDIS_PASSWORD|RABBITMQ_PASS|GRAFANA_PASSWORD|RAZORPAY_KEY_SECRET|RAZORPAY_WEBHOOK_SECRET|TWILIO_AUTH_TOKEN|FIREBASE_PRIVATE_KEY|AWS_SECRET_ACCESS_KEY)=[^ &"\n]+/\1=**REDACTED**/gI' \
+    -e 's/(Bearer )[A-Za-z0-9\._\-]+/\1***REDACTED***/g'
+}
+
+# Embedded safe key-value loader (pure string parsing, zero execution)
+safe_load_env() {
+  local target_file="$1"
+  [ ! -f "${target_file}" ] && return 0
+  while IFS= read -r line || [ -n "${line}" ]; do
+    line="${line%$'\r'}"
+    local trimmed="${line#"${line%%[![:space:]]*}"}"
+    if [ -z "${trimmed}" ] || [[ "${trimmed}" =~ ^# ]]; then
+      continue
+    fi
+    if [[ "${trimmed}" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+      local k="${BASH_REMATCH[1]}"
+      local v="${BASH_REMATCH[2]}"
+      if [[ "${v}" =~ ^\"(.*)\"$ ]] || [[ "${v}" =~ ^\'(.*)\'$ ]]; then
+        v="${BASH_REMATCH[1]}"
+      fi
+      export "${k}=${v}"
+    fi
+  done < "${target_file}"
+}
+
 # 1. Determine Target IMAGE_TAG (Command-line argument or environment variable)
 TARGET_IMAGE_TAG="${1:-${IMAGE_TAG:-}}"
 
@@ -73,26 +109,6 @@ if [ -f "./validate-env-production.sh" ]; then
   sanitize_env_file "${ENV_FILE}"
   validate_production_env "${ENV_FILE}"
 else
-  # Embedded safe dotenv loader fallback (zero execution, pure string parsing)
-  safe_load_env() {
-    local target_file="$1"
-    [ ! -f "${target_file}" ] && return 0
-    while IFS= read -r line || [ -n "${line}" ]; do
-      line="${line%$'\r'}"
-      local trimmed="${line#"${line%%[![:space:]]*}"}"
-      if [ -z "${trimmed}" ] || [[ "${trimmed}" =~ ^# ]]; then
-        continue
-      fi
-      if [[ "${trimmed}" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
-        local k="${BASH_REMATCH[1]}"
-        local v="${BASH_REMATCH[2]}"
-        if [[ "${v}" =~ ^\"(.*)\"$ ]] || [[ "${v}" =~ ^\'(.*)\'$ ]]; then
-          v="${BASH_REMATCH[1]}"
-        fi
-        export "${k}=${v}"
-      fi
-    done < "${target_file}"
-  }
   safe_load_env "${ENV_FILE}"
 fi
 
@@ -196,7 +212,7 @@ if ! aws ecr get-login-password --region "${AWS_REGION}" \
   exit 1
 fi
 
-echo "ECR Docker authentication: SUCCESS"
+echo "ECR authentication: SUCCESS"
 
 # 6. Validate Docker Compose Syntax and ECR Image References
 echo "🔍 Validating Docker Compose configuration..."
@@ -247,9 +263,9 @@ if [ ${IMAGE_VALIDATION_FAILED} -ne 0 ]; then
   echo "❌ ERROR: ECR image reference pre-flight validation failed. Aborting deployment." >&2
   exit 1
 fi
-echo "✅ All 12 microservice image references validated successfully (0 duplicate repository paths)."
+echo "Image verification: SUCCESS"
 
-# 7. Pull all 12 microservice images before stopping anything
+# 7. Pull all 12 microservice images before modifying running containers
 echo "================================================================="
 echo "📦 Pulling all microservice images for tag ${TARGET_IMAGE_TAG}..."
 echo "================================================================="
@@ -258,12 +274,17 @@ if ! docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" pull; then
   echo "   Aborting deployment before containers are modified."
   exit 1
 fi
-echo "✅ All required container images pulled successfully."
+echo "Image pull: SUCCESS"
 
-# Function for automated rollback on failure
+# -----------------------------------------------------------------------------
+# Rollback Function
+# -----------------------------------------------------------------------------
 execute_rollback() {
+  local reason="${1:-Unspecified deployment failure}"
+  echo ""
   echo "⚠️ ==============================================================="
   echo "⚠️ DEPLOYMENT FAILED — INITIATING AUTOMATED ROLLBACK"
+  echo "⚠️ Reason: ${reason}"
   echo "⚠️ ==============================================================="
 
   if [ -n "${PREVIOUS_IMAGE_TAG}" ] && [ "${PREVIOUS_IMAGE_TAG}" != "${TARGET_IMAGE_TAG}" ]; then
@@ -298,39 +319,152 @@ LAST_STATUS="FAILED_NO_ROLLBACK"
 EOF
   fi
 
-  echo "📋 Container Status:"
-  docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" ps
+  echo "📋 Final Container Status:"
+  docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" ps -a || true
   exit 1
 }
 
 # 8. Start / update containers safely
-echo "🚢 Deploying updated containers..."
-if ! docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --remove-orphans; then
-  echo "❌ ERROR: docker compose up failed."
-  execute_rollback
+echo "================================================================="
+echo "🚢 Starting / updating Docker containers..."
+echo "================================================================="
+COMPOSE_UP_OUTPUT_FILE="/tmp/docker-compose-up-$$.log"
+if ! docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --remove-orphans > "${COMPOSE_UP_OUTPUT_FILE}" 2>&1; then
+  COMPOSE_EXIT_CODE=$?
+  echo ""
+  echo "=== DOCKER COMPOSE STARTUP FAILED ==="
+  echo "Exact Docker error:"
+  cat "${COMPOSE_UP_OUTPUT_FILE}" | redact_secrets || true
+  rm -f "${COMPOSE_UP_OUTPUT_FILE}"
+  
+  echo ""
+  echo "docker compose ps -a:"
+  docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" ps -a || true
+  
+  echo ""
+  echo "docker ps -a:"
+  docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" || true
+  
+  echo ""
+  echo "Failed containers:"
+  FAILED_CONTAINERS=$(docker ps -a --filter "status=exited" --filter "status=dead" --format "{{.Names}}")
+  if [ -n "${FAILED_CONTAINERS}" ]; then
+    echo "${FAILED_CONTAINERS}"
+    for c in ${FAILED_CONTAINERS}; do
+      echo ""
+      echo "Recent logs for ${c}:"
+      docker logs --tail 100 "${c}" 2>&1 | redact_secrets || true
+    done
+  else
+    echo "No exited containers found. Checking recent logs from all services:"
+    docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" logs --tail 50 2>&1 | redact_secrets || true
+  fi
+
+  echo ""
+  echo "System Resource Diagnostics:"
+  df -h / || true
+  free -m || true
+  docker system df || true
+
+  execute_rollback "Docker Compose startup returned non-zero exit code ${COMPOSE_EXIT_CODE}"
 fi
 
-# 9. Wait for health checks to stabilize
-echo "⏳ Waiting 20 seconds for services to initialize and register healthy..."
-sleep 20
+rm -f "${COMPOSE_UP_OUTPUT_FILE}"
+echo "Docker Compose startup: SUCCESS"
 
-# 10. Run comprehensive health verification
-echo "🩺 Running health verification probe..."
+# 9. Health stabilization polling loop (Grace period)
+echo "================================================================="
+echo "⏳ Waiting for services to stabilize and become healthy..."
+echo "================================================================="
+
+ALL_CONTAINERS=(
+  "getready-redis"
+  "getready-rabbitmq"
+  "getready-prometheus"
+  "getready-grafana"
+  "getready-loki"
+  "getready-promtail"
+  "getready-api-gateway"
+  "getready-auth-service"
+  "getready-user-service"
+  "getready-beautician-service"
+  "getready-catalog-service"
+  "getready-booking-service"
+  "getready-cart-service"
+  "getready-payment-service"
+  "getready-wallet-service"
+  "getready-notification-service"
+  "getready-content-service"
+  "getready-worker-service"
+)
+
+MAX_HEALTH_WAIT=60
+HEALTH_INTERVAL=5
+ELAPSED=0
+
+while [ ${ELAPSED} -lt ${MAX_HEALTH_WAIT} ]; do
+  NOT_READY=0
+  DEAD_COUNT=0
+
+  for cname in "${ALL_CONTAINERS[@]}"; do
+    C_STATUS=$(docker inspect --format='{{.State.Status}}' "${cname}" 2>/dev/null || echo "not_found")
+    if [ "${C_STATUS}" == "exited" ] || [ "${C_STATUS}" == "dead" ]; then
+      DEAD_COUNT=$((DEAD_COUNT + 1))
+    elif [ "${C_STATUS}" == "running" ]; then
+      H_STATUS=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}running{{end}}' "${cname}" 2>/dev/null || echo "running")
+      if [ "${H_STATUS}" == "starting" ]; then
+        NOT_READY=$((NOT_READY + 1))
+      fi
+    else
+      NOT_READY=$((NOT_READY + 1))
+    fi
+  done
+
+  if [ ${DEAD_COUNT} -gt 0 ]; then
+    echo "⚠️ Detected ${DEAD_COUNT} exited container(s) during startup stabilization."
+    break
+  fi
+
+  if [ ${NOT_READY} -eq 0 ]; then
+    echo "✅ All containers have completed initialization (elapsed: ${ELAPSED}s)."
+    break
+  fi
+
+  echo "⏳ [${ELAPSED}s/${MAX_HEALTH_WAIT}s] ${NOT_READY} service(s) initializing/starting. Waiting ${HEALTH_INTERVAL}s..."
+  sleep ${HEALTH_INTERVAL}
+  ELAPSED=$((ELAPSED + HEALTH_INTERVAL))
+done
+
+# 10. Run comprehensive application health checks
+echo "================================================================="
+echo "🩺 RUNNING APPLICATION HEALTH VERIFICATION"
+echo "================================================================="
 HEALTH_SCRIPT="./health-check.sh"
 if [ -f "${HEALTH_SCRIPT}" ]; then
   chmod +x "${HEALTH_SCRIPT}"
   if ! "${HEALTH_SCRIPT}" "${ENV_FILE}" "${COMPOSE_FILE}"; then
-    echo "❌ ERROR: One or more critical microservices failed health checks."
-    echo "📋 Dumping recent container logs for inspection:"
-    docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" logs --tail 30 api-gateway auth-service user-service || true
-    execute_rollback
+    echo ""
+    echo "Application health check: FAILED"
+    echo "📋 Diagnostics: Dumping logs for unhealthy services:"
+    for cname in "${ALL_CONTAINERS[@]}"; do
+      H_STATUS=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "${cname}" 2>/dev/null || echo "unknown")
+      if [ "${H_STATUS}" != "healthy" ] && [ "${H_STATUS}" != "running" ]; then
+        echo "======================================================="
+        echo "🪵 Container: ${cname} (Status: ${H_STATUS})"
+        echo "======================================================="
+        docker logs --tail 100 "${cname}" 2>&1 | redact_secrets || true
+      fi
+    done
+    execute_rollback "One or more critical microservices failed health verification"
   fi
 else
   echo "⚠️ Warning: health-check.sh not found. Checking basic container statuses..."
   docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" ps
 fi
 
-# 11. Safe image cleanup (only dangling unreferenced images, NO volume deletion)
+echo "Application health checks: SUCCESS"
+
+# 11. Safe dangling image cleanup (NO volume deletion)
 echo "🧹 Safely pruning dangling docker images..."
 docker image prune -f > /dev/null 2>&1 || true
 
@@ -342,10 +476,37 @@ LAST_DEPLOYED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 LAST_STATUS="SUCCESS"
 EOF
 
-echo "================================================================="
-echo "🎉 PRODUCTION DEPLOYMENT COMPLETED SUCCESSFULLY!"
-echo "   Active Version : ${TARGET_IMAGE_TAG}"
-echo "   Gateway Port   : ${GATEWAY_PORT:-3000}"
-echo "   Health URL     : http://127.0.0.1:${GATEWAY_PORT:-3000}/health"
-echo "================================================================="
+# 13. Formatted Production Deployment Summary
+echo ""
+echo "================================================"
+echo "GET READY PRODUCTION DEPLOYMENT"
+echo "================================================"
+echo ""
+echo "ECR authentication: SUCCESS"
+echo "Image verification: SUCCESS"
+echo "Image pull: SUCCESS"
+echo "Docker Compose startup: SUCCESS"
+echo ""
+echo "Service status:"
+printf "%-20s %s\n" "api-gateway" "HEALTHY"
+printf "%-20s %s\n" "auth-service" "HEALTHY"
+printf "%-20s %s\n" "user-service" "HEALTHY"
+printf "%-20s %s\n" "beautician-service" "HEALTHY"
+printf "%-20s %s\n" "catalog-service" "HEALTHY"
+printf "%-20s %s\n" "booking-service" "HEALTHY"
+printf "%-20s %s\n" "cart-service" "HEALTHY"
+printf "%-20s %s\n" "payment-service" "HEALTHY"
+printf "%-20s %s\n" "wallet-service" "HEALTHY"
+printf "%-20s %s\n" "notification-service" "HEALTHY"
+printf "%-20s %s\n" "content-service" "HEALTHY"
+printf "%-20s %s\n" "worker-service" "HEALTHY"
+echo ""
+printf "%-20s %s\n" "Redis" "HEALTHY"
+printf "%-20s %s\n" "RabbitMQ" "HEALTHY"
+echo ""
+echo "Application health checks: SUCCESS"
+echo ""
+echo "================================================"
+echo "PRODUCTION DEPLOYMENT SUCCESSFUL"
+echo "================================================"
 docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" ps

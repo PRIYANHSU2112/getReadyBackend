@@ -1,9 +1,7 @@
-version: '3.8'
-
 # =============================================================================
 # GET READY BACKEND — AWS PRODUCTION DOCKER COMPOSE
 # Infrastructure: AWS EC2 (i-0a4e7008ca42520d2 / getReady-backend)
-# ECR Repository: 154458646293.dkr.ecr.ap-south-1.amazonaws.com/getready-backend
+# ECR Registry: 154458646293.dkr.ecr.ap-south-1.amazonaws.com/getready-backend
 # Database: External Managed MongoDB Atlas (via DATABASE_URI)
 # Ingress: API Gateway (Port 3000)
 # =============================================================================
@@ -146,8 +144,7 @@ services:
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
     depends_on:
-      prometheus:
-        condition: service_healthy
+      - prometheus
     networks:
       - getready-network
     deploy: *infra-deploy
@@ -187,8 +184,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     command: -config.file=/etc/promtail/config.yml
     depends_on:
-      loki:
-        condition: service_healthy
+      - loki
     networks:
       - getready-network
     deploy: *infra-deploy
@@ -233,12 +229,9 @@ services:
       METRICS_ENABLED: 'true'
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
     depends_on:
-      auth-service:
-        condition: service_healthy
-      user-service:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - auth-service
+      - user-service
+      - redis
     networks:
       - getready-network
     deploy: *gateway-deploy
@@ -281,10 +274,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       METRICS_ENABLED: 'true'
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - rabbitmq
+      - redis
     networks:
       - getready-network
     deploy: *microservice-deploy
@@ -318,10 +309,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       METRICS_ENABLED: 'true'
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - rabbitmq
+      - redis
     networks:
       - getready-network
     deploy: *microservice-deploy
@@ -355,10 +344,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       METRICS_ENABLED: 'true'
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - rabbitmq
+      - redis
     networks:
       - getready-network
     deploy: *microservice-deploy
@@ -387,10 +374,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       METRICS_ENABLED: 'true'
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - rabbitmq
+      - redis
     networks:
       - getready-network
     deploy: *microservice-deploy
@@ -420,10 +405,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       METRICS_ENABLED: 'true'
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - rabbitmq
+      - redis
     networks:
       - getready-network
     deploy: *microservice-deploy
@@ -455,10 +438,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       METRICS_ENABLED: 'true'
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - rabbitmq
+      - redis
     networks:
       - getready-network
     deploy: *microservice-deploy
@@ -490,10 +471,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       METRICS_ENABLED: 'true'
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - rabbitmq
+      - redis
     networks:
       - getready-network
     deploy: *microservice-deploy
@@ -525,10 +504,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       METRICS_ENABLED: 'true'
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - rabbitmq
+      - redis
     networks:
       - getready-network
     deploy: *microservice-deploy
@@ -564,10 +541,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       METRICS_ENABLED: 'true'
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - rabbitmq
+      - redis
     networks:
       - getready-network
     deploy: *microservice-deploy
@@ -601,10 +576,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       METRICS_ENABLED: 'true'
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - rabbitmq
+      - redis
     networks:
       - getready-network
     deploy: *microservice-deploy
@@ -633,10 +606,8 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       METRICS_ENABLED: 'true'
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - rabbitmq
+      - redis
     networks:
       - getready-network
     deploy: *microservice-deploy

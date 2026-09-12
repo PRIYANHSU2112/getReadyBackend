@@ -52,20 +52,35 @@ check_container() {
   printf "  • Checking %-32s ... " "${display_name}"
 
   # 1. Check if container is running
-  if ! docker ps --filter "name=${container_name}" --format '{{.Names}}' | grep -q "^${container_name}$"; then
-    printf "❌ NOT RUNNING\n"
+  local c_status
+  c_status=$(docker inspect --format='{{.State.Status}}' "${container_name}" 2>/dev/null || echo "not_found")
+  if [ "${c_status}" != "running" ]; then
+    printf "❌ NOT RUNNING (%s)\n" "${c_status}"
     FAILED_COUNT=$((FAILED_COUNT + 1))
     return 1
   fi
 
-  # 2. Check internal command or probe
-  if docker exec "${container_name}" sh -c "${check_cmd}" >/dev/null 2>&1; then
-    printf "✅ HEALTHY\n"
+  # 2. Check Docker native health if healthy
+  local health_status
+  health_status=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}no_healthcheck{{end}}' "${container_name}" 2>/dev/null || echo "unknown")
+  if [ "${health_status}" == "healthy" ]; then
+    printf "✅ HEALTHY (docker)\n"
     return 0
+  fi
+
+  # 3. Check internal command or probe
+  if [ -n "${check_cmd}" ]; then
+    if docker exec "${container_name}" sh -c "${check_cmd}" >/dev/null 2>&1; then
+      printf "✅ HEALTHY (endpoint probe)\n"
+      return 0
+    else
+      printf "❌ UNHEALTHY (probe failed, health: %s)\n" "${health_status}"
+      FAILED_COUNT=$((FAILED_COUNT + 1))
+      return 1
+    fi
   else
-    printf "❌ UNHEALTHY\n"
-    FAILED_COUNT=$((FAILED_COUNT + 1))
-    return 1
+    printf "✅ RUNNING\n"
+    return 0
   fi
 }
 
@@ -77,6 +92,7 @@ echo "--- 2. Observability Stack ---"
 check_container "getready-prometheus" "wget -qO- http://127.0.0.1:9090/-/healthy" "Prometheus (9090)" || true
 check_container "getready-grafana" "wget -qO- http://127.0.0.1:3000/api/health" "Grafana (3000)" || true
 check_container "getready-loki" "wget -qO- http://127.0.0.1:3100/ready" "Loki (3100)" || true
+check_container "getready-promtail" "" "Promtail (Daemon)" || true
 
 echo "--- 3. API Gateway (Public Ingress) ---"
 check_container "getready-api-gateway" "wget -qO- http://127.0.0.1:3000/health" "API Gateway (3000)" || true
