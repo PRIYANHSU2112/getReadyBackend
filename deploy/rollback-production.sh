@@ -14,6 +14,9 @@ cd "${SCRIPT_DIR}"
 ENV_FILE=".env.production"
 COMPOSE_FILE="docker-compose.production.yml"
 STATE_FILE="deployment-state.env"
+ECR_REGISTRY_DOMAIN="154458646293.dkr.ecr.ap-south-1.amazonaws.com"
+ECR_REPOSITORY="getready-backend"
+ECR_REGISTRY="${ECR_REGISTRY_DOMAIN}/${ECR_REPOSITORY}"
 
 # Safe in-memory key-value loader
 safe_load_env() {
@@ -67,11 +70,11 @@ fi
 
 # 3. Pull target rollback images
 echo "📦 Pulling rollback images for tag: ${TARGET_TAG}..."
-IMAGE_TAG="${TARGET_TAG}" docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" pull
+ECR_REGISTRY="${ECR_REGISTRY}" IMAGE_TAG="${TARGET_TAG}" docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" pull
 
 # 4. Deploy rollback containers
 echo "🚀 Applying rollback containers..."
-IMAGE_TAG="${TARGET_TAG}" docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --remove-orphans
+ECR_REGISTRY="${ECR_REGISTRY}" IMAGE_TAG="${TARGET_TAG}" docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --remove-orphans
 
 # 5. Wait for containers to stabilize and execute health check
 echo "⏳ Waiting 15 seconds for containers to stabilize..."

@@ -2,17 +2,17 @@
 # =============================================================================
 # GET READY BACKEND — AWS PRODUCTION DEPLOYMENT SCRIPT
 # Target: AWS EC2 (i-0a4e7008ca42520d2 / getReady-backend)
-# ECR Registry: 154458646293.dkr.ecr.ap-south-1.amazonaws.com
-# ECR Repository: getready-backend
-# Region: ap-south-1
-# IAM Role: getready-ec2-ecr-role (EC2 Instance Profile)
+# ECR Registry Domain : 154458646293.dkr.ecr.ap-south-1.amazonaws.com
+# ECR Repository      : getready-backend
+# Region              : ap-south-1
+# IAM Role            : getready-ec2-ecr-role (EC2 Instance Profile)
 #
 # SECURITY & COMPLIANCE:
 # - Dotenv files are NEVER executed as shell scripts (NO source, ., eval, bash, sh)
 # - Secrets and tokens are NEVER logged or echoed
 # - Native Docker Compose --env-file is used for container variable injection
 # - AWS ECR Docker login uses non-interactive --password-stdin with EC2 IAM Role
-# - AWS credential environment variables are safely unset to prevent overriding EC2 role
+# - ECR image references resolve to exactly ONE repository prefix
 # =============================================================================
 
 set -eo pipefail
@@ -23,9 +23,13 @@ cd "${SCRIPT_DIR}"
 ENV_FILE=".env.production"
 COMPOSE_FILE="docker-compose.production.yml"
 STATE_FILE="deployment-state.env"
+
 AWS_REGION="ap-south-1"
-ECR_REGISTRY="154458646293.dkr.ecr.ap-south-1.amazonaws.com"
+AWS_DEFAULT_REGION="ap-south-1"
+ECR_REGISTRY_DOMAIN="154458646293.dkr.ecr.ap-south-1.amazonaws.com"
 ECR_REPOSITORY="getready-backend"
+# Complete ECR Image Prefix used by Docker Compose (contains repository name exactly ONCE)
+ECR_REGISTRY="${ECR_REGISTRY_DOMAIN}/${ECR_REPOSITORY}"
 EXPECTED_IAM_ROLE="getready-ec2-ecr-role"
 
 # 1. Determine Target IMAGE_TAG (Command-line argument or environment variable)
@@ -38,6 +42,8 @@ echo "   Environment File  : ${ENV_FILE}"
 echo "   Compose File      : ${COMPOSE_FILE}"
 echo "   Target Image Tag  : ${TARGET_IMAGE_TAG}"
 echo "   AWS Region        : ${AWS_REGION}"
+echo "   ECR Registry      : ${ECR_REGISTRY_DOMAIN}"
+echo "   ECR Repository    : ${ECR_REPOSITORY}"
 echo "   Timestamp         : $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 echo "================================================================="
 
@@ -119,7 +125,7 @@ echo "📋 Recorded Previous Image Tag: ${PREVIOUS_IMAGE_TAG:-<none>}"
 echo "================================================================="
 echo "🔑 AWS ECR AUTHENTICATION & EC2 IAM IDENTITY VERIFICATION"
 echo "   AWS Region    : ${AWS_REGION}"
-echo "   ECR Registry  : ${ECR_REGISTRY}"
+echo "   ECR Registry  : ${ECR_REGISTRY_DOMAIN}"
 echo "   Repository    : ${ECR_REPOSITORY}"
 echo "   Expected Role : ${EXPECTED_IAM_ROLE}"
 echo "================================================================="
@@ -180,27 +186,73 @@ else
 fi
 
 # 5.5 Non-interactive Docker login with --password-stdin
-echo "🐳 Authenticating Docker client with ECR registry (${ECR_REGISTRY})..."
+echo "🐳 Authenticating Docker client with ECR registry (${ECR_REGISTRY_DOMAIN})..."
 if ! aws ecr get-login-password --region "${AWS_REGION}" \
     | docker login \
         --username AWS \
         --password-stdin \
-        "${ECR_REGISTRY}"; then
+        "${ECR_REGISTRY_DOMAIN}"; then
   echo "❌ ERROR: Failed to authenticate Docker with Amazon ECR."
   exit 1
 fi
 
 echo "ECR Docker authentication: SUCCESS"
 
-# 6. Validate Docker Compose Syntax
+# 6. Validate Docker Compose Syntax and ECR Image References
 echo "🔍 Validating Docker Compose configuration..."
 export IMAGE_TAG="${TARGET_IMAGE_TAG}"
-export ECR_REGISTRY="${ECR_REGISTRY}/${ECR_REPOSITORY}"
+export ECR_REGISTRY="${ECR_REGISTRY_DOMAIN}/${ECR_REPOSITORY}"
 docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" config > /dev/null
 echo "✅ Docker Compose configuration is valid."
 
+# 6.1 Safe pre-flight image reference validation
+echo "================================================================="
+echo "🔍 PRE-FLIGHT ECR IMAGE REFERENCE VALIDATION"
+echo "   Target SHA : ${TARGET_IMAGE_TAG}"
+echo "================================================================="
+
+SERVICES=(
+  "api-gateway"
+  "auth-service"
+  "user-service"
+  "beautician-service"
+  "catalog-service"
+  "booking-service"
+  "cart-service"
+  "payment-service"
+  "wallet-service"
+  "notification-service"
+  "content-service"
+  "worker-service"
+)
+
+IMAGE_VALIDATION_FAILED=0
+for svc in "${SERVICES[@]}"; do
+  RESOLVED_IMAGE="${ECR_REGISTRY}:${svc}-${TARGET_IMAGE_TAG}"
+  echo "  • ${svc}:"
+  echo "    ${RESOLVED_IMAGE}"
+
+  if [[ "${RESOLVED_IMAGE}" =~ getready-backend/getready-backend ]]; then
+    echo "    ❌ ERROR: Invalid ECR image reference: repository name duplicated in ${RESOLVED_IMAGE}" >&2
+    IMAGE_VALIDATION_FAILED=1
+  fi
+
+  if [[ ! "${RESOLVED_IMAGE}" =~ ^154458646293\.dkr\.ecr\.ap-south-1\.amazonaws\.com/getready-backend:${svc}-[0-9a-fA-F]{40}$ ]]; then
+    echo "    ❌ ERROR: Image reference does not match required format (expected 40-character SHA tag)." >&2
+    IMAGE_VALIDATION_FAILED=1
+  fi
+done
+
+if [ ${IMAGE_VALIDATION_FAILED} -ne 0 ]; then
+  echo "❌ ERROR: ECR image reference pre-flight validation failed. Aborting deployment." >&2
+  exit 1
+fi
+echo "✅ All 12 microservice image references validated successfully (0 duplicate repository paths)."
+
 # 7. Pull all 12 microservice images before stopping anything
+echo "================================================================="
 echo "📦 Pulling all microservice images for tag ${TARGET_IMAGE_TAG}..."
+echo "================================================================="
 if ! docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" pull; then
   echo "❌ ERROR: Failed to pull images from ECR for tag ${TARGET_IMAGE_TAG}."
   echo "   Aborting deployment before containers are modified."
@@ -217,7 +269,7 @@ execute_rollback() {
   if [ -n "${PREVIOUS_IMAGE_TAG}" ] && [ "${PREVIOUS_IMAGE_TAG}" != "${TARGET_IMAGE_TAG}" ]; then
     echo "⏪ Rolling back to previous stable tag: ${PREVIOUS_IMAGE_TAG}..."
     export IMAGE_TAG="${PREVIOUS_IMAGE_TAG}"
-    export ECR_REGISTRY="${ECR_REGISTRY}/${ECR_REPOSITORY}"
+    export ECR_REGISTRY="${ECR_REGISTRY_DOMAIN}/${ECR_REPOSITORY}"
     docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --remove-orphans || true
     
     echo "⏳ Waiting 15s for rollback containers to stabilize..."
