@@ -2,13 +2,15 @@
 # =============================================================================
 # GET READY BACKEND — AWS PRODUCTION DEPLOYMENT SCRIPT
 # Target: AWS EC2 (i-0a4e7008ca42520d2 / getReady-backend)
-# ECR: 154458646293.dkr.ecr.ap-south-1.amazonaws.com/getready-backend
+# ECR Registry: 154458646293.dkr.ecr.ap-south-1.amazonaws.com
+# ECR Repository: getready-backend
 # Region: ap-south-1
 #
 # SECURITY & COMPLIANCE:
 # - Dotenv files are NEVER executed as shell scripts (NO source, ., eval, bash, sh)
-# - Secrets are NEVER logged or echoed
+# - Secrets and tokens are NEVER logged or echoed
 # - Native Docker Compose --env-file is used for container variable injection
+# - AWS ECR Docker login uses non-interactive --password-stdin
 # =============================================================================
 
 set -eo pipefail
@@ -20,7 +22,8 @@ ENV_FILE=".env.production"
 COMPOSE_FILE="docker-compose.production.yml"
 STATE_FILE="deployment-state.env"
 AWS_REGION="ap-south-1"
-ECR_REGISTRY="154458646293.dkr.ecr.ap-south-1.amazonaws.com/getready-backend"
+ECR_REGISTRY="154458646293.dkr.ecr.ap-south-1.amazonaws.com"
+ECR_REPOSITORY="getready-backend"
 
 # 1. Determine Target IMAGE_TAG (Command-line argument or environment variable)
 TARGET_IMAGE_TAG="${1:-${IMAGE_TAG:-}}"
@@ -84,6 +87,12 @@ else
   safe_load_env "${ENV_FILE}"
 fi
 
+# CRITICAL: Preserve AWS deployment region for EC2 / ECR operations
+# (.env.production contains AWS_REGION for object storage such as sgp1, which must not override AWS deployment region)
+AWS_REGION="ap-south-1"
+ECR_REGISTRY="154458646293.dkr.ecr.ap-south-1.amazonaws.com"
+ECR_REPOSITORY="getready-backend"
+
 # Validate critical production environment variables in memory
 if [ -z "${DATABASE_URI:-}" ]; then
   echo "❌ ERROR: DATABASE_URI is missing from ${ENV_FILE}."
@@ -110,18 +119,47 @@ fi
 echo "📋 Recorded Previous Image Tag: ${PREVIOUS_IMAGE_TAG:-<none>}"
 
 # 5. Authenticate Docker with Amazon ECR using EC2 IAM Role
-echo "🔑 Logging in to Amazon ECR (${AWS_REGION})..."
-if ! aws ecr get-login-password --region "${AWS_REGION}" | docker login --username AWS --password-stdin "${ECR_REGISTRY%%/*}"; then
-  echo "❌ ERROR: Failed to authenticate with Amazon ECR."
-  echo "   Ensure EC2 IAM Role (getready-ec2-ecr-role) is attached and has AmazonEC2ContainerRegistryReadOnly."
+echo "================================================================="
+echo "🔑 AWS ECR AUTHENTICATION"
+echo "   AWS Region   : ${AWS_REGION}"
+echo "   ECR Registry : ${ECR_REGISTRY}"
+echo "   Repository   : ${ECR_REPOSITORY}"
+echo "================================================================="
+
+# 5.1 Verify AWS identity safely (non-sensitive)
+echo "🔍 Verifying AWS IAM Caller Identity..."
+aws sts get-caller-identity --region "${AWS_REGION}" || {
+  echo "❌ ERROR: Failed to get AWS caller identity. Ensure IAM Role (getready-ec2-ecr-role) is attached to EC2."
+  exit 1
+}
+
+# 5.2 Safely verify ECR token retrieval without printing token
+echo "🔍 Verifying ECR authorization token retrieval..."
+if aws ecr get-login-password --region "${AWS_REGION}" >/dev/null 2>&1; then
+  echo "ECR authorization token retrieval: SUCCESS"
+else
+  echo "ECR authorization token retrieval: FAILED"
+  echo "❌ ERROR: Failed to retrieve ECR login token for region ${AWS_REGION}."
   exit 1
 fi
-echo "✅ ECR login succeeded."
+
+# 5.3 Non-interactive Docker login with --password-stdin
+echo "🐳 Authenticating Docker client with ECR registry (${ECR_REGISTRY})..."
+if ! aws ecr get-login-password --region "${AWS_REGION}" \
+    | docker login \
+        --username AWS \
+        --password-stdin \
+        "${ECR_REGISTRY}"; then
+  echo "❌ ERROR: Failed to authenticate Docker with Amazon ECR."
+  exit 1
+fi
+
+echo "ECR Docker authentication: SUCCESS"
 
 # 6. Validate Docker Compose Syntax
 echo "🔍 Validating Docker Compose configuration..."
 export IMAGE_TAG="${TARGET_IMAGE_TAG}"
-export ECR_REGISTRY="${ECR_REGISTRY}"
+export ECR_REGISTRY="${ECR_REGISTRY}/${ECR_REPOSITORY}"
 docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" config > /dev/null
 echo "✅ Docker Compose configuration is valid."
 
@@ -143,6 +181,7 @@ execute_rollback() {
   if [ -n "${PREVIOUS_IMAGE_TAG}" ] && [ "${PREVIOUS_IMAGE_TAG}" != "${TARGET_IMAGE_TAG}" ]; then
     echo "⏪ Rolling back to previous stable tag: ${PREVIOUS_IMAGE_TAG}..."
     export IMAGE_TAG="${PREVIOUS_IMAGE_TAG}"
+    export ECR_REGISTRY="${ECR_REGISTRY}/${ECR_REPOSITORY}"
     docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --remove-orphans || true
     
     echo "⏳ Waiting 15s for rollback containers to stabilize..."
