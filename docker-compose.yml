@@ -21,6 +21,7 @@ volumes:
   rabbitmq_data:
   prometheus_data:
   grafana_data:
+  loki_data:
   uploads_data:
 
 services:
@@ -97,6 +98,7 @@ services:
       - '3100:3100'
     volumes:
       - ./monitoring/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/var/loki
     command: -config.file=/etc/loki/local-config.yaml
     networks:
       - getready-network
