@@ -5,12 +5,14 @@
 # ECR Registry: 154458646293.dkr.ecr.ap-south-1.amazonaws.com
 # ECR Repository: getready-backend
 # Region: ap-south-1
+# IAM Role: getready-ec2-ecr-role (EC2 Instance Profile)
 #
 # SECURITY & COMPLIANCE:
 # - Dotenv files are NEVER executed as shell scripts (NO source, ., eval, bash, sh)
 # - Secrets and tokens are NEVER logged or echoed
 # - Native Docker Compose --env-file is used for container variable injection
-# - AWS ECR Docker login uses non-interactive --password-stdin
+# - AWS ECR Docker login uses non-interactive --password-stdin with EC2 IAM Role
+# - AWS credential environment variables are safely unset to prevent overriding EC2 role
 # =============================================================================
 
 set -eo pipefail
@@ -24,6 +26,7 @@ STATE_FILE="deployment-state.env"
 AWS_REGION="ap-south-1"
 ECR_REGISTRY="154458646293.dkr.ecr.ap-south-1.amazonaws.com"
 ECR_REPOSITORY="getready-backend"
+EXPECTED_IAM_ROLE="getready-ec2-ecr-role"
 
 # 1. Determine Target IMAGE_TAG (Command-line argument or environment variable)
 TARGET_IMAGE_TAG="${1:-${IMAGE_TAG:-}}"
@@ -87,12 +90,6 @@ else
   safe_load_env "${ENV_FILE}"
 fi
 
-# CRITICAL: Preserve AWS deployment region for EC2 / ECR operations
-# (.env.production contains AWS_REGION for object storage such as sgp1, which must not override AWS deployment region)
-AWS_REGION="ap-south-1"
-ECR_REGISTRY="154458646293.dkr.ecr.ap-south-1.amazonaws.com"
-ECR_REPOSITORY="getready-backend"
-
 # Validate critical production environment variables in memory
 if [ -z "${DATABASE_URI:-}" ]; then
   echo "❌ ERROR: DATABASE_URI is missing from ${ENV_FILE}."
@@ -120,20 +117,59 @@ echo "📋 Recorded Previous Image Tag: ${PREVIOUS_IMAGE_TAG:-<none>}"
 
 # 5. Authenticate Docker with Amazon ECR using EC2 IAM Role
 echo "================================================================="
-echo "🔑 AWS ECR AUTHENTICATION"
-echo "   AWS Region   : ${AWS_REGION}"
-echo "   ECR Registry : ${ECR_REGISTRY}"
-echo "   Repository   : ${ECR_REPOSITORY}"
+echo "🔑 AWS ECR AUTHENTICATION & EC2 IAM IDENTITY VERIFICATION"
+echo "   AWS Region    : ${AWS_REGION}"
+echo "   ECR Registry  : ${ECR_REGISTRY}"
+echo "   Repository    : ${ECR_REPOSITORY}"
+echo "   Expected Role : ${EXPECTED_IAM_ROLE}"
 echo "================================================================="
 
-# 5.1 Verify AWS identity safely (non-sensitive)
-echo "🔍 Verifying AWS IAM Caller Identity..."
-aws sts get-caller-identity --region "${AWS_REGION}" || {
-  echo "❌ ERROR: Failed to get AWS caller identity. Ensure IAM Role (getready-ec2-ecr-role) is attached to EC2."
+# 5.1 Safe diagnostic of credential environment variables (names only, NEVER values)
+echo "📋 AWS Credential Environment Diagnostics (pre-auth status):"
+echo "   AWS_ACCESS_KEY_ID           : $([ -n "${AWS_ACCESS_KEY_ID:-}" ] && echo "PRESENT (clearing for EC2 role)" || echo "UNSET")"
+echo "   AWS_SECRET_ACCESS_KEY       : $([ -n "${AWS_SECRET_ACCESS_KEY:-}" ] && echo "PRESENT (clearing for EC2 role)" || echo "UNSET")"
+echo "   AWS_SESSION_TOKEN           : $([ -n "${AWS_SESSION_TOKEN:-}" ] && echo "PRESENT (clearing for EC2 role)" || echo "UNSET")"
+echo "   AWS_SECURITY_TOKEN          : $([ -n "${AWS_SECURITY_TOKEN:-}" ] && echo "PRESENT (clearing for EC2 role)" || echo "UNSET")"
+echo "   AWS_PROFILE                 : $([ -n "${AWS_PROFILE:-}" ] && echo "PRESENT (clearing for EC2 role)" || echo "UNSET")"
+echo "   AWS_DEFAULT_PROFILE         : $([ -n "${AWS_DEFAULT_PROFILE:-}" ] && echo "PRESENT (clearing for EC2 role)" || echo "UNSET")"
+echo "   AWS_SHARED_CREDENTIALS_FILE : $([ -n "${AWS_SHARED_CREDENTIALS_FILE:-}" ] && echo "PRESENT (clearing for EC2 role)" || echo "UNSET")"
+echo "   AWS_CONFIG_FILE             : $([ -n "${AWS_CONFIG_FILE:-}" ] && echo "PRESENT (clearing for EC2 role)" || echo "UNSET")"
+echo "   AWS_WEB_IDENTITY_TOKEN_FILE : $([ -n "${AWS_WEB_IDENTITY_TOKEN_FILE:-}" ] && echo "PRESENT (clearing for EC2 role)" || echo "UNSET")"
+echo "   AWS_ROLE_ARN                : $([ -n "${AWS_ROLE_ARN:-}" ] && echo "PRESENT (clearing for EC2 role)" || echo "UNSET")"
+
+# 5.2 Explicitly clear credential environment variables so AWS CLI uses EC2 IAM role exclusively
+unset AWS_ACCESS_KEY_ID
+unset AWS_SECRET_ACCESS_KEY
+unset AWS_SESSION_TOKEN
+unset AWS_SECURITY_TOKEN
+unset AWS_PROFILE
+unset AWS_DEFAULT_PROFILE
+unset AWS_SHARED_CREDENTIALS_FILE
+unset AWS_CONFIG_FILE
+unset AWS_WEB_IDENTITY_TOKEN_FILE
+unset AWS_ROLE_ARN
+
+export AWS_REGION="ap-south-1"
+export AWS_DEFAULT_REGION="ap-south-1"
+
+# 5.3 Safely verify AWS Caller Identity and ensure it matches the EC2 IAM Role
+echo "🔍 Verifying AWS IAM Caller Identity via EC2 Instance Profile..."
+CALLER_IDENTITY_RAW=$(aws sts get-caller-identity --region "${AWS_REGION}" --output json 2>&1) || {
+  echo "❌ ERROR: Failed to get AWS caller identity."
+  echo "${CALLER_IDENTITY_RAW}"
   exit 1
 }
 
-# 5.2 Safely verify ECR token retrieval without printing token
+CALLER_ARN=$(echo "${CALLER_IDENTITY_RAW}" | jq -r '.Arn // ""' 2>/dev/null || echo "")
+if [[ "${CALLER_ARN}" =~ ${EXPECTED_IAM_ROLE} ]]; then
+  echo "✅ EC2 IAM Identity Verified: ${CALLER_ARN}"
+else
+  echo "❌ ERROR: Unexpected AWS IAM identity: ${CALLER_ARN}"
+  echo "   Expected EC2 IAM Role: ${EXPECTED_IAM_ROLE}"
+  exit 1
+fi
+
+# 5.4 Safely verify ECR token retrieval without printing token
 echo "🔍 Verifying ECR authorization token retrieval..."
 if aws ecr get-login-password --region "${AWS_REGION}" >/dev/null 2>&1; then
   echo "ECR authorization token retrieval: SUCCESS"
@@ -143,7 +179,7 @@ else
   exit 1
 fi
 
-# 5.3 Non-interactive Docker login with --password-stdin
+# 5.5 Non-interactive Docker login with --password-stdin
 echo "🐳 Authenticating Docker client with ECR registry (${ECR_REGISTRY})..."
 if ! aws ecr get-login-password --region "${AWS_REGION}" \
     | docker login \
