@@ -203,11 +203,11 @@ jobs:
                 "tar -xzf /tmp/deploy-bundle.tar.gz -C /opt/getready/",
                 "rm -f /tmp/deploy-bundle.tar.gz",
                 "echo \"🔍 [4/6] Verifying deployment files...\"",
-                "for f in deploy-production.sh health-check.sh rollback-production.sh docker-compose.production.yml; do if [ ! -s \"$f\" ]; then echo \"❌ ERROR: Missing or empty file: /opt/getready/$f\"; exit 1; fi; echo \"  • Found: $f\"; done",
+                "for f in deploy-production.sh health-check.sh rollback-production.sh validate-env-production.sh docker-compose.production.yml; do if [ ! -s \"$f\" ]; then echo \"❌ ERROR: Missing or empty file: /opt/getready/$f\"; exit 1; fi; echo \"  • Found: $f\"; done",
                 "if [ ! -d \"monitoring\" ]; then echo \"❌ ERROR: Missing /opt/getready/monitoring directory\"; exit 1; fi",
                 "echo \"  • Found: monitoring configuration directory\"",
                 "echo \"🔑 [5/6] Setting executable permissions on scripts...\"",
-                "chmod +x deploy-production.sh health-check.sh rollback-production.sh",
+                "chmod +x deploy-production.sh health-check.sh rollback-production.sh validate-env-production.sh bootstrap-docker.sh",
                 "if [ ! -f \".env.production\" ]; then echo \"❌ ERROR: /opt/getready/.env.production not found!\"; exit 1; fi",
                 "echo \"🚢 [6/6] Executing deploy-production.sh \($sha)...\"",
                 "./deploy-production.sh \($sha)"

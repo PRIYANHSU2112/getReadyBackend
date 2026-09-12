@@ -2,6 +2,8 @@
 # =============================================================================
 # GET READY BACKEND — PRODUCTION ROLLBACK SCRIPT
 # Reverts microservices to a previously stable IMAGE_TAG
+#
+# SECURITY: Safe dotenv and state parsing without source or eval.
 # =============================================================================
 
 set -eo pipefail
@@ -13,17 +15,37 @@ ENV_FILE=".env.production"
 COMPOSE_FILE="docker-compose.production.yml"
 STATE_FILE="deployment-state.env"
 
+# Safe in-memory key-value loader
+safe_load_env() {
+  local target_file="$1"
+  [ ! -f "${target_file}" ] && return 0
+  while IFS= read -r line || [ -n "${line}" ]; do
+    line="${line%$'\r'}"
+    local trimmed="${line#"${line%%[![:space:]]*}"}"
+    if [ -z "${trimmed}" ] || [[ "${trimmed}" =~ ^# ]]; then
+      continue
+    fi
+    if [[ "${trimmed}" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+      local k="${BASH_REMATCH[1]}"
+      local v="${BASH_REMATCH[2]}"
+      if [[ "${v}" =~ ^\"(.*)\"$ ]] || [[ "${v}" =~ ^\'(.*)\'$ ]]; then
+        v="${BASH_REMATCH[1]}"
+      fi
+      export "${k}=${v}"
+    fi
+  done < "${target_file}"
+}
+
 echo "================================================================="
 echo "⏪ INITIATING GET READY BACKEND PRODUCTION ROLLBACK"
 echo "   Directory : ${SCRIPT_DIR}"
 echo "   Timestamp : $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 echo "================================================================="
 
-# 1. Load deployment state
+# 1. Load deployment state safely
 PREVIOUS_TAG=""
 if [ -f "${STATE_FILE}" ]; then
-  # shellcheck disable=SC1090
-  source "${STATE_FILE}"
+  safe_load_env "${STATE_FILE}"
   PREVIOUS_TAG="${PREVIOUS_IMAGE_TAG:-}"
 fi
 

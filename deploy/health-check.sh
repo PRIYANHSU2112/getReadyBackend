@@ -2,6 +2,8 @@
 # =============================================================================
 # GET READY BACKEND — PRODUCTION HEALTH CHECK SCRIPT
 # Probes API Gateway, all 12 microservices, Redis, RabbitMQ, and Observability
+#
+# SECURITY: Safe dotenv parsing without source, eval, or command execution.
 # =============================================================================
 
 set -eo pipefail
@@ -9,13 +11,30 @@ set -eo pipefail
 ENV_FILE="${1:-.env.production}"
 COMPOSE_FILE="${2:-docker-compose.production.yml}"
 
-# Load environment if present
+# Safe in-memory dotenv parser
+safe_load_env() {
+  local target_file="$1"
+  [ ! -f "${target_file}" ] && return 0
+  while IFS= read -r line || [ -n "${line}" ]; do
+    line="${line%$'\r'}"
+    local trimmed="${line#"${line%%[![:space:]]*}"}"
+    if [ -z "${trimmed}" ] || [[ "${trimmed}" =~ ^# ]]; then
+      continue
+    fi
+    if [[ "${trimmed}" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+      local k="${BASH_REMATCH[1]}"
+      local v="${BASH_REMATCH[2]}"
+      if [[ "${v}" =~ ^\"(.*)\"$ ]] || [[ "${v}" =~ ^\'(.*)\'$ ]]; then
+        v="${BASH_REMATCH[1]}"
+      fi
+      export "${k}=${v}"
+    fi
+  done < "${target_file}"
+}
+
+# Safely load environment if present
 if [ -f "${ENV_FILE}" ]; then
-  # export non-comment lines
-  set -a
-  # shellcheck disable=SC1090
-  source "${ENV_FILE}"
-  set +a
+  safe_load_env "${ENV_FILE}"
 fi
 
 echo "================================================================="

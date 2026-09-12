@@ -4,6 +4,11 @@
 # Target: AWS EC2 (i-0a4e7008ca42520d2 / getReady-backend)
 # ECR: 154458646293.dkr.ecr.ap-south-1.amazonaws.com/getready-backend
 # Region: ap-south-1
+#
+# SECURITY & COMPLIANCE:
+# - Dotenv files are NEVER executed as shell scripts (NO source, ., eval, bash, sh)
+# - Secrets are NEVER logged or echoed
+# - Native Docker Compose --env-file is used for container variable injection
 # =============================================================================
 
 set -eo pipefail
@@ -41,24 +46,52 @@ if [ -z "${TARGET_IMAGE_TAG}" ]; then
   exit 1
 fi
 
-# 3. Verify and load .env.production
+# 3. Verify and safely load .env.production
 if [ ! -f "${ENV_FILE}" ]; then
   echo "❌ ERROR: Environment file '${ENV_FILE}' not found in ${SCRIPT_DIR}."
   echo "   Please create ${ENV_FILE} from .env.production.example and configure production credentials."
   exit 1
 fi
 
-# shellcheck disable=SC1090
-source "${ENV_FILE}"
+# Source validation helpers if available or use embedded safe loader
+if [ -f "./validate-env-production.sh" ]; then
+  # shellcheck disable=SC1091
+  source "./validate-env-production.sh"
+  echo "🛡️ Running pre-flight environment sanitization and validation..."
+  sanitize_env_file "${ENV_FILE}"
+  validate_production_env "${ENV_FILE}"
+else
+  # Embedded safe dotenv loader fallback (zero execution, pure string parsing)
+  safe_load_env() {
+    local target_file="$1"
+    [ ! -f "${target_file}" ] && return 0
+    while IFS= read -r line || [ -n "${line}" ]; do
+      line="${line%$'\r'}"
+      local trimmed="${line#"${line%%[![:space:]]*}"}"
+      if [ -z "${trimmed}" ] || [[ "${trimmed}" =~ ^# ]]; then
+        continue
+      fi
+      if [[ "${trimmed}" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+        local k="${BASH_REMATCH[1]}"
+        local v="${BASH_REMATCH[2]}"
+        if [[ "${v}" =~ ^\"(.*)\"$ ]] || [[ "${v}" =~ ^\'(.*)\'$ ]]; then
+          v="${BASH_REMATCH[1]}"
+        fi
+        export "${k}=${v}"
+      fi
+    done < "${target_file}"
+  }
+  safe_load_env "${ENV_FILE}"
+fi
 
-# Validate critical production environment variables
+# Validate critical production environment variables in memory
 if [ -z "${DATABASE_URI:-}" ]; then
   echo "❌ ERROR: DATABASE_URI is missing from ${ENV_FILE}."
   exit 1
 fi
 
-if [[ "${DATABASE_URI}" =~ localhost|127\.0\.0\.1|getready_dev ]]; then
-  echo "❌ ERROR: Production DATABASE_URI cannot reference localhost or dev databases."
+if [[ "${DATABASE_URI}" =~ localhost|127\.0\.0\.1|getready_dev|/test ]]; then
+  echo "❌ ERROR: Production DATABASE_URI cannot reference localhost, 127.0.0.1, or dev databases."
   exit 1
 fi
 
@@ -67,11 +100,10 @@ if [ -z "${JWT_SECRET:-}" ] || [ "${#JWT_SECRET}" -lt 32 ]; then
   exit 1
 fi
 
-# 4. Record previous state for automatic rollback
+# 4. Record previous state for automatic rollback (safely without source)
 PREVIOUS_IMAGE_TAG=""
 if [ -f "${STATE_FILE}" ]; then
-  # shellcheck disable=SC1090
-  source "${STATE_FILE}"
+  safe_load_env "${STATE_FILE}"
   PREVIOUS_IMAGE_TAG="${CURRENT_IMAGE_TAG:-}"
 fi
 
