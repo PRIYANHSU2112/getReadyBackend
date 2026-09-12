@@ -1,8 +1,10 @@
 import { ApiResponse, HttpStatus } from '@getready/errors';
+import { defaultStorageService } from '@getready/storage';
 
 export class BannerController {
-  constructor(bannerService) {
+  constructor(bannerService, storageService = defaultStorageService) {
     this.bannerService = bannerService;
+    this.storageService = storageService;
   }
 
   listActive = async (req, res) => {
@@ -37,7 +39,10 @@ export class BannerController {
   create = async (req, res) => {
     const data = { ...req.body };
     if (req.file) {
-      data.imageUrl = `/uploads/${req.file.filename}`;
+      const uploadResult = await this.storageService.upload(req.file, 'banners', true);
+      if (uploadResult && uploadResult.url) {
+        data.imageUrl = uploadResult.url;
+      }
     }
     const banner = await this.bannerService.create(data);
     return ApiResponse.success(res, banner, 'Banner created successfully', HttpStatus.CREATED);
@@ -47,7 +52,10 @@ export class BannerController {
     const { id } = req.params;
     const data = { ...req.body };
     if (req.file) {
-      data.imageUrl = `/uploads/${req.file.filename}`;
+      const uploadResult = await this.storageService.upload(req.file, 'banners', true);
+      if (uploadResult && uploadResult.url) {
+        data.imageUrl = uploadResult.url;
+      }
     }
     const banner = await this.bannerService.update(id, data);
     return ApiResponse.success(res, banner, 'Banner updated successfully');

@@ -171,12 +171,11 @@ unset AWS_CONFIG_FILE
 unset AWS_WEB_IDENTITY_TOKEN_FILE
 unset AWS_ROLE_ARN
 
-export AWS_REGION="ap-south-1"
-export AWS_DEFAULT_REGION="ap-south-1"
+EC2_AWS_REGION="ap-south-1"
 
 # 5.3 Safely verify AWS Caller Identity and ensure it matches the EC2 IAM Role
 echo "🔍 Verifying AWS IAM Caller Identity via EC2 Instance Profile..."
-CALLER_IDENTITY_RAW=$(aws sts get-caller-identity --region "${AWS_REGION}" --output json 2>&1) || {
+CALLER_IDENTITY_RAW=$(aws sts get-caller-identity --region "${EC2_AWS_REGION}" --output json 2>&1) || {
   echo "❌ ERROR: Failed to get AWS caller identity."
   echo "${CALLER_IDENTITY_RAW}"
   exit 1
@@ -193,18 +192,20 @@ fi
 
 # 5.4 Safely verify ECR token retrieval without printing token
 echo "🔍 Verifying ECR authorization token retrieval..."
-if aws ecr get-login-password --region "${AWS_REGION}" >/dev/null 2>&1; then
+if aws ecr get-login-password --region "${EC2_AWS_REGION}" >/dev/null 2>&1; then
   echo "ECR authorization token retrieval: SUCCESS"
 else
   echo "ECR authorization token retrieval: FAILED"
-  echo "❌ ERROR: Failed to retrieve ECR login token for region ${AWS_REGION}."
+  echo "❌ ERROR: Failed to retrieve ECR login token for region ${EC2_AWS_REGION}."
   exit 1
 fi
 
 # 5.5 Non-interactive Docker login with --password-stdin
 echo "🐳 Authenticating Docker client with ECR registry (${ECR_REGISTRY_DOMAIN})..."
-if ! aws ecr get-login-password --region "${AWS_REGION}" \
-    | docker login \
+if ! (
+  unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_SECURITY_TOKEN AWS_PROFILE AWS_DEFAULT_PROFILE
+  aws ecr get-login-password --region "${EC2_AWS_REGION}"
+) | docker login \
         --username AWS \
         --password-stdin \
         "${ECR_REGISTRY_DOMAIN}"; then
@@ -213,6 +214,10 @@ if ! aws ecr get-login-password --region "${AWS_REGION}" \
 fi
 
 echo "ECR authentication: SUCCESS"
+
+# 5.6 Restore object-storage environment variables from .env.production for Docker Compose
+echo "🔄 Reloading production environment variables for container runtime injection..."
+safe_load_env "${ENV_FILE}"
 
 # 6. Validate Docker Compose Syntax and ECR Image References
 echo "🔍 Validating Docker Compose configuration..."

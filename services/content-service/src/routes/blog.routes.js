@@ -3,7 +3,10 @@ import multer from 'multer';
 import { validate } from '@getready/validation';
 import { blogValidator } from '../validators/blog.validation.js';
 
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB
+});
 
 export function createBlogRoutes(blogController) {
   const router = Router();

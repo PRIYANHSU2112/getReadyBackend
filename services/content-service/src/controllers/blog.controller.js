@@ -1,8 +1,10 @@
 import { ApiResponse, HttpStatus } from '@getready/errors';
+import { defaultStorageService } from '@getready/storage';
 
 export class BlogController {
-  constructor(blogService) {
+  constructor(blogService, storageService = defaultStorageService) {
     this.blogService = blogService;
+    this.storageService = storageService;
   }
 
   home = async (req, res) => {
@@ -63,7 +65,10 @@ export class BlogController {
   create = async (req, res) => {
     const data = { ...req.body };
     if (req.file) {
-      data.coverImageUrl = `/uploads/${req.file.filename}`;
+      const uploadResult = await this.storageService.upload(req.file, 'blogs', true);
+      if (uploadResult && uploadResult.url) {
+        data.coverImageUrl = uploadResult.url;
+      }
     }
     const blog = await this.blogService.create(data);
     return ApiResponse.success(res, blog, 'Blog created successfully', HttpStatus.CREATED);
@@ -73,7 +78,10 @@ export class BlogController {
     const { id } = req.params;
     const data = { ...req.body };
     if (req.file) {
-      data.coverImageUrl = `/uploads/${req.file.filename}`;
+      const uploadResult = await this.storageService.upload(req.file, 'blogs', true);
+      if (uploadResult && uploadResult.url) {
+        data.coverImageUrl = uploadResult.url;
+      }
     }
     const blog = await this.blogService.update(id, data);
     return ApiResponse.success(res, blog, 'Blog updated successfully');
