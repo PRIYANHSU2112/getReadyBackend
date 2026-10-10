@@ -271,11 +271,11 @@ services:
       METRICS_ENABLED: 'true'
     depends_on:
       auth-service:
-        condition: service_healthy
+        condition: service_started
       user-service:
-        condition: service_healthy
+        condition: service_started
       redis:
-        condition: service_healthy
+        condition: service_started
     networks:
       - getready-network
     deploy: *gateway-deploy

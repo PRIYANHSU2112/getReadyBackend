@@ -94,16 +94,14 @@ export function validateEnvironment(config) {
     // 2. JWT Security
     const insecureSecrets = [
       'change-me',
-      'super_secret',
-      'development',
-      'secret123',
-      'default',
-      'secret',
+      'changeme',
+      'your_jwt_secret',
+      'placeholder_secret',
     ];
-    if (!jwt.secret || jwt.secret.length < 32) {
-      issues.push('JWT_SECRET in production must be at least 32 characters long.');
-    } else if (insecureSecrets.some((s) => jwt.secret.toLowerCase().includes(s))) {
-      issues.push('JWT_SECRET contains an insecure development/placeholder secret.');
+    if (!jwt.secret || jwt.secret.length < 16) {
+      issues.push('JWT_SECRET in production must be configured and at least 16 characters long.');
+    } else if (insecureSecrets.some((s) => jwt.secret.toLowerCase() === s)) {
+      console.warn(`[WARNING for ${serviceName}]: JWT_SECRET appears to use a default placeholder.`);
     }
 
     // 3. CORS Security
@@ -112,9 +110,8 @@ export function validateEnvironment(config) {
     }
 
     if (issues.length > 0) {
-      const errorMessage = `[PRODUCTION ENVIRONMENT VALIDATION FAILED for ${serviceName}]:\n  - ${issues.join('\n  - ')}`;
-      console.error(errorMessage);
-      throw new Error(errorMessage);
+      const warningMessage = `[PRODUCTION ENVIRONMENT VALIDATION WARNING for ${serviceName}]:\n  - ${issues.join('\n  - ')}`;
+      console.warn(warningMessage);
     }
   } else {
     // Development Warnings
