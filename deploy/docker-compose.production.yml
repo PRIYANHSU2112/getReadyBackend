@@ -41,7 +41,6 @@ x-deploy-infra: &infra-deploy
 
 networks:
   getready-network:
-    name: getready-network
     driver: bridge
 
 volumes:
