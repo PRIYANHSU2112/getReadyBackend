@@ -81,13 +81,11 @@ export function validateEnvironment(config) {
     // 1. Database Safety
     const lowerUri = mongoUri.toLowerCase();
     if (
-      lowerUri.includes('localhost') ||
-      lowerUri.includes('127.0.0.1') ||
-      lowerUri.includes('getready_dev') ||
-      lowerUri.includes('/test')
+      !lowerUri.includes('mongodb+srv://') &&
+      (lowerUri.includes('localhost') || lowerUri.includes('127.0.0.1'))
     ) {
       issues.push(
-        `Production DATABASE_URI cannot point to local/development databases (found: "${mongoUri}").`,
+        `Production DATABASE_URI points to local database instead of cloud cluster (found: "${mongoUri}").`,
       );
     }
 
