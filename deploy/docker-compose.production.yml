@@ -205,7 +205,7 @@ services:
       PORT: 3000
       GATEWAY_PORT: 3000
       APP_NAME: getready-api-gateway
-      APP_URL: ${APP_URL:-https://api.getready.example.com}
+      APP_URL: ${APP_URL:-https://api.priyashu.in}
       AUTH_SERVICE_URL: http://auth-service:3001
       USER_SERVICE_URL: http://user-service:3002
       BEAUTICIAN_SERVICE_URL: http://beautician-service:3003
@@ -219,8 +219,8 @@ services:
       WORKER_SERVICE_URL: http://worker-service:3011
       JWT_SECRET: ${JWT_SECRET}
       DATABASE_URI: ${DATABASE_URI}
-      ALLOWED_ORIGINS: ${CORS_ORIGINS:-https://admin.getready.example.com,https://www.getready.example.com}
-      CORS_ORIGINS: ${CORS_ORIGINS:-https://admin.getready.example.com,https://www.getready.example.com}
+      ALLOWED_ORIGINS: ${CORS_ORIGINS:-https://admin.ready.deepent.in,https://api.priyashu.in,https://admin.getready.example.com,https://www.getready.example.com}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://admin.ready.deepent.in,https://api.priyashu.in,https://admin.getready.example.com,https://www.getready.example.com}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-change_in_production}

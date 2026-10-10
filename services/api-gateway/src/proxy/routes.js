@@ -21,6 +21,16 @@ function createServiceProxy(targetUrl, serviceName) {
       if (srcReq.headers['x-user-phone']) proxyReqOpts.headers['x-user-phone'] = srcReq.headers['x-user-phone'];
       return proxyReqOpts;
     },
+    userResHeaderDecorator: (headers) => {
+      // Strip downstream CORS headers so API gateway is the single authoritative source of CORS headers
+      delete headers['access-control-allow-origin'];
+      delete headers['access-control-allow-credentials'];
+      delete headers['access-control-allow-methods'];
+      delete headers['access-control-allow-headers'];
+      delete headers['access-control-expose-headers'];
+      delete headers['access-control-max-age'];
+      return headers;
+    },
     proxyErrorHandler: (err, res, next) => {
       logger.error({ err, service: serviceName, targetUrl }, 'Gateway proxy error to downstream service');
       if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {

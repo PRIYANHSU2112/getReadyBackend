@@ -172,7 +172,13 @@ export function loadServiceConfig(serviceName = 'service', defaults = {}) {
 
   const port = parseInt(process.env.PORT || defaults.port || '3000', 10);
   const appName = process.env.APP_NAME || `getready-${serviceName}`;
-  const appUrl = process.env.APP_URL || (isProduction ? `https://${serviceName}.getready.example.com` : `http://localhost:${port}`);
+  const appUrl =
+    process.env.APP_URL ||
+    (isProduction
+      ? serviceName === 'api-gateway'
+        ? 'https://api.priyashu.in'
+        : `https://${serviceName}.priyashu.in`
+      : `http://localhost:${port}`);
 
   // Database URI: STRICTLY process.env.DATABASE_URI only
   const mongoUri = (process.env.DATABASE_URI || defaults.mongoUri || defaults.database?.uri || '').trim();
@@ -200,12 +206,43 @@ export function loadServiceConfig(serviceName = 'service', defaults = {}) {
     (isProduction ? '' : 'getready_dev_super_secret_jwt_refresh_key_2026_at_least_32');
   const jwtRefreshExpiresIn = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
-  // CORS
-  const corsOrigins = process.env.CORS_ORIGINS
-    ? process.env.CORS_ORIGINS.split(',').map((s) => s.trim())
+  // CORS Allowed Origins
+  const rawCors = process.env.CORS_ORIGINS || process.env.ALLOWED_ORIGINS;
+  const defaultProductionOrigins = [
+    'https://admin.ready.deepent.in',
+    'https://api.priyashu.in',
+    'https://admin.getready.example.com',
+    'https://www.getready.example.com',
+    'https://getready-admin.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:5000',
+  ];
+  const defaultDevelopmentOrigins = [
+    'https://admin.ready.deepent.in',
+    'https://api.priyashu.in',
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:5000',
+  ];
+
+  const parsedOrigins = rawCors
+    ? rawCors
+        .split(',')
+        .map((s) => s.trim().replace(/\/+$/, ''))
+        .filter(Boolean)
     : isProduction
-      ? ['https://admin.getready.example.com', 'https://www.getready.example.com']
-      : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5000'];
+      ? defaultProductionOrigins
+      : defaultDevelopmentOrigins;
+
+  // Always ensure critical production origins are included without duplication
+  const corsOrigins = Array.from(
+    new Set([
+      ...parsedOrigins,
+      'https://admin.ready.deepent.in',
+      'https://api.priyashu.in',
+    ]),
+  );
 
   // Logging, Swagger & Observability
   const swaggerEnabled = process.env.SWAGGER_ENABLED !== undefined
