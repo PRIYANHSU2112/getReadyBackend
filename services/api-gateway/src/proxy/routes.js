@@ -4,6 +4,34 @@ import { config } from '../config/index.js';
 import { logger } from '@getready/logger';
 import { ApiResponse, HttpStatus, ErrorCodes } from '@getready/errors';
 
+function isOriginAllowed(origin) {
+  if (!origin) return false;
+  const cleanOrigin = origin.trim().replace(/\/+$/, '');
+  const explicitAllowedOrigins = new Set([
+    'https://admin.ready.deepent.in',
+    'https://api.priyashu.in',
+    'https://admin.getready.example.com',
+    'https://www.getready.example.com',
+    'https://getready-admin.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5000',
+    ...(Array.isArray(config.corsOrigins)
+      ? config.corsOrigins.map((o) => o.trim().replace(/\/+$/, ''))
+      : []),
+  ]);
+
+  if (explicitAllowedOrigins.has(cleanOrigin)) return true;
+
+  return (
+    /^https?:\/\/([a-z0-9-]+\.)*ready\.deepent\.in$/i.test(cleanOrigin) ||
+    /^https?:\/\/([a-z0-9-]+\.)*priyashu\.in$/i.test(cleanOrigin) ||
+    /^https?:\/\/([a-z0-9-]+\.)*vercel\.app$/i.test(cleanOrigin) ||
+    /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(cleanOrigin)
+  );
+}
+
 function createServiceProxy(targetUrl, serviceName) {
   return proxy(targetUrl, {
     parseReqBody: false,
@@ -21,14 +49,34 @@ function createServiceProxy(targetUrl, serviceName) {
       if (srcReq.headers['x-user-phone']) proxyReqOpts.headers['x-user-phone'] = srcReq.headers['x-user-phone'];
       return proxyReqOpts;
     },
-    userResHeaderDecorator: (headers) => {
-      // Strip downstream CORS headers so API gateway is the single authoritative source of CORS headers
-      delete headers['access-control-allow-origin'];
-      delete headers['access-control-allow-credentials'];
-      delete headers['access-control-allow-methods'];
-      delete headers['access-control-allow-headers'];
-      delete headers['access-control-expose-headers'];
-      delete headers['access-control-max-age'];
+    userResHeaderDecorator: (headers, userReq, userRes) => {
+      // Ensure authoritative CORS headers from API Gateway are attached to proxied responses
+      const origin = userReq.headers['origin'];
+      const allowedOrigin =
+        (userRes && typeof userRes.getHeader === 'function' && userRes.getHeader('access-control-allow-origin')) ||
+        (isOriginAllowed(origin) ? origin : null);
+
+      if (allowedOrigin) {
+        headers['access-control-allow-origin'] = allowedOrigin;
+        headers['access-control-allow-credentials'] = 'true';
+        headers['access-control-allow-methods'] = 'GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD';
+        headers['access-control-allow-headers'] =
+          'Content-Type,Authorization,X-Requested-With,Accept,Origin,x-correlation-id,x-request-id,x-user-id,x-user-role,x-user-email,x-user-phone,Range';
+        headers['access-control-expose-headers'] =
+          'x-correlation-id,x-request-id,Content-Range,X-Total-Count,Authorization';
+      } else {
+        delete headers['access-control-allow-origin'];
+        delete headers['access-control-allow-credentials'];
+      }
+
+      if (headers['vary']) {
+        if (!headers['vary'].toLowerCase().includes('origin')) {
+          headers['vary'] += ', Origin';
+        }
+      } else {
+        headers['vary'] = 'Origin';
+      }
+
       return headers;
     },
     proxyErrorHandler: (err, res, next) => {

@@ -33,6 +33,7 @@ export function createApp(deps = {}) {
     'https://getready-admin.vercel.app',
     'http://localhost:3000',
     'http://localhost:5173',
+    'http://localhost:5174',
     'http://localhost:5000',
     ...(Array.isArray(config.corsOrigins)
       ? config.corsOrigins.map((o) => o.trim().replace(/\/+$/, ''))
