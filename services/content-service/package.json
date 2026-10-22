@@ -19,6 +19,7 @@
     "joi": "^17.13.3",
     "mongoose": "^8.9.3",
     "multer": "^1.4.5-lts.1",
-    "@getready/storage": "^1.0.0"
+    "@getready/storage": "^1.0.0",
+    "express-async-errors": "^3.1.1"
   }
 }

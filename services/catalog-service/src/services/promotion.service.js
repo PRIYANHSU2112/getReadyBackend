@@ -531,6 +531,13 @@ export class PromotionService {
   }
 
   /**
+   * Admin: Overall promotions KPI metrics
+   */
+  async getAdminStats() {
+    return this.promoRepo.getAdminStats();
+  }
+
+  /**
    * Sweep expired reservations
    */
   async sweepExpiredReservations() {

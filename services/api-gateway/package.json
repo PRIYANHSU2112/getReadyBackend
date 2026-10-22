@@ -18,6 +18,7 @@
     "@getready/tracing": "^1.0.0",
     "@getready/metrics": "^1.0.0",
     "@getready/config": "^1.0.0",
-    "@getready/storage": "^1.0.0"
+    "@getready/storage": "^1.0.0",
+    "express-async-errors": "^3.1.1"
   }
 }

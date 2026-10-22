@@ -20,6 +20,8 @@ export function createAdminPromotionRoutes(ctrl) {
   const router = Router();
 
   // Admin Dashboard Campaign Management endpoints
+  router.get('/admin/stats', ctrl.getAdminStats);
+  router.get('/stats', ctrl.getAdminStats);
   router.get('/', ctrl.listAdmin);
   router.post('/', validate(promotionValidator, 'adminCreatePromotion'), ctrl.createAdmin);
   router.get('/:id', ctrl.getByIdAdmin);

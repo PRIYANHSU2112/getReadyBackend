@@ -294,6 +294,30 @@ export class FilterRepository {
   async restoreValueById(id) {
     return FilterValueModel.findByIdAndUpdate(id, { $set: { deletedAt: null, isActive: true } }, { new: true });
   }
+
+  async getAdminStats() {
+    const [filtersFacet, valuesCount] = await Promise.all([
+      FilterModel.aggregate([
+        { $match: { deletedAt: null } },
+        {
+          $facet: {
+            totalFilters: [{ $count: 'count' }],
+            activeFilters: [{ $match: { isActive: true } }, { $count: 'count' }],
+            byDisplayType: [{ $group: { _id: '$displayType', count: { $sum: 1 } } }],
+          },
+        },
+      ]),
+      FilterValueModel.countDocuments({ deletedAt: null, isActive: true }),
+    ]);
+
+    const facet = filtersFacet[0] || {};
+    return {
+      totalFilters: facet.totalFilters?.[0]?.count || 0,
+      activeFilters: facet.activeFilters?.[0]?.count || 0,
+      totalValues: valuesCount || 0,
+      types: facet.byDisplayType || [],
+    };
+  }
 }
 
 export class HygieneKitRepository {
@@ -342,6 +366,30 @@ export class HygieneKitRepository {
       HygieneKitModel.countDocuments(filter),
     ]);
     return { items, total };
+  }
+
+  async getAdminStats() {
+    const [result] = await HygieneKitModel.aggregate([
+      { $match: { deletedAt: null } },
+      {
+        $facet: {
+          totalKits: [{ $count: 'count' }],
+          activeKits: [{ $match: { isActive: true, status: 'ACTIVE' } }, { $count: 'count' }],
+          defaultKit: [{ $match: { isDefault: true, isActive: true } }, { $limit: 1 }],
+          avgPrice: [{ $group: { _id: null, avgPrice: { $avg: '$price' } } }],
+        },
+      },
+    ]);
+
+    const facet = result || {};
+    return {
+      totalKits: facet.totalKits?.[0]?.count || 0,
+      activeKits: facet.activeKits?.[0]?.count || 0,
+      hasDefault: (facet.defaultKit?.length || 0) > 0,
+      defaultKitTitle: facet.defaultKit?.[0]?.title || null,
+      defaultKitPrice: facet.defaultKit?.[0]?.price ?? 49,
+      averagePrice: Math.round(facet.avgPrice?.[0]?.avgPrice || 49),
+    };
   }
 }
 

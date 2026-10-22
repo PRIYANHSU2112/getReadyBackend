@@ -580,6 +580,72 @@ export class PromotionRepository {
       },
     };
   }
+
+  /**
+   * Admin: Overall promotions KPI metrics
+   */
+  async getAdminStats() {
+    const now = new Date();
+    const [statsResult, redemptionResult] = await Promise.all([
+      PromotionModel.aggregate([
+        { $match: { deletedAt: null } },
+        {
+          $facet: {
+            totalCampaigns: [{ $count: 'count' }],
+            activeCampaigns: [
+              {
+                $match: {
+                  status: PROMOTION_STATUS.ACTIVE,
+                  $and: [
+                    { $or: [{ validFrom: null }, { validFrom: { $lte: now } }] },
+                    { $or: [{ validTo: null }, { validTo: { $gte: now } }] },
+                  ],
+                },
+              },
+              { $count: 'count' },
+            ],
+            pausedCampaigns: [{ $match: { status: PROMOTION_STATUS.PAUSED } }, { $count: 'count' }],
+            expiredCampaigns: [
+              {
+                $match: {
+                  $or: [
+                    { status: PROMOTION_STATUS.EXPIRED },
+                    { validTo: { $lt: now } },
+                  ],
+                },
+              },
+              { $count: 'count' },
+            ],
+            totalUsage: [{ $group: { _id: null, totalUsed: { $sum: '$usedCount' } } }],
+          },
+        },
+      ]),
+      PromotionRedemptionModel.aggregate([
+        { $match: { status: REDEMPTION_STATUS.REDEEMED } },
+        {
+          $group: {
+            _id: null,
+            totalDiscountGiven: { $sum: '$discountAmount' },
+            totalBonusCoins: { $sum: '$bonusCoins' },
+            totalRedemptions: { $sum: 1 },
+          },
+        },
+      ]),
+    ]);
+
+    const facet = statsResult[0] || {};
+    const redemptions = redemptionResult[0] || {};
+
+    return {
+      totalCampaigns: facet.totalCampaigns?.[0]?.count || 0,
+      activeCampaigns: facet.activeCampaigns?.[0]?.count || 0,
+      pausedCampaigns: facet.pausedCampaigns?.[0]?.count || 0,
+      expiredCampaigns: facet.expiredCampaigns?.[0]?.count || 0,
+      totalRedemptions: redemptions.totalRedemptions || facet.totalUsage?.[0]?.totalUsed || 0,
+      totalDiscountGiven: redemptions.totalDiscountGiven || 0,
+      totalBonusCoins: redemptions.totalBonusCoins || 0,
+    };
+  }
 }
 
 export const promotionRepository = new PromotionRepository();

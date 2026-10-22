@@ -413,6 +413,10 @@ export class FilterService {
     await this.filterRepo.deleteValueById(valueId);
     return true;
   }
+
+  async getAdminStats() {
+    return this.filterRepo.getAdminStats();
+  }
 }
 
 export class HygieneKitService {
@@ -484,6 +488,10 @@ export class HygieneKitService {
 
   async restore(id) {
     return this.hygieneKitRepo.restoreById(id);
+  }
+
+  async getAdminStats() {
+    return this.hygieneKitRepo.getAdminStats();
   }
 }
 

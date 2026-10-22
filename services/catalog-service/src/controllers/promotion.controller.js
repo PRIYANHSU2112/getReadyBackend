@@ -165,6 +165,11 @@ export class PromotionController {
     const report = await this.promoService.getPromotionAnalytics(req.params.id);
     return ApiResponse.success(res, report, 'Promotion analytics report fetched successfully');
   };
+
+  getAdminStats = async (_req, res) => {
+    const stats = await this.promoService.getAdminStats();
+    return ApiResponse.success(res, stats, 'Promotion stats retrieved successfully');
+  };
 }
 
 export const promotionController = new PromotionController();

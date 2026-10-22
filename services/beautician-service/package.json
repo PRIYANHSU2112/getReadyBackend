@@ -15,6 +15,7 @@
     "@getready/config": "^1.0.0",
     "@getready/rabbitmq": "^1.0.0",
     "@getready/validation": "^1.0.0",
-    "@getready/storage": "^1.0.0"
+    "@getready/storage": "^1.0.0",
+    "express-async-errors": "^3.1.1"
   }
 }

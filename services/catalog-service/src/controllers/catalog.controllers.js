@@ -280,6 +280,11 @@ export class FilterController {
     await this.filterService.removeValue(req.params.valueId);
     return ApiResponse.success(res, { id: req.params.valueId }, 'Filter value deleted successfully');
   };
+
+  getAdminStats = async (_req, res) => {
+    const stats = await this.filterService.getAdminStats();
+    return ApiResponse.success(res, stats, 'Filter stats retrieved successfully');
+  };
 }
 
 export class HygieneKitController {
@@ -330,6 +335,11 @@ export class HygieneKitController {
   restore = async (req, res) => {
     const item = await this.hygieneKitService.restore(req.params.id);
     return ApiResponse.success(res, item, 'Hygiene kit restored successfully');
+  };
+
+  getAdminStats = async (_req, res) => {
+    const stats = await this.hygieneKitService.getAdminStats();
+    return ApiResponse.success(res, stats, 'Hygiene kit stats retrieved successfully');
   };
 }
 

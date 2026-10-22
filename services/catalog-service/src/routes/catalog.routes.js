@@ -72,6 +72,7 @@ export function createPackageRoutes(ctrl) {
 
 export function createFilterRoutes(ctrl) {
   const router = Router();
+  router.get('/admin/stats', ctrl.getAdminStats);
   router.get('/public', ctrl.listPublic);
   router.get('/', ctrl.list);
   router.post('/', validate(catalogValidator, 'createFilter'), ctrl.create);
@@ -88,6 +89,7 @@ export function createFilterRoutes(ctrl) {
 
 export function createHygieneKitRoutes(ctrl) {
   const router = Router();
+  router.get('/admin/stats', ctrl.getAdminStats);
   router.get('/default', ctrl.getDefault);
   router.get('/active', ctrl.getActive);
   router.get('/:id', ctrl.getById);
