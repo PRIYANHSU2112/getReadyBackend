@@ -106,6 +106,8 @@ const bookingItemSchema = new mongoose.Schema(
     durationMinutes: { type: Number, required: true, default: 30 },
     assignedBeauticianId: { type: String, default: null, index: true },
     assignedBeauticianName: { type: String, default: null },
+    creatorBeauticianId: { type: String, default: null, index: true },
+    creatorBeauticianName: { type: String, default: null },
     status: {
       type: String,
       enum: Object.values(ITEM_STATUS),

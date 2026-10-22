@@ -41,4 +41,9 @@ export class SupportController {
     const result = await this.supportService.delete(req.params.id);
     return ApiResponse.success(res, result, 'Support ticket deleted successfully');
   };
+
+  getAdminStats = async (req, res) => {
+    const stats = await this.supportService.getAdminStats(req.query);
+    return ApiResponse.success(res, stats, 'Support ticket stats retrieved successfully');
+  };
 }

@@ -16,6 +16,7 @@ export function createCategoryRoutes(ctrl) {
   router.patch('/reorder', ctrl.reorder);
   router.patch('/bulk/status', ctrl.bulkSetStatus);
   router.post('/bulk/delete', ctrl.bulkDelete);
+  router.get('/admin/stats', ctrl.getAdminStats);
   router.get('/', ctrl.list);
   router.post('/', upload.single('file'), validate(catalogValidator, 'createCategory'), ctrl.create);
   router.get('/:id', ctrl.getById);
@@ -32,6 +33,7 @@ export function createServiceRoutes(ctrl) {
   router.get('/public/category/:categoryId', ctrl.listPublicByCategory);
   router.get('/public/:slug', ctrl.getPublicBySlug);
   router.patch('/reorder', ctrl.list);
+  router.get('/admin/stats', ctrl.getAdminStats);
   router.get('/', ctrl.list);
   router.post('/', serviceUpload, validate(catalogValidator, 'createService'), ctrl.create);
   router.get('/:id', ctrl.getById);
@@ -58,6 +60,7 @@ export function createPackageRoutes(ctrl) {
   router.get('/public', ctrl.listPublic);
   router.get('/public/slug/:slug', ctrl.getPublicBySlug);
   router.get('/public/:id', ctrl.getPublicById);
+  router.get('/admin/stats', ctrl.getAdminStats);
   router.get('/', ctrl.listAdmin);
   router.post('/', serviceUpload, validate(catalogValidator, 'createPackage'), ctrl.create);
   router.patch('/:id', serviceUpload, ctrl.update);
@@ -99,12 +102,15 @@ export function createHygieneKitRoutes(ctrl) {
 
 export function createCouponRoutes(ctrl) {
   const router = Router();
+  router.get('/admin/stats', ctrl.getAdminStats);
+  router.post('/validate', validate(catalogValidator, 'validateCoupon'), ctrl.validate);
+  router.post('/redeem', validate(catalogValidator, 'redeemCoupon'), ctrl.redeem);
+  router.post('/release', validate(catalogValidator, 'releaseCoupon'), ctrl.release);
   router.get('/', ctrl.list);
   router.get('/:id', ctrl.getById);
-  router.post('/', ctrl.create);
+  router.post('/', validate(catalogValidator, 'createCoupon'), ctrl.create);
   router.put('/:id', ctrl.update);
   router.patch('/:id', ctrl.update);
   router.delete('/:id', ctrl.remove);
-  router.post('/validate', ctrl.validate);
   return router;
 }

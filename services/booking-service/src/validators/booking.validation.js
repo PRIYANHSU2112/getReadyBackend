@@ -122,6 +122,8 @@ export const bookingValidator = {
         upgradeServiceName: Joi.string().optional().allow(null),
         upgradePriceDifference: Joi.number().min(0).default(0),
         durationMinutes: Joi.number().optional(),
+        creatorBeauticianId: Joi.string().optional().allow(null, ''),
+        creatorBeauticianName: Joi.string().optional().allow(null, ''),
       }),
     ).min(1).required(),
     hygieneKitQuantity: Joi.number().min(1).default(1),

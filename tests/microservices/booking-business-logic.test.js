@@ -661,4 +661,121 @@ describe('Booking Service — Complete Multi-Customer & Multi-Beautician Busines
       );
     });
   });
+
+  // =========================================================================
+  // 9. CREATOR PRIORITY & CANDIDATE RANKING FOR ADMIN PANEL
+  // =========================================================================
+  describe('9. Creator Priority & Smart Candidate Ranking for Admin Panel', () => {
+    it('should place Creator Beautician at TOP (#1 Rank) with FREE badge when available', async () => {
+      const bookingWithCreator = {
+        _id: 'bk_creator_test_01',
+        bookingNumber: 'GR998811',
+        scheduledDate: '2026-10-18',
+        scheduledStartTime: new Date('2026-10-18T10:00:00Z'),
+        scheduledEndTime: new Date('2026-10-18T11:00:00Z'),
+        items: [
+          {
+            _id: 'item_c_1',
+            serviceId: 'srv_custom_glow',
+            serviceName: "Pooja's Signature Bridal Facial",
+            participantName: 'Mummy',
+            creatorBeauticianId: 'beau_pooja_101',
+            creatorBeauticianName: 'Pooja Verma',
+          },
+        ],
+      };
+
+      mockBookingRepo.findById.mockResolvedValue(bookingWithCreator);
+      mockBookingRepo.findOverlappingBookings.mockResolvedValue([]); // No conflicts
+
+      const result = await bookingService.getEligibleBeauticians('bk_creator_test_01');
+
+      expect(result.hasCreatorService).toBe(true);
+      expect(result.candidates.length).toBeGreaterThan(0);
+
+      // Top candidate MUST be the Creator
+      const topCandidate = result.candidates[0];
+      expect(topCandidate.beauticianId).toBe('beau_pooja_101');
+      expect(topCandidate.isCreator).toBe(true);
+      expect(topCandidate.badge).toContain('Service Creator');
+      expect(topCandidate.availability.isFree).toBe(true);
+      expect(topCandidate.availability.status).toBe('AVAILABLE');
+    });
+
+    it('should show Creator as BUSY with conflict details, and allow Admin to assign an alternative free beautician', async () => {
+      const bookingWithCreator = {
+        _id: 'bk_creator_busy_02',
+        bookingNumber: 'GR998822',
+        scheduledDate: '2026-10-18',
+        scheduledStartTime: new Date('2026-10-18T10:00:00Z'),
+        scheduledEndTime: new Date('2026-10-18T11:00:00Z'),
+        items: [
+          {
+            _id: 'item_c_2',
+            serviceId: 'srv_custom_hair',
+            serviceName: "Pooja's Signature Hair Spa",
+            participantName: 'Sister',
+            creatorBeauticianId: 'beau_pooja_101',
+            creatorBeauticianName: 'Pooja Verma',
+          },
+        ],
+        statusHistory: [],
+        save: jest.fn().mockImplementation(async function () {
+          return this;
+        }),
+      };
+
+      mockBookingRepo.findById.mockResolvedValue(bookingWithCreator);
+
+      // Creator Pooja has an overlapping booking, but Anjali Sharma is FREE!
+      mockBookingRepo.findOverlappingBookings.mockImplementation(async ({ beauticianId }) => {
+        if (beauticianId === 'beau_pooja_101') {
+          return [
+            {
+              _id: 'bk_conflict_01',
+              bookingNumber: 'GR881122',
+              scheduledStartTime: new Date('2026-10-18T09:30:00Z'),
+              scheduledEndTime: new Date('2026-10-18T10:45:00Z'),
+            },
+          ];
+        }
+        return []; // Other beauticians are free
+      });
+
+      const result = await bookingService.getEligibleBeauticians('bk_creator_busy_02');
+
+      // Top candidate is still Creator (Pooja), but marked BUSY!
+      const topCandidate = result.candidates[0];
+      expect(topCandidate.beauticianId).toBe('beau_pooja_101');
+      expect(topCandidate.isCreator).toBe(true);
+      expect(topCandidate.availability.isFree).toBe(false);
+      expect(topCandidate.availability.status).toBe('BUSY');
+      expect(topCandidate.availability.busyDetails.conflictBookingNumber).toBe('GR881122');
+
+      // Alternative candidates exist and are AVAILABLE!
+      const alternative = result.candidates.find((c) => !c.isCreator && c.availability.isFree);
+      expect(alternative).toBeDefined();
+      expect(alternative.availability.isFree).toBe(true);
+
+      // Admin selects and assigns the alternative free beautician (e.g. Anjali Sharma)
+      const assigned = await bookingService.adminAssignBeauticians(
+        'bk_creator_busy_02',
+        [
+          {
+            beauticianId: alternative.beauticianId,
+            beauticianName: alternative.beauticianName,
+            assignedItemIds: ['item_c_2'],
+          },
+        ],
+        'ADMIN',
+        'admin_user_01',
+      );
+
+      expect(assigned.status).toBe(BOOKING_STATUS.ASSIGNED);
+      expect(assigned.assignedBeauticianCount).toBe(1);
+      expect(assigned.beauticianAssignments[0].beauticianId).toBe(alternative.beauticianId);
+      expect(assigned.items[0].assignedBeauticianId).toBe(alternative.beauticianId);
+      expect(assigned.items[0].status).toBe(ITEM_STATUS.ASSIGNED);
+    });
+  });
 });

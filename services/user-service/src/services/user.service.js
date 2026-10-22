@@ -231,4 +231,39 @@ export class UserService {
 
     return true;
   }
+
+  parseDateRange(query = {}) {
+    const period = query.period || query.dateFilter || '30d';
+    const now = new Date();
+    let startDate;
+    let endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+    if (query.startDate) {
+      startDate = new Date(query.startDate);
+      if (query.endDate) {
+        endDate = new Date(query.endDate);
+        endDate.setHours(23, 59, 59, 999);
+      }
+      return { startDate, endDate };
+    }
+
+    if (period === 'today') {
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    } else if (period === '7d' || period === 'this_week') {
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      startDate.setHours(0, 0, 0, 0);
+    } else if (period === 'this_month' || period === 'month') {
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    } else {
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      startDate.setHours(0, 0, 0, 0);
+    }
+
+    return { startDate, endDate };
+  }
+
+  async getAdminStats(query = {}) {
+    const { startDate, endDate } = this.parseDateRange(query);
+    return this.userRepository.getAdminStats({ startDate, endDate });
+  }
 }

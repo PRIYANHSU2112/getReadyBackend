@@ -1,0 +1,249 @@
+[
+  {
+    "name": "1. User Service - Customer KPI Stats",
+    "endpoint": "/api/v1/users/admin/stats",
+    "description": "Returns total, active, blocked, and verified customer counts via $facet",
+    "status": 200,
+    "success": true,
+    "durationMs": 192.8,
+    "body": {
+      "success": true,
+      "message": "User stats retrieved successfully",
+      "data": {
+        "totalCustomers": 0,
+        "activeCustomers": 0,
+        "newCustomersThisPeriod": 0,
+        "membershipHolders": 0,
+        "blockedAccounts": 0
+      }
+    }
+  },
+  {
+    "name": "2. User Service - Customer KPI Stats (Period Filter = month)",
+    "endpoint": "/api/v1/users/admin/stats?period=month",
+    "description": "Returns customer stats filtered by last 30 days",
+    "status": 200,
+    "success": true,
+    "durationMs": 133.8,
+    "body": {
+      "success": true,
+      "message": "User stats retrieved successfully",
+      "data": {
+        "totalCustomers": 0,
+        "activeCustomers": 0,
+        "newCustomersThisPeriod": 0,
+        "membershipHolders": 0,
+        "blockedAccounts": 0
+      }
+    }
+  },
+  {
+    "name": "3. Beautician Service - Partner KPI Stats",
+    "endpoint": "/api/v1/beautician-profiles/admin/stats",
+    "description": "Returns total, active, available, busy, offline, and KYC status metrics via $facet",
+    "status": 200,
+    "success": true,
+    "durationMs": 30.5,
+    "body": {
+      "success": true,
+      "message": "Beautician stats retrieved successfully",
+      "data": {
+        "totalRegistered": 1,
+        "activeOnline": 0,
+        "available": 0,
+        "busy": 0,
+        "onLeave": 1,
+        "pendingKycQueue": 1,
+        "approvedPartners": 0,
+        "topRatedCount": 0
+      }
+    }
+  },
+  {
+    "name": "4. Beautician Service - Partner KPI Stats (Period Filter = week)",
+    "endpoint": "/api/v1/beautician-profiles/admin/stats?period=week",
+    "description": "Returns beautician stats onboarded in last 7 days",
+    "status": 200,
+    "success": true,
+    "durationMs": 20,
+    "body": {
+      "success": true,
+      "message": "Beautician stats retrieved successfully",
+      "data": {
+        "totalRegistered": 1,
+        "activeOnline": 0,
+        "available": 0,
+        "busy": 0,
+        "onLeave": 1,
+        "pendingKycQueue": 1,
+        "approvedPartners": 0,
+        "topRatedCount": 0
+      }
+    }
+  },
+  {
+    "name": "5. Catalog Service - Services KPI Stats",
+    "endpoint": "/api/v1/services/admin/stats",
+    "description": "Returns total services, live/approved, pending approval, and price distribution",
+    "status": 200,
+    "success": true,
+    "durationMs": 20.9,
+    "body": {
+      "success": true,
+      "message": "Service stats retrieved successfully",
+      "data": {
+        "totalServices": 0,
+        "approvedLive": 0,
+        "pendingApprovals": 0,
+        "averageListPrice": 0
+      }
+    }
+  },
+  {
+    "name": "6. Catalog Service - Categories KPI Stats",
+    "endpoint": "/api/v1/categories/admin/stats",
+    "description": "Returns total categories, active, inactive, and total mapped services count",
+    "status": 200,
+    "success": true,
+    "durationMs": 31.8,
+    "body": {
+      "success": true,
+      "message": "Category stats retrieved successfully",
+      "data": {
+        "totalCategories": 0,
+        "activeCategories": 0,
+        "totalLinkedServices": 0
+      }
+    }
+  },
+  {
+    "name": "7. Catalog Service - Packages KPI Stats",
+    "endpoint": "/api/v1/packages/admin/stats",
+    "description": "Returns total packages, pending approval, approved, and beautician-created bundles",
+    "status": 200,
+    "success": true,
+    "durationMs": 20.9,
+    "body": {
+      "success": true,
+      "message": "Package stats retrieved successfully",
+      "data": {
+        "total": 0,
+        "pending": 0,
+        "approved": 0,
+        "partnerCreated": 0
+      }
+    }
+  },
+  {
+    "name": "8. Catalog Service - Coupons KPI Stats",
+    "endpoint": "/api/v1/coupons/admin/stats",
+    "description": "Returns total coupons, active, total redemption count, and expired promos",
+    "status": 200,
+    "success": true,
+    "durationMs": 19.2,
+    "body": {
+      "success": true,
+      "message": "Coupon stats retrieved successfully",
+      "data": {
+        "totalCoupons": 0,
+        "activePromos": 0,
+        "totalRedemptions": 0,
+        "expiredCount": 0
+      }
+    }
+  },
+  {
+    "name": "9. Content Service - Reviews KPI Stats",
+    "endpoint": "/api/v1/reviews/admin/stats",
+    "description": "Returns total reviews, average rating score, 5-star count, and pending moderation queue",
+    "status": 200,
+    "success": true,
+    "durationMs": 22.5,
+    "body": {
+      "success": true,
+      "message": "Review stats retrieved successfully",
+      "data": {
+        "total": 0,
+        "avgRating": 5,
+        "fiveStarCount": 0,
+        "pendingModeration": 0,
+        "approvedCount": 0,
+        "rejectedCount": 0
+      }
+    }
+  },
+  {
+    "name": "10. Content Service - Support / Tickets KPI Stats",
+    "endpoint": "/api/v1/tickets/admin/stats",
+    "description": "Returns total support tickets, open, in-progress, resolved, and urgent priority counts",
+    "status": 200,
+    "success": true,
+    "durationMs": 17.3,
+    "body": {
+      "success": true,
+      "message": "Support ticket stats retrieved successfully",
+      "data": {
+        "total": 0,
+        "open": 0,
+        "inProgress": 0,
+        "resolved": 0,
+        "urgent": 0
+      }
+    }
+  },
+  {
+    "name": "11. Content Service - Banners KPI Stats",
+    "endpoint": "/api/v1/banners/admin/stats",
+    "description": "Returns total marketing banners, active, deeplinked, and currently live in schedule",
+    "status": 200,
+    "success": true,
+    "durationMs": 18,
+    "body": {
+      "success": true,
+      "message": "Banner stats retrieved successfully",
+      "data": {
+        "total": 0,
+        "active": 0,
+        "inactive": 0,
+        "deeplinked": 0,
+        "currentlyLive": 0
+      }
+    }
+  },
+  {
+    "name": "12. Booking Service - Bookings KPI Stats",
+    "endpoint": "/api/v1/bookings/admin/stats",
+    "description": "Returns total bookings, completed, revenue, and dispatch assignments via analytics aggregator",
+    "status": 200,
+    "success": true,
+    "durationMs": 28.6,
+    "body": {
+      "success": true,
+      "message": "Dashboard KPIs retrieved successfully",
+      "data": {
+        "totalBookings": 0,
+        "todayBookings": 0,
+        "pendingAssignment": 0,
+        "assigned": 0,
+        "inProgress": 0,
+        "completedBookings": 0,
+        "cancelledBookings": 0,
+        "paymentPending": 0,
+        "paymentFailed": 0,
+        "multiCustomerBookings": 0,
+        "multiBeauticianBookings": 0,
+        "instantBookings": 0,
+        "grossRevenue": 0,
+        "completionRate": 100,
+        "cancellationRate": 0,
+        "activeCustomers": 0,
+        "averageOrderValue": 0,
+        "hygieneKitsSold": 0,
+        "upgradesRevenue": 0,
+        "revenueChange": 24.5,
+        "bookingsChange": 18.2,
+        "customersChange": 12.8
+      }
+    }
+  }
+]

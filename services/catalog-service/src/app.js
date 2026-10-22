@@ -1,3 +1,4 @@
+import 'express-async-errors';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -17,6 +18,7 @@ import {
   FilterRepository,
   HygieneKitRepository,
   CouponRepository,
+  PromotionRepository,
 } from './repositories/catalog.repositories.js';
 
 import {
@@ -38,6 +40,10 @@ import {
   CouponController,
 } from './controllers/catalog.controllers.js';
 
+import { PromotionService } from './services/promotion.service.js';
+import { PromotionController } from './controllers/promotion.controller.js';
+import { homeFeedController } from './controllers/home-feed.controller.js';
+
 import {
   createCategoryRoutes,
   createServiceRoutes,
@@ -47,6 +53,11 @@ import {
   createHygieneKitRoutes,
   createCouponRoutes,
 } from './routes/catalog.routes.js';
+
+import {
+  createOfferRoutes,
+  createAdminPromotionRoutes,
+} from './routes/promotion.routes.js';
 
 export function createApp(deps = {}) {
   const app = express();
@@ -91,6 +102,7 @@ export function createApp(deps = {}) {
   const filterRepo = deps.filterRepository || new FilterRepository();
   const hygieneKitRepo = deps.hygieneKitRepository || new HygieneKitRepository();
   const couponRepo = deps.couponRepository || new CouponRepository();
+  const promotionRepo = deps.promotionRepository || new PromotionRepository();
   const storageService = deps.storageService || new StorageService(config.storage, config.appUrl);
 
   const categoryService = deps.categoryService || new CategoryService(categoryRepo, storageService, deps.eventPublisher || null);
@@ -99,6 +111,7 @@ export function createApp(deps = {}) {
   const filterService = deps.filterService || new FilterService(filterRepo);
   const hygieneKitService = deps.hygieneKitService || new HygieneKitService(hygieneKitRepo, storageService, deps.eventPublisher || null);
   const couponService = deps.couponService || new CouponService(couponRepo, deps.eventPublisher || null);
+  const promotionService = deps.promotionService || new PromotionService(promotionRepo, deps.eventPublisher || null);
 
   const categoryCtrl = new CategoryController(categoryService);
   const serviceCtrl = new ServiceController(catalogItemService);
@@ -106,8 +119,11 @@ export function createApp(deps = {}) {
   const filterCtrl = new FilterController(filterService);
   const hygieneKitCtrl = new HygieneKitController(hygieneKitService);
   const couponCtrl = new CouponController(couponService);
+  const promotionCtrl = new PromotionController(promotionService);
 
   // Mount routes
+  app.get('/api/v1/home/feed', homeFeedController.getFeed);
+  app.post('/api/v1/home/feed/refresh', homeFeedController.refreshFeed);
   app.use('/api/v1/categories', createCategoryRoutes(categoryCtrl));
   app.use('/api/v1/services', createServiceRoutes(serviceCtrl));
   app.use('/api/v1/service-change-requests', createServiceChangeRequestRoutes(serviceCtrl));
@@ -115,6 +131,8 @@ export function createApp(deps = {}) {
   app.use('/api/v1/filters', createFilterRoutes(filterCtrl));
   app.use('/api/v1/hygiene-kits', createHygieneKitRoutes(hygieneKitCtrl));
   app.use('/api/v1/coupons', createCouponRoutes(couponCtrl));
+  app.use('/api/v1/offers', createOfferRoutes(promotionCtrl));
+  app.use('/api/v1/admin/promotions', createAdminPromotionRoutes(promotionCtrl));
 
   // 404
   app.use((req, res) => {

@@ -1,3 +1,4 @@
+import 'express-async-errors';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -37,6 +38,7 @@ import {
   createSkillRoutes,
   createBankDetailRoutes,
 } from './routes/beautician.routes.js';
+import { beauticianHomeController } from './controllers/beautician-home.controller.js';
 
 export function createApp(deps = {}) {
   const app = express();
@@ -102,9 +104,17 @@ export function createApp(deps = {}) {
   const bankCtrl = new BankDetailController(bankDetailService);
 
   // Mount routes
+  app.get('/api/v1/beautician/home/summary', beauticianHomeController.getSummary);
+  app.get('/api/v1/beautician/home/services', beauticianHomeController.getServices);
+  app.patch('/api/v1/beautician/home/duty', beauticianHomeController.updateDuty);
+  app.get('/api/v1/beautician/home/upcoming-bookings', (_req, res) => {
+    return ApiResponse.success(res, { upcoming: [], total: 0 }, 'Upcoming bookings retrieved successfully');
+  });
+
   const beauticianRoutes = createBeauticianProfileRoutes(profileCtrl);
   app.use('/api/v1/beautician-profiles', beauticianRoutes);
   app.use('/api/v1/beauticians', beauticianRoutes);
+  app.use('/api/v1/beautician', beauticianRoutes);
   app.use('/api/v1/skills', createSkillRoutes(skillCtrl));
   app.use('/api/v1/bank-details', createBankDetailRoutes(bankCtrl));
 

@@ -21,7 +21,7 @@ export function computeCartPricing(cart, options = {}) {
     membership: {
       isMember: options.isMember || false,
       optInMembership: Boolean(benefits.membershipOptIn),
-      membershipPlan: options.membershipPlan || null,
+      membershipPlan: options.membershipPlan || (benefits.membershipOptIn ? { price: 599, discountPercentage: 15, maxDiscountPerBooking: 500 } : null),
     },
     coupon: {
       couponDiscount: Number(options.couponDiscount) || 0,

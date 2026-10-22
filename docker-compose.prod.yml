@@ -59,6 +59,7 @@ services:
       WALLET_SERVICE_URL: http://wallet-service:3008
       NOTIFICATION_SERVICE_URL: http://notification-service:3009
       CONTENT_SERVICE_URL: http://content-service:3010
+      MEMBERSHIP_SERVICE_URL: http://membership-service:3011
       WORKER_SERVICE_URL: http://worker-service:3011
     logging: *prod-logging
     deploy: *prod-deploy
@@ -260,6 +261,26 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3011
+    logging: *prod-logging
+    deploy: *prod-deploy
+    networks:
+      - getready-internal-network
+
+  membership-service:
+    build:
+      context: .
+      dockerfile: services/membership-service/Dockerfile
+      target: production
+    container_name: getready-prod-membership-service
+    restart: always
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: 3011
+      DATABASE_URI: ${DATABASE_URI}
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://rabbitmq:5672
     logging: *prod-logging
     deploy: *prod-deploy
     networks:

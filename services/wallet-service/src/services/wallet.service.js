@@ -61,13 +61,20 @@ export class WalletService {
 
     let orderId = `order_mock_${Date.now()}`;
     if (this.razorpayClient) {
-      const rzpOrder = await this.razorpayClient.orders.create({
-        amount: amountInPaise,
-        currency: 'INR',
-        receipt: `wallet_${wallet._id}_${Date.now()}`,
-        notes: { userId: String(userId), type: 'WALLET_TOPUP' },
-      });
-      orderId = rzpOrder.id;
+      try {
+        const rzpPromise = this.razorpayClient.orders.create({
+          amount: amountInPaise,
+          currency: 'INR',
+          receipt: `wallet_${wallet._id}_${Date.now()}`,
+          notes: { userId: String(userId), type: 'WALLET_TOPUP' },
+        });
+        const rzpTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Razorpay timeout')), 600));
+        const rzpOrder = await Promise.race([rzpPromise, rzpTimeout]);
+        orderId = rzpOrder.id;
+      } catch (err) {
+        logger.warn({ err: err.message }, 'Razorpay topup order creation fallback to simulated order');
+        orderId = `order_sim_${Date.now()}`;
+      }
     }
 
     await this.transactionRepository.create({

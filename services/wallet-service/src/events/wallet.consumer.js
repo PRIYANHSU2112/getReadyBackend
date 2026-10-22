@@ -4,9 +4,10 @@ import { IdempotencyService } from '@getready/rabbitmq';
 import { WalletTransactionCategory } from '../models/wallet.enum.js';
 
 export class WalletConsumer {
-  constructor(eventConsumer, walletService) {
+  constructor(eventConsumer, walletService, beauticianWalletService = null) {
     this.consumer = eventConsumer;
     this.walletService = walletService;
+    this.beauticianWalletService = beauticianWalletService;
     this.idempotency = new IdempotencyService(IdempotencyModel, 'wallet-service');
   }
 
@@ -46,6 +47,7 @@ export class WalletConsumer {
           break;
         }
         case 'BookingCompleted': {
+          // 1. Customer Rewards & Cashback
           const ownerId = data.accountOwnerId || data.userId;
           if (ownerId && data.cashbackEarned > 0) {
             await this.walletService.creditWallet(
@@ -64,6 +66,36 @@ export class WalletConsumer {
               `Reward points for completed booking #${data.bookingNumber || data.bookingId}`,
               data.bookingId,
             );
+          }
+
+          // 2. Beautician Service Earnings Credit
+          if (this.beauticianWalletService) {
+            if (Array.isArray(data.beauticianPayouts) && data.beauticianPayouts.length > 0) {
+              for (const bp of data.beauticianPayouts) {
+                if (bp.beauticianId && bp.netPayoutAmount > 0) {
+                  await this.beauticianWalletService.creditBookingEarnings(bp.beauticianId, {
+                    bookingId: data.bookingId,
+                    bookingNumber: data.bookingNumber,
+                    grossAmount: bp.grossAmount || 0,
+                    commissionAmount: bp.commissionAmount || 0,
+                    netPayoutAmount: bp.netPayoutAmount,
+                    customerName: data.customerName || 'Customer',
+                    serviceNames: bp.serviceNames || data.serviceNames || 'Salon Service',
+                  });
+                }
+              }
+            } else if (data.beauticianId && (data.beauticianPayout > 0 || data.payableAmount > 0)) {
+              const netPayout = data.beauticianPayout || Math.round((data.payableAmount || 0) * 0.8);
+              await this.beauticianWalletService.creditBookingEarnings(data.beauticianId, {
+                bookingId: data.bookingId,
+                bookingNumber: data.bookingNumber,
+                grossAmount: data.grossAmount || data.payableAmount || 0,
+                commissionAmount: data.commissionAmount || Math.round((data.payableAmount || 0) * 0.2),
+                netPayoutAmount: netPayout,
+                customerName: data.customerName || 'Customer',
+                serviceNames: data.serviceNames || 'Salon Service',
+              });
+            }
           }
           break;
         }

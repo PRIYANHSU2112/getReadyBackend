@@ -8,4 +8,5 @@ export const config = loadServiceConfig('cart-service', {
   catalogServiceUrl: process.env.CATALOG_SERVICE_URL || 'http://localhost:3005',
   userServiceUrl: process.env.USER_SERVICE_URL || 'http://localhost:3003',
   walletServiceUrl: process.env.WALLET_SERVICE_URL || 'http://localhost:3009',
+  membershipServiceUrl: process.env.MEMBERSHIP_SERVICE_URL || 'http://localhost:3011',
 });

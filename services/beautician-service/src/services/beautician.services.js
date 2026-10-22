@@ -617,6 +617,10 @@ export class BeauticianProfileService {
   async reviewCertificate(id, { status, rejectionReason = null }) {
     return this.certificateRepo.reviewById(id, { status, rejectionReason });
   }
+
+  async getAdminStats(query = {}) {
+    return this.profileRepo.getAdminStats(query);
+  }
 }
 
 export class SkillService {

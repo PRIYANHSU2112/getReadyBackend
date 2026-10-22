@@ -105,13 +105,11 @@ async function seedSuperAdmin() {
 
   let existing = await UserModel.findOne({
     email: SUPER_ADMIN.email,
-    deletedAt: null,
   }).select('+password');
 
   if (!existing) {
     existing = await UserModel.findOne({
       role: 'super_admin',
-      deletedAt: null,
     }).select('+password');
   }
 
@@ -120,6 +118,7 @@ async function seedSuperAdmin() {
     existing.email = SUPER_ADMIN.email;
     existing.role = 'super_admin';
     existing.isActive = true;
+    existing.deletedAt = null;
     existing.password = SUPER_ADMIN.password;
     if (!existing.emailVerifiedAt) existing.emailVerifiedAt = new Date();
     await existing.save();

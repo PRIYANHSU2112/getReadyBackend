@@ -20,6 +20,11 @@ export class CategoryController {
     return ApiResponse.paginated(res, result.items, result.meta, 'Categories fetched successfully');
   };
 
+  getAdminStats = async (_req, res) => {
+    const stats = await this.categoryService.getAdminStats();
+    return ApiResponse.success(res, stats, 'Category stats retrieved successfully');
+  };
+
   getById = async (req, res) => {
     const item = await this.categoryService.getById(req.params.id);
     return ApiResponse.success(res, item, 'Category fetched successfully');
@@ -89,6 +94,11 @@ export class ServiceController {
   list = async (req, res) => {
     const result = await this.catalogItemService.list(req.query);
     return ApiResponse.paginated(res, result.items, result.meta, 'Services fetched successfully');
+  };
+
+  getAdminStats = async (req, res) => {
+    const stats = await this.catalogItemService.getAdminStats(req.query);
+    return ApiResponse.success(res, stats, 'Service stats retrieved successfully');
   };
 
   getById = async (req, res) => {
@@ -178,6 +188,11 @@ export class PackageController {
   listAdmin = async (req, res) => {
     const result = await this.packageService.listAdmin(req.query);
     return ApiResponse.paginated(res, result.items, result.meta, 'Packages fetched successfully');
+  };
+
+  getAdminStats = async (_req, res) => {
+    const stats = await this.packageService.getAdminStats();
+    return ApiResponse.success(res, stats, 'Package stats retrieved successfully');
   };
 
   create = async (req, res) => {
@@ -328,6 +343,11 @@ export class CouponController {
     return ApiResponse.paginated(res, result.items, result.meta, 'Coupons fetched successfully');
   };
 
+  getAdminStats = async (_req, res) => {
+    const stats = await this.couponService.getAdminStats();
+    return ApiResponse.success(res, stats, 'Coupon stats retrieved successfully');
+  };
+
   getById = async (req, res) => {
     const item = await this.couponService.getById(req.params.id);
     return ApiResponse.success(res, item, 'Coupon fetched successfully');
@@ -349,8 +369,37 @@ export class CouponController {
   };
 
   validate = async (req, res) => {
-    const { code, amount } = req.body;
-    const item = await this.couponService.validateCoupon(code, amount);
+    const { code, amount, orderAmount } = req.body;
+    const userId = req.body.userId || req.headers['x-user-id'] || req.user?.id || null;
+    const item = await this.couponService.validateCoupon(code, {
+      amount: amount ?? orderAmount ?? 0,
+      userId,
+    });
     return ApiResponse.success(res, item, 'Coupon is valid');
   };
+
+  redeem = async (req, res) => {
+    const { code, amount, orderAmount, orderId } = req.body;
+    const userId = req.body.userId || req.headers['x-user-id'] || req.user?.id;
+    const result = await this.couponService.redeemCoupon({
+      code,
+      amount: amount ?? orderAmount,
+      userId,
+      orderId,
+    });
+    return ApiResponse.success(res, result, 'Coupon redeemed successfully');
+  };
+
+  release = async (req, res) => {
+    const { orderId, couponId, reason } = req.body;
+    const userId = req.body.userId || req.headers['x-user-id'] || req.user?.id;
+    const result = await this.couponService.releaseCoupon({
+      orderId,
+      couponId,
+      userId,
+      reason,
+    });
+    return ApiResponse.success(res, result, result.message);
+  };
 }
+

@@ -1,0 +1,26 @@
+{
+  "name": "@getready/membership-service",
+  "version": "2.0.0",
+  "description": "GetReady Dedicated Membership Service",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "dependencies": {
+    "@getready/config": "*",
+    "@getready/errors": "*",
+    "@getready/logger": "*",
+    "@getready/metrics": "*",
+    "@getready/tracing": "*",
+    "@getready/validation": "*",
+    "compression": "^1.7.5",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "ioredis": "^5.4.2",
+    "joi": "^17.13.3",
+    "mongoose": "^8.9.3"
+  }
+}

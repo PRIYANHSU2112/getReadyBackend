@@ -36,4 +36,45 @@ export class BannerRepository {
   async delete(id) {
     return BannerModel.findByIdAndDelete(id);
   }
+
+  async getAdminStats({ startDate, endDate } = {}) {
+    const match = {};
+    if (startDate || endDate) {
+      match.createdAt = {};
+      if (startDate) match.createdAt.$gte = new Date(startDate);
+      if (endDate) match.createdAt.$lte = new Date(endDate);
+    }
+    const now = new Date();
+    const [res] = await BannerModel.aggregate([
+      { $match: match },
+      {
+        $facet: {
+          totals: [{ $count: 'count' }],
+          active: [{ $match: { isActive: true } }, { $count: 'count' }],
+          inactive: [{ $match: { isActive: false } }, { $count: 'count' }],
+          deeplinked: [{ $match: { deepLinkType: { $ne: 'NONE' } } }, { $count: 'count' }],
+          currentlyLive: [
+            {
+              $match: {
+                isActive: true,
+                $and: [
+                  { $or: [{ startDate: null }, { startDate: { $lte: now } }] },
+                  { $or: [{ endDate: null }, { endDate: { $gte: now } }] },
+                ],
+              },
+            },
+            { $count: 'count' },
+          ],
+        },
+      },
+    ]);
+
+    return {
+      total: res?.totals?.[0]?.count || 0,
+      active: res?.active?.[0]?.count || 0,
+      inactive: res?.inactive?.[0]?.count || 0,
+      deeplinked: res?.deeplinked?.[0]?.count || 0,
+      currentlyLive: res?.currentlyLive?.[0]?.count || 0,
+    };
+  }
 }

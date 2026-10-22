@@ -114,6 +114,10 @@ export class CategoryService {
     }
     return { deleted: true };
   }
+
+  async getAdminStats() {
+    return this.categoryRepo.getAdminStats();
+  }
 }
 
 export class CatalogItemService {
@@ -165,16 +169,23 @@ export class CatalogItemService {
       thumbnail = { url: up.url, publicId: up.key };
     }
 
-    const service = await this.serviceRepo.create({ ...data, slug, thumbnail });
-    if (this.eventPublisher) {
-      this.eventPublisher.publish('service.created', EVENT_TYPES.SERVICE_CREATED, {
-        serviceId: service._id.toString(),
-        name: service.name,
-        price: service.price,
-        categoryId: service.categoryId.toString(),
-      }).catch(() => {});
+    try {
+      const service = await this.serviceRepo.create({ ...data, slug, thumbnail });
+      if (this.eventPublisher) {
+        this.eventPublisher.publish('service.created', EVENT_TYPES.SERVICE_CREATED, {
+          serviceId: service._id.toString(),
+          name: service.name,
+          price: service.price,
+          categoryId: service.categoryId.toString(),
+        }).catch(() => {});
+      }
+      return service;
+    } catch (err) {
+      if (err.code === 11000) {
+        throw new ConflictError('Service with this name or slug already exists');
+      }
+      throw err;
     }
-    return service;
   }
 
   async update(id, data, files = {}) {
@@ -251,6 +262,10 @@ export class CatalogItemService {
       reviewedAt: new Date(),
     });
   }
+
+  async getAdminStats(query = {}) {
+    return this.serviceRepo.getAdminStats(query);
+  }
 }
 
 export class PackageService {
@@ -258,6 +273,10 @@ export class PackageService {
     this.packageRepo = packageRepo;
     this.storageService = storageService;
     this.eventPublisher = eventPublisher;
+  }
+
+  async getAdminStats() {
+    return this.packageRepo.getAdminStats();
   }
 
   async listPublic(query = {}) {
@@ -468,80 +487,4 @@ export class HygieneKitService {
   }
 }
 
-export class CouponService {
-  constructor(couponRepo, eventPublisher = null) {
-    this.couponRepo = couponRepo;
-    this.eventPublisher = eventPublisher;
-  }
-
-  async list(query = {}) {
-    const page = parseInt(query.page || '1', 10);
-    const limit = Math.min(parseInt(query.limit || '25', 10), 100);
-    const skip = (page - 1) * limit;
-
-    const filter = { deletedAt: null };
-    if (query.status && query.status !== 'all' && query.status !== 'ALL') {
-      filter.status = query.status.toUpperCase();
-    }
-    if (query.search && query.search.trim()) {
-      filter.code = new RegExp(query.search.trim(), 'i');
-    }
-
-    const { items, total } = await this.couponRepo.findAndCount(filter, { skip, limit });
-    return { items, meta: { page, limit, total, totalPages: Math.ceil(total / limit) || 1 } };
-  }
-
-  async getById(id) {
-    const coupon = await this.couponRepo.findById(id);
-    if (!coupon) throw new AppError('Coupon not found', HttpStatus.NOT_FOUND, ErrorCodes.NOT_FOUND);
-    return coupon;
-  }
-
-  async create(data) {
-    const code = String(data.code || data.name || '').trim().toUpperCase();
-    if (!code) throw new AppError('Coupon code is required', HttpStatus.BAD_REQUEST, ErrorCodes.VALIDATION_ERROR);
-
-    const discountValue = Number(data.discountValue || data.discount || 0);
-    const coupon = await this.couponRepo.create({
-      ...data,
-      code,
-      name: data.name || code,
-      discountValue: discountValue > 0 ? discountValue : 100,
-      discountType: data.discountType || 'FLAT',
-      minOrderValue: Number(data.minOrderValue || 0),
-      status: (data.status || 'ACTIVE').toUpperCase(),
-    });
-
-    return coupon;
-  }
-
-  async update(id, data) {
-    const payload = { ...data };
-    if (payload.code) payload.code = payload.code.trim().toUpperCase();
-    if (payload.discountValue) payload.discountValue = Number(payload.discountValue);
-    if (payload.discount && !payload.discountValue) {
-      const parsed = parseFloat(String(payload.discount).replace(/[^0-9.]/g, ''));
-      if (!isNaN(parsed)) payload.discountValue = parsed;
-    }
-
-    const updated = await this.couponRepo.updateById(id, payload);
-    if (!updated) throw new AppError('Coupon not found', HttpStatus.NOT_FOUND, ErrorCodes.NOT_FOUND);
-    return updated;
-  }
-
-  async remove(id) {
-    await this.couponRepo.deleteById(id);
-    return true;
-  }
-
-  async validateCoupon(code, orderAmount = 0) {
-    const coupon = await this.couponRepo.findByCode(code);
-    if (!coupon) {
-      throw new AppError('Invalid coupon code', HttpStatus.NOT_FOUND, ErrorCodes.NOT_FOUND);
-    }
-    if (coupon.minOrderValue && orderAmount < coupon.minOrderValue) {
-      throw new AppError(`Minimum order value of ₹${coupon.minOrderValue} required for this coupon`, HttpStatus.BAD_REQUEST, ErrorCodes.VALIDATION_ERROR);
-    }
-    return coupon;
-  }
-}
+export { CouponService } from './coupon.service.js';

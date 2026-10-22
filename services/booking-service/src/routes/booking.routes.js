@@ -66,10 +66,13 @@ export function createBookingRoutes(ctrl, calendarCtrl = null) {
   router.post('/preview', validate(bookingValidator, 'previewBooking'), ctrl.preview);
 
   // 3. Analytics & Operations Command Center
+  router.get('/analytics/dashboard/kpis', ctrl.getDashboardKPIs);
+  router.get('/analytics/dashboard/charts', ctrl.getDashboardCharts);
   router.get('/analytics/dashboard', ctrl.getDashboardAnalytics);
   router.get('/operations/live', ctrl.getLiveOperations);
 
-  // 4. Booking Listings
+  // 4. Booking Listings & Admin Stats
+  router.get('/admin/stats', ctrl.getDashboardKPIs);
   router.get('/my', ctrl.listMyBookings);
   router.get('/admin', ctrl.listAdminBookings);
   router.get('/', ctrl.listAdminBookings);
@@ -93,6 +96,7 @@ export function createBookingRoutes(ctrl, calendarCtrl = null) {
   router.post('/:id/items/:itemId/complete', validate(bookingValidator, 'completeItem'), ctrl.completeServiceItem);
   router.post('/:id/end-otp/verify', validate(bookingValidator, 'verifyOtp'), ctrl.verifyEndOtp);
   router.post('/:id/cancel', validate(bookingValidator, 'cancelBooking'), ctrl.cancel);
+  router.get('/:id/eligible-beauticians', ctrl.getEligibleBeauticians);
   router.post('/:id/assign', validate(bookingValidator, 'adminAssign'), ctrl.adminAssign);
 
   return router;

@@ -19,6 +19,7 @@ export function createUserRoutes(controller) {
   router.patch('/me', upload.single('profileImage'), validate(userValidator, 'updateUser'), controller.updateMe);
 
   // Admin / General User routes
+  router.get('/admin/stats', controller.getAdminStats);
   router.get('/', controller.list);
   router.post('/', validate(userValidator, 'createUser'), controller.create);
   router.get('/:id', controller.getById);

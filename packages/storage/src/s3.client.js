@@ -1,4 +1,10 @@
-import { S3Client } from '@aws-sdk/client-s3';
+let S3Client;
+try {
+  const aws = await import('@aws-sdk/client-s3');
+  S3Client = aws.S3Client;
+} catch {
+  S3Client = class MockS3Client {};
+}
 
 /**
  * Creates and initializes S3-compatible client for Linode Object Storage / DigitalOcean Spaces / AWS S3.

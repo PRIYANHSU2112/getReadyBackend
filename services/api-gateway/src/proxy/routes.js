@@ -107,22 +107,38 @@ export function createGatewayRouter(serviceOverrides = {}) {
   const router = Router();
   const services = { ...config.services, ...serviceOverrides };
 
+  // 0. High-Performance Aggregated Home Endpoints (< 50ms Redis, < 200ms DB)
+  // User Home Endpoints (Exactly 3 Concurrent Initial Calls)
+  router.use('/api/v1/home/banners', createServiceProxy(services.content, 'content-service'));
+  router.use('/api/v1/home/feed', createServiceProxy(services.catalog, 'catalog-service'));
+  router.use('/api/v1/home/summary', createServiceProxy(services.booking, 'booking-service'));
+
+  // Beautician Home Endpoints (Exactly 3 Concurrent Initial Calls + Duty Toggle)
+  router.use('/api/v1/beautician/home/summary', createServiceProxy(services.beautician, 'beautician-service'));
+  router.use('/api/v1/beautician/home/upcoming-bookings', createServiceProxy(services.booking, 'booking-service'));
+  router.use('/api/v1/beautician/home/services', createServiceProxy(services.beautician, 'beautician-service'));
+  router.use('/api/v1/beautician/home/duty', createServiceProxy(services.beautician, 'beautician-service'));
+
   // 1. Auth Service (/api/v1/auth)
   router.use('/api/v1/auth', createServiceProxy(services.auth, 'auth-service'));
 
-  // 2. User Service (/api/v1/users, addresses, members, memberships, customer-profiles, roles, permissions, referrals)
+  // 2. User Service (/api/v1/users, addresses, members, customer-profiles, roles, permissions, referrals)
   router.use('/api/v1/users', createServiceProxy(services.user, 'user-service'));
   router.use('/api/v1/addresses', createServiceProxy(services.user, 'user-service'));
   router.use('/api/v1/members', createServiceProxy(services.user, 'user-service'));
-  router.use('/api/v1/memberships', createServiceProxy(services.user, 'user-service'));
   router.use('/api/v1/customer-profiles', createServiceProxy(services.user, 'user-service'));
   router.use('/api/v1/roles', createServiceProxy(services.user, 'user-service'));
   router.use('/api/v1/permissions', createServiceProxy(services.user, 'user-service'));
   router.use('/api/v1/referrals', createServiceProxy(services.user, 'user-service'));
 
-  // 3. Beautician Service (/api/v1/beautician-profiles, beauticians, bank-details, skills)
+  // Membership Service (/api/v1/memberships, /api/v1/admin/memberships)
+  router.use('/api/v1/memberships', createServiceProxy(services.membership, 'membership-service'));
+  router.use('/api/v1/admin/memberships', createServiceProxy(services.membership, 'membership-service'));
+
+  // 3. Beautician Service (/api/v1/beautician-profiles, beauticians, beautician, bank-details, skills)
   router.use('/api/v1/beautician-profiles', createServiceProxy(services.beautician, 'beautician-service'));
   router.use('/api/v1/beauticians', createServiceProxy(services.beautician, 'beautician-service'));
+  router.use('/api/v1/beautician', createServiceProxy(services.beautician, 'beautician-service'));
   router.use('/api/v1/bank-details', createServiceProxy(services.beautician, 'beautician-service'));
   router.use('/api/v1/skills', createServiceProxy(services.beautician, 'beautician-service'));
 
@@ -134,6 +150,8 @@ export function createGatewayRouter(serviceOverrides = {}) {
   router.use('/api/v1/filters', createServiceProxy(services.catalog, 'catalog-service'));
   router.use('/api/v1/hygiene-kits', createServiceProxy(services.catalog, 'catalog-service'));
   router.use('/api/v1/coupons', createServiceProxy(services.catalog, 'catalog-service'));
+  router.use('/api/v1/offers', createServiceProxy(services.catalog, 'catalog-service'));
+  router.use('/api/v1/admin/promotions', createServiceProxy(services.catalog, 'catalog-service'));
 
   // 5. Booking & Calendar Service (/api/v1/slots, bookings, calendar, reports, settings)
   router.use('/api/v1/slots', createServiceProxy(services.booking, 'booking-service'));
@@ -151,7 +169,9 @@ export function createGatewayRouter(serviceOverrides = {}) {
   router.use('/api/v1/payments', createServiceProxy(services.payment, 'payment-service'));
   router.use('/api/v1/finance', createServiceProxy(services.payment, 'payment-service'));
 
-  // 8. Wallet Service (/api/v1/wallet, wallets)
+  // 8. Wallet Service (/api/v1/wallet, wallets, beautician/wallet, admin/payouts)
+  router.use('/api/v1/beautician/wallet', createServiceProxy(services.wallet, 'wallet-service'));
+  router.use('/api/v1/admin/payouts', createServiceProxy(services.wallet, 'wallet-service'));
   router.use('/api/v1/wallet', createServiceProxy(services.wallet, 'wallet-service'));
   router.use('/api/v1/wallets', createServiceProxy(services.wallet, 'wallet-service'));
 
@@ -169,6 +189,9 @@ export function createGatewayRouter(serviceOverrides = {}) {
   router.use('/api/v1/content', createServiceProxy(services.content, 'content-service'));
   router.use('/api/v1/landing', createServiceProxy(services.content, 'content-service'));
   router.use('/api/v1/faq', createServiceProxy(services.content, 'content-service'));
+
+  // 11. Search Service (/api/v1/search)
+  router.use('/api/v1/search', createServiceProxy(services.search, 'search-service'));
 
   return router;
 }

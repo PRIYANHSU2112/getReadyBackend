@@ -67,4 +67,31 @@ export class SupportService {
     if (!ticket) throw new NotFoundError('Ticket not found');
     return { id, deleted: true };
   }
+
+  async getAdminStats(query = {}) {
+    let startDate = query.startDate;
+    let endDate = query.endDate;
+
+    if (query.period && !startDate) {
+      const now = new Date();
+      if (query.period === 'today') {
+        startDate = new Date(now.setHours(0, 0, 0, 0)).toISOString();
+      } else if (query.period === 'week') {
+        const d = new Date();
+        d.setDate(d.getDate() - 7);
+        startDate = d.toISOString();
+      } else if (query.period === 'month') {
+        const d = new Date();
+        d.setDate(d.getDate() - 30);
+        startDate = d.toISOString();
+      }
+    }
+
+    return this.ticketRepo.getAdminStats({
+      startDate,
+      endDate,
+      priority: query.priority,
+      category: query.category,
+    });
+  }
 }

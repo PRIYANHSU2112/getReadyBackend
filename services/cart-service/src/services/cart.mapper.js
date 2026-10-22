@@ -51,14 +51,14 @@ function mapCartItem(item) {
     },
     packageMeta: item.packageMeta
       ? {
-          subtitle: item.packageMeta.subtitle ?? null,
-          selectionRule: item.packageMeta.selectionRule
-            ? {
-                minSelect: item.packageMeta.selectionRule.minSelect ?? null,
-                maxSelect: item.packageMeta.selectionRule.maxSelect ?? null,
-              }
-            : null,
-        }
+        subtitle: item.packageMeta.subtitle ?? null,
+        selectionRule: item.packageMeta.selectionRule
+          ? {
+            minSelect: item.packageMeta.selectionRule.minSelect ?? null,
+            maxSelect: item.packageMeta.selectionRule.maxSelect ?? null,
+          }
+          : null,
+      }
       : null,
     selectedServices: (item.selectedServices || []).map(mapSelectedService),
     lineTotal:
@@ -158,9 +158,9 @@ function mapPricing(pricing) {
     earnPoints: pricing.earnPoints ?? 0,
     upsell: pricing.upsell
       ? {
-          amountToWaiveVisitFee: pricing.upsell.amountToWaiveVisitFee ?? 0,
-          message: pricing.upsell.message ?? null,
-        }
+        amountToWaiveVisitFee: pricing.upsell.amountToWaiveVisitFee ?? 0,
+        message: pricing.upsell.message ?? null,
+      }
       : null,
     currency: pricing.currency || CART_CURRENCY,
     computedAt: pricing.computedAt || null,

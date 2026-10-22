@@ -34,8 +34,10 @@ export function createBeauticianProfileRoutes(ctrl) {
   router.delete('/me/certificates/:id', ctrl.deleteCertificate);
 
   // Admin routes
+  router.get('/admin/stats', ctrl.getAdminStats);
   router.post('/admin/create', validate(beauticianValidator, 'adminCreateProfile'), ctrl.adminCreate);
   router.get('/kyc/queue', ctrl.getKycQueue);
+  router.get('/admin-list', ctrl.listProfiles);
   router.get('/', ctrl.listProfiles);
   router.get('/:id', ctrl.getProfileById);
   router.patch('/:id/kyc/documents/:docId/review', validate(beauticianValidator, 'reviewKycDocument'), ctrl.reviewKycDocument);

@@ -1,3 +1,8 @@
+export const WalletType = Object.freeze({
+  CUSTOMER: 'CUSTOMER',
+  BEAUTICIAN: 'BEAUTICIAN',
+});
+
 export const WalletTransactionType = Object.freeze({
   CREDIT: 'CREDIT',
   DEBIT: 'DEBIT',
@@ -13,6 +18,12 @@ export const WalletTransactionCategory = Object.freeze({
   REFERRAL_BONUS: 'REFERRAL_BONUS',
   ADMIN_ADJUSTMENT: 'ADMIN_ADJUSTMENT',
   SUBSCRIPTION: 'SUBSCRIPTION',
+  PROMOTION_BONUS: 'PROMOTION_BONUS',
+  SERVICE_EARNING: 'SERVICE_EARNING',
+  WITHDRAWAL: 'WITHDRAWAL',
+  WITHDRAWAL_REFUND: 'WITHDRAWAL_REFUND',
+  COMMISSION_DEDUCTION: 'COMMISSION_DEDUCTION',
+  TIP: 'TIP',
 });
 
 export const WalletTransactionStatus = Object.freeze({
@@ -21,3 +32,17 @@ export const WalletTransactionStatus = Object.freeze({
   FAILED: 'FAILED',
   REVERSED: 'REVERSED',
 });
+
+export const PayoutStatus = Object.freeze({
+  REQUESTED: 'REQUESTED',
+  PROCESSING: 'PROCESSING',
+  COMPLETED: 'COMPLETED',
+  REJECTED: 'REJECTED',
+  FAILED: 'FAILED',
+});
+
+export const PayoutDestinationType = Object.freeze({
+  BANK_ACCOUNT: 'BANK_ACCOUNT',
+  UPI: 'UPI',
+});
+

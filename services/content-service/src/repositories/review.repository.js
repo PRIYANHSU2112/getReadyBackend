@@ -50,4 +50,50 @@ export class ReviewRepository {
   async delete(id) {
     return ReviewModel.findByIdAndDelete(id);
   }
+
+  async getAdminStats({ startDate, endDate, serviceId, beauticianId } = {}) {
+    const match = {};
+    if (startDate || endDate) {
+      match.createdAt = {};
+      if (startDate) match.createdAt.$gte = new Date(startDate);
+      if (endDate) match.createdAt.$lte = new Date(endDate);
+    }
+    if (serviceId) {
+      match.serviceId = mongoose.Types.ObjectId.isValid(serviceId)
+        ? new mongoose.Types.ObjectId(serviceId)
+        : serviceId;
+    }
+    if (beauticianId) {
+      match.beauticianId = mongoose.Types.ObjectId.isValid(beauticianId)
+        ? new mongoose.Types.ObjectId(beauticianId)
+        : beauticianId;
+    }
+
+    const [res] = await ReviewModel.aggregate([
+      { $match: match },
+      {
+        $facet: {
+          totals: [{ $count: 'count' }],
+          avgRating: [{ $group: { _id: null, avg: { $avg: '$rating' } } }],
+          fiveStar: [{ $match: { rating: 5 } }, { $count: 'count' }],
+          pending: [{ $match: { status: 'PENDING' } }, { $count: 'count' }],
+          approved: [{ $match: { status: 'APPROVED' } }, { $count: 'count' }],
+          rejected: [{ $match: { status: 'REJECTED' } }, { $count: 'count' }],
+        },
+      },
+    ]);
+
+    const total = res?.totals?.[0]?.count || 0;
+    const rawAvg = res?.avgRating?.[0]?.avg;
+    const avgRating = total > 0 && rawAvg != null ? Math.round(rawAvg * 10) / 10 : 5.0;
+
+    return {
+      total,
+      avgRating,
+      fiveStarCount: res?.fiveStar?.[0]?.count || 0,
+      pendingModeration: res?.pending?.[0]?.count || 0,
+      approvedCount: res?.approved?.[0]?.count || 0,
+      rejectedCount: res?.rejected?.[0]?.count || 0,
+    };
+  }
 }

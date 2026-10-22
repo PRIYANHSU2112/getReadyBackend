@@ -1,3 +1,4 @@
+import 'express-async-errors';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -111,6 +112,7 @@ export function createApp() {
   const landingRoutes = createLandingRoutes(landingController);
   const faqRoutes = createFaqRoutes(landingController);
 
+  app.use('/api/v1/home/banners', (req, res) => bannerController.listActive(req, res));
   app.use('/api/v1/banners', bannerRoutes);
   app.use('/api/v1/marketing', bannerRoutes);
   app.use('/api/v1/content/banners', bannerRoutes);

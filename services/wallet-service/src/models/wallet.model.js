@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import {
+  WalletType,
   WalletTransactionType,
   WalletTransactionCategory,
   WalletTransactionStatus,
@@ -14,9 +15,14 @@ const walletTransactionSchema = new mongoose.Schema(
       index: true,
     },
     userId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: String,
       required: true,
       index: true,
+    },
+    title: {
+      type: String,
+      trim: true,
+      default: null,
     },
     type: {
       type: String,
@@ -73,6 +79,26 @@ const walletTransactionSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
     },
+    customerName: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    bankName: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    accountNumber: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    upiId: {
+      type: String,
+      trim: true,
+      default: null,
+    },
     description: {
       type: String,
       trim: true,
@@ -87,16 +113,42 @@ const walletTransactionSchema = new mongoose.Schema(
 );
 
 walletTransactionSchema.index({ userId: 1, createdAt: -1 });
+walletTransactionSchema.index({ userId: 1, category: 1, createdAt: -1 });
 
 const walletSchema = new mongoose.Schema(
   {
     userId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: String,
       required: true,
-      unique: true,
+      index: true,
+    },
+    walletType: {
+      type: String,
+      enum: Object.values(WalletType),
+      default: WalletType.CUSTOMER,
       index: true,
     },
     balance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    pendingWithdrawalBalance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    totalEarnedLifetime: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    totalWithdrawnLifetime: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    currentMonthEarnings: {
       type: Number,
       default: 0,
       min: 0,
@@ -141,10 +193,13 @@ const walletSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+walletSchema.index({ userId: 1, walletType: 1 }, { unique: true });
+
 walletSchema.pre('save', function (next) {
   if (!this.walletNumber) {
+    const prefix = this.walletType === WalletType.BEAUTICIAN ? 'GRBTW' : 'GRWAL';
     const randomSuffix = Math.floor(100000 + Math.random() * 900000);
-    this.walletNumber = `GRWAL${randomSuffix}`;
+    this.walletNumber = `${prefix}${randomSuffix}`;
   }
   next();
 });
@@ -158,4 +213,5 @@ walletSchema.methods.toJSON = function toJSON() {
 };
 
 export const WalletModel = mongoose.models.Wallet || mongoose.model('Wallet', walletSchema);
-export const WalletTransactionModel = mongoose.models.WalletTransaction || mongoose.model('WalletTransaction', walletTransactionSchema);
+export const WalletTransactionModel =
+  mongoose.models.WalletTransaction || mongoose.model('WalletTransaction', walletTransactionSchema);

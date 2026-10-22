@@ -26,7 +26,7 @@ async function pingAtlasSrv(srvHost, timeoutMs = 2500) {
   return { status: 'UP', latency: Math.max(1, Date.now() - start) };
 }
 
-function pingEndpoint(url, timeoutMs = 2000) {
+function pingEndpoint(url, timeoutMs = 400) {
   return new Promise((resolve) => {
     const start = Date.now();
     let isSettled = false;

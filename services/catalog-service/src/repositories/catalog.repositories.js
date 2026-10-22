@@ -7,7 +7,10 @@ import {
   FilterValueModel,
   HygieneKitModel,
   CouponModel,
-} from '../models/catalog.models.js';
+  CouponRedemptionModel,
+} from '../models/index.js';
+import { catalogCache } from '../cache/catalog.cache.js';
+import { AppError, HttpStatus, ErrorCodes } from '@getready/errors';
 
 export class CategoryRepository {
   async create(data) {
@@ -48,6 +51,33 @@ export class CategoryRepository {
       CategoryModel.countDocuments(filter),
     ]);
     return { items, total };
+  }
+
+  async getAdminStats() {
+    const [facetResults] = await CategoryModel.aggregate([
+      {
+        $facet: {
+          total: [
+            { $match: { deletedAt: null } },
+            { $count: 'count' },
+          ],
+          active: [
+            { $match: { isActive: true, deletedAt: null } },
+            { $count: 'count' },
+          ],
+        },
+      },
+    ]);
+
+    const total = facetResults.total[0]?.count || 0;
+    const active = facetResults.active[0]?.count || 0;
+    const totalServices = await ServiceModel.countDocuments({ deletedAt: null });
+
+    return {
+      totalCategories: total,
+      activeCategories: active,
+      totalLinkedServices: totalServices,
+    };
   }
 }
 
@@ -94,6 +124,44 @@ export class ServiceRepository {
       ServiceModel.countDocuments(filter),
     ]);
     return { items, total };
+  }
+
+  async getAdminStats({ categoryId } = {}) {
+    const match = { deletedAt: null };
+    if (categoryId) match.categoryId = categoryId;
+
+    const [facetResults] = await ServiceModel.aggregate([
+      { $match: match },
+      {
+        $facet: {
+          total: [{ $count: 'count' }],
+          approved: [{ $match: { status: 'APPROVED', isActive: true } }, { $count: 'count' }],
+          pending: [{ $match: { status: 'PENDING_APPROVAL' } }, { $count: 'count' }],
+          priceStats: [
+            {
+              $group: {
+                _id: null,
+                avgPrice: { $avg: '$price' },
+                minPrice: { $min: '$price' },
+                maxPrice: { $max: '$price' },
+              },
+            },
+          ],
+        },
+      },
+    ]);
+
+    const total = facetResults.total[0]?.count || 0;
+    const approved = facetResults.approved[0]?.count || 0;
+    const pending = facetResults.pending[0]?.count || 0;
+    const avgPrice = Math.round(facetResults.priceStats[0]?.avgPrice || 0);
+
+    return {
+      totalServices: total,
+      approvedLive: approved,
+      pendingApprovals: pending,
+      averageListPrice: avgPrice,
+    };
   }
 }
 
@@ -158,6 +226,26 @@ export class PackageRepository {
       PackageModel.countDocuments(filter),
     ]);
     return { items, total };
+  }
+
+  async getAdminStats() {
+    const [result] = await PackageModel.aggregate([
+      { $match: { deletedAt: null } },
+      {
+        $facet: {
+          totals: [{ $count: 'count' }],
+          pending: [{ $match: { status: 'PENDING_APPROVAL' } }, { $count: 'count' }],
+          approved: [{ $match: { status: 'APPROVED', isActive: true } }, { $count: 'count' }],
+          partnerCreated: [{ $match: { isBeauticianCreated: true } }, { $count: 'count' }],
+        },
+      },
+    ]);
+    return {
+      total: result?.totals?.[0]?.count || 0,
+      pending: result?.pending?.[0]?.count || 0,
+      approved: result?.approved?.[0]?.count || 0,
+      partnerCreated: result?.partnerCreated?.[0]?.count || 0,
+    };
   }
 }
 
@@ -259,19 +347,36 @@ export class HygieneKitRepository {
 
 export class CouponRepository {
   async create(data) {
-    return CouponModel.create(data);
+    const coupon = await CouponModel.create(data);
+    await catalogCache.del('coupon:code:' + coupon.code);
+    return coupon;
   }
 
   async findById(id) {
     return CouponModel.findById(id);
   }
 
-  async findByCode(code) {
-    return CouponModel.findOne({
-      code: code.trim().toUpperCase(),
+  async findByCode(code, { useCache = false } = {}) {
+    const cleanCode = String(code || '').trim().toUpperCase();
+    if (!cleanCode) return null;
+
+    const cacheKey = `coupon:code:${cleanCode}`;
+    if (useCache) {
+      const cached = await catalogCache.get(cacheKey);
+      if (cached) return cached;
+    }
+
+    const coupon = await CouponModel.findOne({
+      code: cleanCode,
       isActive: true,
       deletedAt: null,
-    });
+    }).lean();
+
+    if (coupon && useCache) {
+      await catalogCache.set(cacheKey, coupon, 60); // 60s L1 TTL
+    }
+
+    return coupon;
   }
 
   async findAndCount(filter = {}, { skip = 0, limit = 25, sort = { createdAt: -1 } } = {}) {
@@ -293,10 +398,253 @@ export class CouponRepository {
   }
 
   async updateById(id, data) {
-    return CouponModel.findByIdAndUpdate(id, { $set: data }, { new: true });
+    const updated = await CouponModel.findByIdAndUpdate(id, { $set: data }, { new: true });
+    if (updated?.code) {
+      await catalogCache.del('coupon:code:' + updated.code);
+    }
+    return updated;
   }
 
   async deleteById(id) {
-    return CouponModel.findByIdAndUpdate(id, { $set: { deletedAt: new Date(), isActive: false, status: 'INACTIVE' } }, { new: true });
+    const deleted = await CouponModel.findByIdAndUpdate(
+      id,
+      { $set: { deletedAt: new Date(), isActive: false, status: 'INACTIVE' } },
+      { new: true }
+    );
+    if (deleted?.code) {
+      await catalogCache.del('coupon:code:' + deleted.code);
+    }
+    return deleted;
+  }
+
+  /**
+   * Count active (APPLIED or REDEEMED) redemptions for a user on a given coupon
+   */
+  async countUserRedemptions(couponId, userId, session = null) {
+    const query = CouponRedemptionModel.countDocuments({
+      couponId,
+      userId: String(userId),
+      status: { $in: ['APPLIED', 'REDEEMED'] },
+    });
+    if (session) query.session(session);
+    return query.exec();
+  }
+
+  /**
+   * Check if a specific order has already redeemed this coupon
+   */
+  async findRedemptionByOrder(couponId, orderId, session = null) {
+    const query = CouponRedemptionModel.findOne({
+      couponId,
+      orderId: String(orderId),
+    });
+    if (session) query.session(session);
+    return query.exec();
+  }
+
+  /**
+   * Atomic coupon redemption with concurrency lock and duplicate prevention
+   */
+  async atomicRedeem({
+    couponId,
+    code,
+    userId,
+    orderId,
+    discountAmount,
+    orderAmount,
+    perUserLimit = 1,
+    session = null,
+  }) {
+    const cleanCode = String(code || '').trim().toUpperCase();
+
+    // 1. Idempotency check: if this order already redeemed this coupon, return existing redemption
+    const existing = await this.findRedemptionByOrder(couponId, orderId, session);
+    if (existing && ['APPLIED', 'REDEEMED'].includes(existing.status)) {
+      return { success: true, redemption: existing, alreadyRedeemed: true };
+    }
+
+    // 2. Enforce per-user redemption limit
+    if (userId) {
+      const userUsageCount = await this.countUserRedemptions(couponId, userId, session);
+      if (userUsageCount >= perUserLimit) {
+        throw new AppError(
+          `You have already used coupon ${cleanCode} the maximum allowed times (${perUserLimit})`,
+          HttpStatus.CONFLICT,
+          ErrorCodes.CONFLICT
+        );
+      }
+    }
+
+    // 3. Atomic increment on Coupon with strict usage limit check
+    // MongoDB's document-level write lock ensures usedCount never exceeds usageLimit
+    const now = new Date();
+    const query = {
+      _id: couponId,
+      status: 'ACTIVE',
+      isActive: true,
+      deletedAt: null,
+      validFrom: { $lte: now },
+      validTo: { $gte: now },
+      $expr: { $lt: ['$usedCount', '$usageLimit'] },
+    };
+
+    const updateQuery = CouponModel.findOneAndUpdate(
+      query,
+      { $inc: { usedCount: 1 } },
+      { new: true }
+    );
+    if (session) updateQuery.session(session);
+
+    const updatedCoupon = await updateQuery.exec();
+
+    if (!updatedCoupon) {
+      // Investigate why condition failed to provide clear diagnostic error
+      const current = await CouponModel.findById(couponId).lean();
+      if (!current || !current.isActive || current.deletedAt) {
+        throw new AppError('Coupon is no longer available', HttpStatus.NOT_FOUND, ErrorCodes.NOT_FOUND);
+      }
+      if (current.status !== 'ACTIVE' || now > current.validTo || now < current.validFrom) {
+        throw new AppError('Coupon has expired or is inactive', HttpStatus.BAD_REQUEST, ErrorCodes.VALIDATION_ERROR);
+      }
+      if (current.usedCount >= current.usageLimit) {
+        throw new AppError('Coupon usage limit has been reached', HttpStatus.CONFLICT, ErrorCodes.CONFLICT);
+      }
+      throw new AppError('Coupon could not be applied at this time', HttpStatus.CONFLICT, ErrorCodes.CONFLICT);
+    }
+
+    // 4. Record audit ledger entry in CouponRedemption
+    let redemption;
+    if (existing) {
+      // Re-activate a previously cancelled redemption for the same order
+      existing.status = 'REDEEMED';
+      existing.discountAmount = discountAmount;
+      existing.orderAmount = orderAmount;
+      existing.redeemedAt = new Date();
+      existing.cancelledAt = null;
+      existing.cancelReason = null;
+      redemption = await existing.save({ session });
+    } else {
+      const docs = await CouponRedemptionModel.create(
+        [
+          {
+            couponId,
+            couponCode: cleanCode,
+            userId: String(userId),
+            orderId: String(orderId),
+            discountAmount,
+            orderAmount,
+            status: 'REDEEMED',
+            redeemedAt: new Date(),
+          },
+        ],
+        session ? { session } : {}
+      );
+      redemption = docs[0];
+    }
+
+    // Invalidate cached coupon details
+    await catalogCache.del(`coupon:code:${cleanCode}`);
+
+    return {
+      success: true,
+      redemption,
+      updatedCoupon,
+    };
+  }
+
+  /**
+   * Atomic rollback if booking/payment fails or is cancelled
+   */
+  async atomicRollback({ couponId, orderId, userId, reason = 'Order cancelled or payment failed', session = null }) {
+    const filter = {
+      orderId: String(orderId),
+      status: { $in: ['APPLIED', 'REDEEMED'] },
+    };
+    if (couponId) filter.couponId = couponId;
+    if (userId) filter.userId = String(userId);
+
+    const updateQuery = CouponRedemptionModel.findOneAndUpdate(
+      filter,
+      {
+        $set: {
+          status: 'CANCELLED',
+          cancelledAt: new Date(),
+          cancelReason: reason,
+        },
+      },
+      { new: true }
+    );
+    if (session) updateQuery.session(session);
+
+    const redemption = await updateQuery.exec();
+
+    if (redemption) {
+      const couponUpdateQuery = CouponModel.findByIdAndUpdate(
+        redemption.couponId,
+        { $inc: { usedCount: -1 } },
+        { new: true }
+      );
+      if (session) couponUpdateQuery.session(session);
+      await couponUpdateQuery.exec();
+
+      await catalogCache.del(`coupon:code:${redemption.couponCode}`);
+    }
+
+    return {
+      rolledBack: Boolean(redemption),
+      redemption,
+    };
+  }
+
+  /**
+   * Retrieve redemption history for a specific customer
+   */
+  async getUserRedemptions(userId, { skip = 0, limit = 20 } = {}) {
+    return CouponRedemptionModel.find({ userId: String(userId) })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean()
+      .exec();
+  }
+
+  async getAdminStats() {
+    const now = new Date();
+    const [facetResults] = await CouponModel.aggregate([
+      { $match: { deletedAt: null } },
+      {
+        $facet: {
+          total: [{ $count: 'count' }],
+          active: [
+            {
+              $match: {
+                isActive: true,
+                status: 'ACTIVE',
+                $or: [{ validTo: { $gte: now } }, { validTo: null }],
+              },
+            },
+            { $count: 'count' },
+          ],
+          totalRedeemed: [{ $group: { _id: null, total: { $sum: '$usedCount' } } }],
+          expired: [
+            {
+              $match: {
+                $or: [{ status: 'EXPIRED' }, { validTo: { $lt: now } }],
+              },
+            },
+            { $count: 'count' },
+          ],
+        },
+      },
+    ]);
+
+    return {
+      totalCoupons: facetResults.total[0]?.count || 0,
+      activePromos: facetResults.active[0]?.count || 0,
+      totalRedemptions: facetResults.totalRedeemed[0]?.total || 0,
+      expiredCount: facetResults.expired[0]?.count || 0,
+    };
   }
 }
+
+export { PromotionRepository } from './promotion.repository.js';

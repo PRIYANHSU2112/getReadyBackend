@@ -141,6 +141,21 @@ export class BookingController {
     return ApiResponse.success(res, booking, 'Beauticians assigned successfully');
   };
 
+  getEligibleBeauticians = async (req, res) => {
+    const data = await this.bookingService.getEligibleBeauticians(req.params.id);
+    return ApiResponse.success(res, data, 'Eligible beauticians retrieved successfully');
+  };
+
+  getDashboardKPIs = async (req, res) => {
+    const data = await BookingAnalyticsService.getDashboardKPIs(req.query);
+    return ApiResponse.success(res, data, 'Dashboard KPIs retrieved successfully');
+  };
+
+  getDashboardCharts = async (req, res) => {
+    const data = await BookingAnalyticsService.getDashboardCharts(req.query);
+    return ApiResponse.success(res, data, 'Dashboard charts retrieved successfully');
+  };
+
   getDashboardAnalytics = async (req, res) => {
     const data = await BookingAnalyticsService.getDashboardMetrics(req.query);
     return ApiResponse.success(res, data, 'Dashboard analytics retrieved successfully');

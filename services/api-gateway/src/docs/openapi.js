@@ -1,2025 +1,12544 @@
 export const openapiSpec = {
-  openapi: '3.0.3',
-  info: {
-    title: 'GetReady Microservices API Documentation',
-    version: '2.0.0',
-    description: `### GetReady Salon & Beautician On-Demand Platform API
-Central API Gateway documentation for all GetReady microservices.
-
-#### Authentication
-Most endpoints require a **Bearer JWT Token** in the \`Authorization\` header:
-\`\`\`http
-Authorization: Bearer <your_jwt_token>
-\`\`\`
-1. Login via \`/api/v1/auth/admin/login\` or \`/api/v1/auth/mobile/verify-otp\`.
-2. Copy the \`token\` from response.
-3. Click the **Authorize 🔓** button on top right and paste the token.
-`,
-    contact: {
-      name: 'GetReady Engineering Team',
-      email: 'support@getready.com',
-    },
+  "openapi": "3.0.3",
+  "info": {
+    "title": "GetReady Beauty Platform — Full API",
+    "description": "Complete REST API documentation for the **GetReady Beauty Platform** microservices backend.\n\n### Base URL\nAll endpoints are served through the **API Gateway** at `http://localhost:5000` (or your deployed domain).\n\n### Authentication\n- **Mobile apps** (User & Beautician): Bearer JWT tokens issued on OTP verification.\n- **Admin panel**: Bearer JWT tokens issued on email/password login.\n- Include header: `Authorization: Bearer <token>`\n\n### Internal Headers (Gateway-injected, do NOT send from client)\n| Header | Description |\n|--------|-------------|\n| `x-user-id` | Authenticated user's MongoDB ObjectId |\n| `x-user-role` | Role: `customer` \\| `beautician` \\| `admin` \\| `super_admin` |\n| `x-user-email` | User's email |\n| `x-user-phone` | User's phone |\n| `x-correlation-id` | Request tracing ID |\n\n### Tag Organization\n| Tag | Consumer | Port |\n|-----|----------|------|\n| **User** | Customer mobile app | :5000 |\n| **Beautician** | Beautician mobile app | :5000 |\n| **Admin** | Admin web panel | :5000 |\n",
+    "version": "1.0.0",
+    "contact": {
+      "name": "GetReady Dev Team"
+    }
   },
-  servers: [
+  "servers": [
     {
-      url: 'http://localhost:3000',
-      description: 'API Gateway (Local)',
+      "url": "http://localhost:5000",
+      "description": "Local API Gateway"
     },
     {
-      url: 'http://localhost:8080',
-      description: 'API Gateway (Alternative Port)',
-    },
+      "url": "https://api.priyashu.in",
+      "description": "Production API Gateway"
+    }
   ],
-  components: {
-    securitySchemes: {
-      BearerAuth: {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
-        description: 'Enter your JWT access token without the "Bearer " prefix.',
-      },
+  "tags": [
+    {
+      "name": "User",
+      "description": "All APIs consumed by the **User (Customer) Mobile App**.\nRequires `role: customer` JWT unless noted as public.\n"
     },
-    responses: {
-      UnauthorizedError: {
-        description: 'Access token is missing or invalid',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object',
-              properties: {
-                success: { type: 'boolean', example: false },
-                error: {
-                  type: 'object',
-                  properties: {
-                    code: { type: 'string', example: 'UNAUTHORIZED' },
-                    message: { type: 'string', example: 'Invalid or expired token' },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      NotFoundError: {
-        description: 'Resource not found',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object',
-              properties: {
-                success: { type: 'boolean', example: false },
-                error: {
-                  type: 'object',
-                  properties: {
-                    code: { type: 'string', example: 'NOT_FOUND' },
-                    message: { type: 'string', example: 'Resource not found' },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      SuccessEnvelope: {
-        description: 'Standard Success Response',
-        content: {
-          'application/json': {
-            schema: {
-              type: 'object',
-              properties: {
-                success: { type: 'boolean', example: true },
-                data: { type: 'object' },
-                meta: { type: 'object' },
-              },
-            },
-          },
-        },
-      },
+    {
+      "name": "Beautician",
+      "description": "All APIs consumed by the **Beautician Mobile App**.\nRequires `role: beautician` JWT unless noted as public.\n"
     },
-  },
-  tags: [
-    { name: 'Auth', description: 'Authentication & Session Management' },
-    { name: 'Users', description: 'User Profile & Management' },
-    { name: 'Addresses', description: 'Saved Customer Addresses' },
-    { name: 'Family Members', description: 'Customer Family Members' },
-    { name: 'Roles & RBAC', description: 'Role-based Access Control & Permissions' },
-    { name: 'Beautician Profiles', description: 'Beautician Profiles, Verification & Work History' },
-    { name: 'Beautician Skills', description: 'Skills & Service Expertise' },
-    { name: 'Bank Details', description: 'Partner Bank & Payout Details' },
-    { name: 'Categories', description: 'Service Categories Management' },
-    { name: 'Services', description: 'Catalog Services Management' },
-    { name: 'Service Change Requests', description: 'Vendor/Staff Service Modifications' },
-    { name: 'Packages', description: 'Combo Packages & Bundles' },
-    { name: 'Filters', description: 'Catalog Dynamic Attributes & Filters' },
-    { name: 'Hygiene Kits', description: 'Safety & Hygiene Kit Management' },
-    { name: 'Slots', description: 'Time Slots & Real-time Hold/Release' },
-    { name: 'Bookings', description: 'Order Bookings, Scheduling & Status' },
-    { name: 'Calendar', description: 'Admin Schedule Calendar, Multi-View, Availability & Conflicts' },
-    { name: 'Cart', description: 'Shopping Cart, Multi-person booking & Instructions' },
-    { name: 'Payments', description: 'Razorpay Checkout & Webhooks' },
-    { name: 'Wallet & Loyalty', description: 'Recharge, Cashback & Loyalty Points' },
-    { name: 'Notifications', description: 'In-app & Push Notifications' },
-    { name: 'Banners', description: 'Promotional Banners & Sliders' },
-    { name: 'Blogs', description: 'Articles, Beauty Tips & Stories' },
-    { name: 'System', description: 'Gateway Health & Monitoring' },
+    {
+      "name": "Admin",
+      "description": "All APIs consumed by the **Admin Panel** (web).\nRequires `role: admin` or `super_admin` JWT unless noted.\n"
+    }
   ],
-  paths: {
-    // ------------------------------------------------------------------------
-    // SYSTEM / HEALTH
-    // ------------------------------------------------------------------------
-    '/health': {
-      get: {
-        tags: ['System'],
-        summary: 'API Gateway Health Check',
-        responses: {
-          200: { $ref: '#/components/responses/SuccessEnvelope' },
-        },
-      },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
     },
-    '/ready': {
-      get: {
-        tags: ['System'],
-        summary: 'API Gateway Readiness Probe',
-        responses: {
-          200: { $ref: '#/components/responses/SuccessEnvelope' },
-        },
+    "schemas": {
+      "ObjectId": {
+        "type": "string",
+        "pattern": "^[0-9a-fA-F]{24}$",
+        "example": "64f1a2b3c4d5e6f7a8b9c0d1"
       },
-    },
-    '/metrics': {
-      get: {
-        tags: ['System'],
-        summary: 'Prometheus Metrics',
-        responses: {
-          200: { description: 'Prometheus metrics text format' },
-        },
+      "PhoneNumber": {
+        "type": "string",
+        "pattern": "^[+]?[\\d\\s\\-]{10,15}$",
+        "example": "+919876543210"
       },
-    },
-
-    // ------------------------------------------------------------------------
-    // AUTH SERVICE
-    // ------------------------------------------------------------------------
-    '/api/v1/auth/admin/login': {
-      post: {
-        tags: ['Auth'],
-        summary: 'Admin & Super Admin Login',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['email', 'password'],
-                properties: {
-                  email: { type: 'string', example: 'superadmin@salon.com' },
-                  password: { type: 'string', example: 'SuperAdmin@123' },
-                },
-              },
-            },
+      "GeoPoint": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "Point"
+            ],
+            "default": "Point"
           },
-        },
-        responses: {
-          200: { description: 'Login successful with JWT access and refresh token' },
-          401: { description: 'Invalid credentials' },
-        },
-      },
-    },
-    '/api/v1/auth/admin/forgot-password': {
-      post: {
-        tags: ['Auth'],
-        summary: 'Admin Forgot Password Request',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['email'],
-                properties: {
-                  email: { type: 'string', example: 'admin@salon.com' },
-                },
-              },
+          "coordinates": {
+            "type": "array",
+            "items": {
+              "type": "number"
             },
+            "minItems": 2,
+            "maxItems": 2,
+            "example": [
+              77.4126,
+              23.2599
+            ]
+          }
+        }
+      },
+      "AuthTokenPair": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
           },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/auth/admin/reset-password': {
-      post: {
-        tags: ['Auth'],
-        summary: 'Admin Reset Password with Token/OTP',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['email', 'otp', 'newPassword'],
-                properties: {
-                  email: { type: 'string', example: 'admin@salon.com' },
-                  otp: { type: 'string', example: '123456' },
-                  newPassword: { type: 'string', example: 'NewPass@123' },
-                },
-              },
-            },
+          "refreshToken": {
+            "type": "string"
           },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
+          "expiresIn": {
+            "type": "integer"
+          }
+        }
       },
-    },
-    '/api/v1/auth/mobile/send-otp': {
-      post: {
-        tags: ['Auth'],
-        summary: 'Send Mobile OTP (Customer / Beautician)',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['mobile'],
-                properties: {
-                  mobile: { type: 'string', example: '9876543210' },
-                  role: { type: 'string', enum: ['customer', 'beautician'], default: 'customer' },
-                },
-              },
-            },
+      "UserProfile": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "$ref": "#/components/schemas/ObjectId"
           },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/auth/mobile/resend-otp': {
-      post: {
-        tags: ['Auth'],
-        summary: 'Resend Mobile OTP',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['mobile'],
-                properties: {
-                  mobile: { type: 'string', example: '9876543210' },
-                },
-              },
-            },
+          "name": {
+            "type": "string"
           },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/auth/mobile/verify-otp': {
-      post: {
-        tags: ['Auth'],
-        summary: 'Verify Mobile OTP & Authenticate',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['mobile', 'otp'],
-                properties: {
-                  mobile: { type: 'string', example: '9876543210' },
-                  otp: { type: 'string', example: '123456' },
-                  role: { type: 'string', enum: ['customer', 'beautician'], default: 'customer' },
-                },
-              },
-            },
+          "email": {
+            "type": "string",
+            "format": "email"
           },
-        },
-        responses: { 200: { description: 'Authenticated with token' } },
-      },
-    },
-    '/api/v1/auth/refresh-token': {
-      post: {
-        tags: ['Auth'],
-        summary: 'Refresh Access Token',
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['refreshToken'],
-                properties: {
-                  refreshToken: { type: 'string' },
-                },
-              },
-            },
+          "phone": {
+            "$ref": "#/components/schemas/PhoneNumber"
           },
-        },
-        responses: { 200: { description: 'New access token granted' } },
-      },
-    },
-    '/api/v1/auth/logout': {
-      post: {
-        tags: ['Auth'],
-        summary: 'User Logout',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  refreshToken: { type: 'string' },
-                },
-              },
-            },
+          "role": {
+            "type": "string",
+            "enum": [
+              "customer",
+              "beautician",
+              "admin",
+              "super_admin",
+              "ops",
+              "support"
+            ]
           },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/auth/me': {
-      get: {
-        tags: ['Auth'],
-        summary: 'Get Current Authenticated User Session',
-        security: [{ BearerAuth: [] }],
-        responses: {
-          200: { $ref: '#/components/responses/SuccessEnvelope' },
-          401: { $ref: '#/components/responses/UnauthorizedError' },
-        },
-      },
-    },
-
-    // ------------------------------------------------------------------------
-    // USER SERVICE
-    // ------------------------------------------------------------------------
-    '/api/v1/users/me': {
-      get: {
-        tags: ['Users'],
-        summary: 'Get My Profile',
-        security: [{ BearerAuth: [] }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      patch: {
-        tags: ['Users'],
-        summary: 'Update My Profile',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          content: {
-            'multipart/form-data': {
-              schema: {
-                type: 'object',
-                properties: {
-                  fullName: { type: 'string' },
-                  email: { type: 'string' },
-                  profileImage: { type: 'string', format: 'binary' },
-                  gender: { type: 'string', enum: ['male', 'female', 'other'] },
-                },
-              },
-            },
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  fullName: { type: 'string' },
-                  email: { type: 'string' },
-                  gender: { type: 'string' },
-                },
-              },
-            },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "MALE",
+              "FEMALE",
+              "OTHER"
+            ]
           },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
+          "dob": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "INACTIVE",
+              "SUSPENDED",
+              "DEACTIVATED"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       },
-    },
-    '/api/v1/users': {
-      get: {
-        tags: ['Users'],
-        summary: 'List Users (Admin)',
-        security: [{ BearerAuth: [] }],
-        parameters: [
-          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
-          { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 } },
-          { name: 'role', in: 'query', schema: { type: 'string' } },
-          { name: 'search', in: 'query', schema: { type: 'string' } },
+      "Address": {
+        "type": "object",
+        "required": [
+          "addressLine1",
+          "city",
+          "state",
+          "pincode"
         ],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      post: {
-        tags: ['Users'],
-        summary: 'Create User (Admin)',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['fullName', 'mobile'],
-                properties: {
-                  fullName: { type: 'string' },
-                  mobile: { type: 'string' },
-                  email: { type: 'string' },
-                  role: { type: 'string' },
-                },
-              },
-            },
+        "properties": {
+          "_id": {
+            "$ref": "#/components/schemas/ObjectId"
           },
-        },
-        responses: { 201: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/users/{id}': {
-      get: {
-        tags: ['Users'],
-        summary: 'Get User By ID',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      patch: {
-        tags: ['Users'],
-        summary: 'Update User By ID',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        requestBody: {
-          content: {
-            'application/json': {
-              schema: { type: 'object' },
-            },
+          "label": {
+            "type": "string",
+            "enum": [
+              "HOME",
+              "WORK",
+              "OFFICE",
+              "OTHER"
+            ],
+            "default": "HOME"
           },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      delete: {
-        tags: ['Users'],
-        summary: 'Soft Delete User',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-
-    // ------------------------------------------------------------------------
-    // ADDRESSES
-    // ------------------------------------------------------------------------
-    '/api/v1/addresses': {
-      get: {
-        tags: ['Addresses'],
-        summary: 'List Saved Addresses',
-        security: [{ BearerAuth: [] }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      post: {
-        tags: ['Addresses'],
-        summary: 'Add New Address',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['streetAddress', 'city', 'state', 'pincode'],
-                properties: {
-                  type: { type: 'string', enum: ['Home', 'Work', 'Other'], default: 'Home' },
-                  streetAddress: { type: 'string', example: 'Flat 101, Sunshine Heights' },
-                  landmark: { type: 'string', example: 'Near City Mall' },
-                  city: { type: 'string', example: 'Mumbai' },
-                  state: { type: 'string', example: 'Maharashtra' },
-                  pincode: { type: 'string', example: '400001' },
-                  isDefault: { type: 'boolean', default: false },
-                },
-              },
-            },
+          "addressLine1": {
+            "type": "string"
           },
-        },
-        responses: { 201: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/addresses/{id}': {
-      get: {
-        tags: ['Addresses'],
-        summary: 'Get Address By ID',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      patch: {
-        tags: ['Addresses'],
-        summary: 'Update Address',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        requestBody: {
-          content: { 'application/json': { schema: { type: 'object' } } },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      delete: {
-        tags: ['Addresses'],
-        summary: 'Delete Address',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/addresses/{id}/default': {
-      put: {
-        tags: ['Addresses'],
-        summary: 'Set As Default Address',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-
-    // ------------------------------------------------------------------------
-    // FAMILY MEMBERS
-    // ------------------------------------------------------------------------
-    '/api/v1/members': {
-      get: {
-        tags: ['Family Members'],
-        summary: 'List Family Members',
-        security: [{ BearerAuth: [] }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      post: {
-        tags: ['Family Members'],
-        summary: 'Add Family Member',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['fullName', 'relation'],
-                properties: {
-                  fullName: { type: 'string', example: 'Priya Sharma' },
-                  relation: { type: 'string', example: 'Sister' },
-                  gender: { type: 'string', enum: ['male', 'female', 'other'], default: 'female' },
-                  age: { type: 'integer', example: 24 },
-                },
-              },
-            },
+          "addressLine2": {
+            "type": "string"
           },
-        },
-        responses: { 201: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/members/{id}': {
-      get: {
-        tags: ['Family Members'],
-        summary: 'Get Family Member',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      patch: {
-        tags: ['Family Members'],
-        summary: 'Update Family Member',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        requestBody: { content: { 'application/json': { schema: { type: 'object' } } } },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      delete: {
-        tags: ['Family Members'],
-        summary: 'Delete Family Member',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-
-    // ------------------------------------------------------------------------
-    // ROLES & RBAC
-    // ------------------------------------------------------------------------
-    '/api/v1/roles': {
-      get: {
-        tags: ['Roles & RBAC'],
-        summary: 'List Roles',
-        security: [{ BearerAuth: [] }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      post: {
-        tags: ['Roles & RBAC'],
-        summary: 'Create Role',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['name', 'permissions'],
-                properties: {
-                  name: { type: 'string', example: 'Manager' },
-                  description: { type: 'string' },
-                  permissions: { type: 'array', items: { type: 'string' } },
-                },
-              },
-            },
+          "landmark": {
+            "type": "string"
           },
-        },
-        responses: { 201: { $ref: '#/components/responses/SuccessEnvelope' } },
+          "city": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "pincode": {
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/components/schemas/GeoPoint"
+          },
+          "isDefault": {
+            "type": "boolean",
+            "default": false
+          }
+        }
       },
-    },
-    '/api/v1/roles/{id}': {
-      get: {
-        tags: ['Roles & RBAC'],
-        summary: 'Get Role by ID',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      patch: {
-        tags: ['Roles & RBAC'],
-        summary: 'Update Role',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        requestBody: { content: { 'application/json': { schema: { type: 'object' } } } },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      delete: {
-        tags: ['Roles & RBAC'],
-        summary: 'Delete Role',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/permissions': {
-      get: {
-        tags: ['Roles & RBAC'],
-        summary: 'List All System Permissions',
-        security: [{ BearerAuth: [] }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/permissions/sync': {
-      post: {
-        tags: ['Roles & RBAC'],
-        summary: 'Sync Default Permissions',
-        security: [{ BearerAuth: [] }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-
-    // ------------------------------------------------------------------------
-    // BEAUTICIAN PROFILES & KYC
-    // ------------------------------------------------------------------------
-    '/api/v1/beautician-profiles/me': {
-      get: {
-        tags: ['Beautician Profiles'],
-        summary: 'Get My Beautician Profile',
-        security: [{ BearerAuth: [] }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      patch: {
-        tags: ['Beautician Profiles'],
-        summary: 'Update My Profile Information',
-        security: [{ BearerAuth: [] }],
-        requestBody: { content: { 'application/json': { schema: { type: 'object' } } } },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/beautician-profiles': {
-      get: {
-        tags: ['Beautician Profiles'],
-        summary: 'List All Beautician Profiles (Admin)',
-        security: [{ BearerAuth: [] }],
-        parameters: [
-          { name: 'page', in: 'query', schema: { type: 'integer' } },
-          { name: 'limit', in: 'query', schema: { type: 'integer' } },
-          { name: 'status', in: 'query', schema: { type: 'string', enum: ['draft', 'submitted', 'approved', 'rejected'] } },
+      "Member": {
+        "type": "object",
+        "required": [
+          "name"
         ],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      post: {
-        tags: ['Beautician Profiles'],
-        summary: 'Create / Onboard Beautician Profile',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['experienceYears', 'bio'],
-                properties: {
-                  experienceYears: { type: 'number', example: 5 },
-                  bio: { type: 'string', example: 'Certified hair stylist with 5+ years experience' },
-                  skills: { type: 'array', items: { type: 'string' } },
-                },
-              },
-            },
+        "properties": {
+          "_id": {
+            "$ref": "#/components/schemas/ObjectId"
           },
-        },
-        responses: { 201: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/beautician-profiles/{id}': {
-      get: {
-        tags: ['Beautician Profiles'],
-        summary: 'Get Beautician Profile By ID',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/beautician-profiles/me/selfie': {
-      post: {
-        tags: ['Beautician Profiles'],
-        summary: 'Upload KYC Documents & Selfie',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          content: {
-            'multipart/form-data': {
-              schema: {
-                type: 'object',
-                properties: {
-                  profilePhoto: { type: 'string', format: 'binary' },
-                  idCardFront: { type: 'string', format: 'binary' },
-                  idCardBack: { type: 'string', format: 'binary' },
-                  selfieWithId: { type: 'string', format: 'binary' },
-                },
-              },
-            },
+          "name": {
+            "type": "string",
+            "maxLength": 100
           },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/beautician-profiles/me/submit': {
-      post: {
-        tags: ['Beautician Profiles'],
-        summary: 'Submit Profile For Admin Approval',
-        security: [{ BearerAuth: [] }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/beautician-profiles/{id}/review': {
-      patch: {
-        tags: ['Beautician Profiles'],
-        summary: 'Admin Review & Approve/Reject Profile',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['status'],
-                properties: {
-                  status: { type: 'string', enum: ['approved', 'rejected'] },
-                  rejectionReason: { type: 'string' },
-                },
-              },
-            },
+          "relationship": {
+            "type": "string",
+            "default": "Self"
           },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/beautician-profiles/{id}/kyc-review': {
-      patch: {
-        tags: ['Beautician Profiles'],
-        summary: 'Admin Review KYC Status',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['status'],
-                properties: {
-                  status: { type: 'string', enum: ['verified', 'rejected'] },
-                  notes: { type: 'string' },
-                },
-              },
-            },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "MALE",
+              "FEMALE",
+              "OTHER"
+            ]
           },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-
-    // ------------------------------------------------------------------------
-    // BEAUTICIAN SKILLS
-    // ------------------------------------------------------------------------
-    '/api/v1/skills': {
-      get: {
-        tags: ['Beautician Skills'],
-        summary: 'List Skills',
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      post: {
-        tags: ['Beautician Skills'],
-        summary: 'Create Skill (Admin)',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['name'],
-                properties: {
-                  name: { type: 'string', example: 'Bridal Makeup' },
-                  description: { type: 'string' },
-                },
-              },
-            },
+          "age": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 120
           },
-        },
-        responses: { 201: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/skills/{id}': {
-      get: {
-        tags: ['Beautician Skills'],
-        summary: 'Get Skill by ID',
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      patch: {
-        tags: ['Beautician Skills'],
-        summary: 'Update Skill',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        requestBody: { content: { 'application/json': { schema: { type: 'object' } } } },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      delete: {
-        tags: ['Beautician Skills'],
-        summary: 'Delete Skill',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-
-    // ------------------------------------------------------------------------
-    // BANK DETAILS
-    // ------------------------------------------------------------------------
-    '/api/v1/bank-details/me': {
-      get: {
-        tags: ['Bank Details'],
-        summary: 'Get My Bank Account Details',
-        security: [{ BearerAuth: [] }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      put: {
-        tags: ['Bank Details'],
-        summary: 'Add / Update Bank Account Details',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          content: {
-            'multipart/form-data': {
-              schema: {
-                type: 'object',
-                properties: {
-                  accountHolderName: { type: 'string', example: 'Pooja Verma' },
-                  accountNumber: { type: 'string', example: '123456789012' },
-                  ifscCode: { type: 'string', example: 'HDFC0001234' },
-                  bankName: { type: 'string', example: 'HDFC Bank' },
-                  file: { type: 'string', format: 'binary', description: 'Cancelled Cheque/Passbook' },
-                },
-              },
-            },
+          "skinType": {
+            "type": "string"
           },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
+          "hairType": {
+            "type": "string"
+          },
+          "allergies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "notes": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "INACTIVE"
+            ]
+          }
+        }
       },
-      delete: {
-        tags: ['Bank Details'],
-        summary: 'Delete Bank Account Details',
-        security: [{ BearerAuth: [] }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "displayOrder": {
+            "type": "integer"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "thumbnailUrl": {
+            "type": "string"
+          }
+        }
       },
-    },
-
-    // ------------------------------------------------------------------------
-    // CATALOG: CATEGORIES
-    // ------------------------------------------------------------------------
-    '/api/v1/categories/public': {
-      get: {
-        tags: ['Categories'],
-        summary: 'List Active Public Categories (Client/App)',
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
+      "Service": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "categoryId": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0
+          },
+          "discountedPrice": {
+            "type": "number"
+          },
+          "durationMinMinutes": {
+            "type": "integer"
+          },
+          "durationMaxMinutes": {
+            "type": "integer"
+          },
+          "homeVisitFee": {
+            "type": "number"
+          },
+          "badges": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "all",
+              "female",
+              "male",
+              "unisex"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING_APPROVAL",
+              "APPROVED",
+              "REJECTED"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
       },
-    },
-    '/api/v1/categories/public/{slug}': {
-      get: {
-        tags: ['Categories'],
-        summary: 'Get Public Category by Slug',
-        parameters: [{ name: 'slug', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
+      "Package": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "name": {
+            "type": "string"
+          },
+          "categoryId": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "originalPrice": {
+            "type": "number"
+          },
+          "discountedPrice": {
+            "type": "number"
+          },
+          "minSelectCount": {
+            "type": "integer"
+          },
+          "maxSelectCount": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "serviceId": {
+                  "$ref": "#/components/schemas/ObjectId"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "isMandatory": {
+                  "type": "boolean"
+                },
+                "isDefaultSelected": {
+                  "type": "boolean"
+                },
+                "extraCharge": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        }
       },
-    },
-    '/api/v1/categories': {
-      get: {
-        tags: ['Categories'],
-        summary: 'List All Categories (Admin with filters & pagination)',
-        security: [{ BearerAuth: [] }],
-        parameters: [
-          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
-          { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 } },
-          { name: 'status', in: 'query', schema: { type: 'string' } },
+      "HygieneKit": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number",
+            "default": 49
+          },
+          "isDefault": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CartLineItem": {
+        "type": "object",
+        "properties": {
+          "lineId": {
+            "type": "string"
+          },
+          "itemType": {
+            "type": "string",
+            "enum": [
+              "SERVICE",
+              "PACKAGE"
+            ]
+          },
+          "refId": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "name": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "unitPrice": {
+            "type": "number"
+          },
+          "totalPrice": {
+            "type": "number"
+          },
+          "forMemberId": {
+            "$ref": "#/components/schemas/ObjectId"
+          }
+        }
+      },
+      "Cart": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "userId": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CartLineItem"
+            }
+          },
+          "hygieneKitQuantity": {
+            "type": "integer"
+          },
+          "specialInstructions": {
+            "type": "string"
+          },
+          "couponCode": {
+            "type": "string"
+          },
+          "subtotal": {
+            "type": "number"
+          },
+          "discount": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        }
+      },
+      "BookingParticipant": {
+        "type": "object",
+        "required": [
+          "name"
         ],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      post: {
-        tags: ['Categories'],
-        summary: 'Create Category (Admin)',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'multipart/form-data': {
-              schema: {
-                type: 'object',
-                required: ['name'],
-                properties: {
-                  name: { type: 'string', example: 'Hair Care & Styling' },
-                  description: { type: 'string' },
-                  file: { type: 'string', format: 'binary', description: 'Category Icon/Image' },
-                  order: { type: 'integer', default: 0 },
-                },
-              },
-            },
+        "properties": {
+          "name": {
+            "type": "string"
           },
-        },
-        responses: { 201: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/categories/{id}': {
-      get: {
-        tags: ['Categories'],
-        summary: 'Get Category By ID',
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      patch: {
-        tags: ['Categories'],
-        summary: 'Update Category',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        requestBody: {
-          content: {
-            'multipart/form-data': { schema: { type: 'object' } },
-            'application/json': { schema: { type: 'object' } },
+          "relationship": {
+            "type": "string",
+            "default": "Self"
           },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      delete: {
-        tags: ['Categories'],
-        summary: 'Delete Category (Soft Delete)',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/categories/{id}/status': {
-      patch: {
-        tags: ['Categories'],
-        summary: 'Toggle Category Active Status',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['isActive'],
-                properties: { isActive: { type: 'boolean' } },
-              },
-            },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "MALE",
+              "FEMALE",
+              "OTHER"
+            ]
           },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/categories/reorder': {
-      patch: {
-        tags: ['Categories'],
-        summary: 'Reorder Categories Priority',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['orderedIds'],
-                properties: { orderedIds: { type: 'array', items: { type: 'string' } } },
-              },
-            },
+          "age": {
+            "type": "integer"
           },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
+          "skinType": {
+            "type": "string"
+          },
+          "hairType": {
+            "type": "string"
+          },
+          "allergies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
       },
-    },
-
-    // ------------------------------------------------------------------------
-    // CATALOG: SERVICES
-    // ------------------------------------------------------------------------
-    '/api/v1/services/public': {
-      get: {
-        tags: ['Services'],
-        summary: 'List Public Services (Search & Filter)',
-        parameters: [
-          { name: 'search', in: 'query', schema: { type: 'string' } },
-          { name: 'categoryId', in: 'query', schema: { type: 'string' } },
-          { name: 'gender', in: 'query', schema: { type: 'string' } },
+      "BookingItem": {
+        "type": "object",
+        "properties": {
+          "itemType": {
+            "type": "string",
+            "enum": [
+              "SERVICE",
+              "PACKAGE"
+            ],
+            "default": "SERVICE"
+          },
+          "serviceId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "basePrice": {
+            "type": "number"
+          },
+          "unitPrice": {
+            "type": "number"
+          },
+          "quantity": {
+            "type": "integer",
+            "default": 1
+          },
+          "durationMinutes": {
+            "type": "integer"
+          },
+          "upgradeSelected": {
+            "type": "boolean",
+            "default": false
+          },
+          "upgradeServiceId": {
+            "type": "string"
+          },
+          "upgradePriceDifference": {
+            "type": "number"
+          }
+        }
+      },
+      "Booking": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "bookingNumber": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "CONFIRMED",
+              "ASSIGNED",
+              "IN_PROGRESS",
+              "COMPLETED",
+              "CANCELLED",
+              "FAILED"
+            ]
+          },
+          "schedulingMode": {
+            "type": "string",
+            "enum": [
+              "INSTANT",
+              "SCHEDULED"
+            ]
+          },
+          "scheduledDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "addressSnapshot": {
+            "$ref": "#/components/schemas/Address"
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookingParticipant"
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookingItem"
+            }
+          },
+          "subtotal": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          },
+          "paymentMethod": {
+            "type": "string",
+            "enum": [
+              "online",
+              "wallet",
+              "cod",
+              "mixed"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Slot": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "startAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "maxBookings": {
+            "type": "integer"
+          },
+          "availableCapacity": {
+            "type": "integer"
+          },
+          "beauticianId": {
+            "$ref": "#/components/schemas/ObjectId"
+          }
+        }
+      },
+      "Payment": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "bookingId": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "orderId": {
+            "type": "string"
+          },
+          "paymentId": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string",
+            "default": "INR"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "CREATED",
+              "PAID",
+              "FAILED",
+              "REFUNDED",
+              "PARTIAL_REFUND"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Wallet": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "userId": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "balance": {
+            "type": "number"
+          },
+          "points": {
+            "type": "integer"
+          },
+          "cashback": {
+            "type": "number"
+          }
+        }
+      },
+      "WalletTransaction": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "CREDIT",
+              "DEBIT"
+            ]
+          },
+          "amount": {
+            "type": "number"
+          },
+          "category": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BeauticianProfile": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "userId": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "name": {
+            "type": "string"
+          },
+          "phone": {
+            "$ref": "#/components/schemas/PhoneNumber"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "experienceYears": {
+            "type": "number"
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "INCOMPLETE",
+              "SUBMITTED",
+              "PENDING",
+              "UNDER_REVIEW",
+              "APPROVED",
+              "REJECTED",
+              "SUSPENDED"
+            ]
+          },
+          "kycStatus": {
+            "type": "string",
+            "enum": [
+              "NOT_SUBMITTED",
+              "PENDING",
+              "UNDER_REVIEW",
+              "VERIFIED",
+              "REJECTED",
+              "EXPIRED"
+            ]
+          },
+          "operationalStatus": {
+            "type": "string",
+            "enum": [
+              "ONLINE",
+              "OFFLINE",
+              "BUSY",
+              "AVAILABLE",
+              "ON_LEAVE",
+              "SUSPENDED"
+            ]
+          },
+          "isAvailable": {
+            "type": "boolean"
+          },
+          "serviceRadiusKm": {
+            "type": "number"
+          },
+          "rating": {
+            "type": "number"
+          }
+        }
+      },
+      "BankDetail": {
+        "type": "object",
+        "required": [
+          "accountHolderName",
+          "accountNumber",
+          "ifscCode"
         ],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/services/public/category/{categoryId}': {
-      get: {
-        tags: ['Services'],
-        summary: 'List Services By Category',
-        parameters: [{ name: 'categoryId', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/services/public/{slug}': {
-      get: {
-        tags: ['Services'],
-        summary: 'Get Service Details by Slug',
-        parameters: [{ name: 'slug', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/services': {
-      get: {
-        tags: ['Services'],
-        summary: 'List All Services (Admin)',
-        security: [{ BearerAuth: [] }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      post: {
-        tags: ['Services'],
-        summary: 'Create Service (Admin)',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'multipart/form-data': {
-              schema: {
-                type: 'object',
-                required: ['name', 'categoryId', 'price', 'durationMinutes'],
-                properties: {
-                  name: { type: 'string', example: 'Diamond Facial' },
-                  categoryId: { type: 'string' },
-                  price: { type: 'number', example: 1499 },
-                  discountPrice: { type: 'number', example: 1199 },
-                  durationMinutes: { type: 'number', example: 60 },
-                  description: { type: 'string' },
-                  thumbnail: { type: 'string', format: 'binary' },
-                  images: { type: 'array', items: { type: 'string', format: 'binary' } },
-                },
-              },
-            },
+        "properties": {
+          "accountHolderName": {
+            "type": "string"
           },
-        },
-        responses: { 201: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/services/{id}': {
-      get: {
-        tags: ['Services'],
-        summary: 'Get Service by ID',
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      patch: {
-        tags: ['Services'],
-        summary: 'Update Service',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        requestBody: {
-          content: { 'multipart/form-data': { schema: { type: 'object' } } },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      delete: {
-        tags: ['Services'],
-        summary: 'Delete Service',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/services/{id}/approve': {
-      post: {
-        tags: ['Services'],
-        summary: 'Approve Service Creation/Update',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/services/{id}/reject': {
-      post: {
-        tags: ['Services'],
-        summary: 'Reject Service',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-
-    // ------------------------------------------------------------------------
-    // PACKAGES
-    // ------------------------------------------------------------------------
-    '/api/v1/packages/public': {
-      get: {
-        tags: ['Packages'],
-        summary: 'List Public Packages',
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/packages': {
-      get: {
-        tags: ['Packages'],
-        summary: 'List Packages (Admin)',
-        security: [{ BearerAuth: [] }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      post: {
-        tags: ['Packages'],
-        summary: 'Create Package Deal',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'multipart/form-data': {
-              schema: {
-                type: 'object',
-                required: ['name', 'price'],
-                properties: {
-                  name: { type: 'string', example: 'Bridal Glow Combo' },
-                  price: { type: 'number', example: 4999 },
-                  discountPrice: { type: 'number', example: 3999 },
-                  services: { type: 'array', items: { type: 'string' } },
-                },
-              },
-            },
+          "accountNumber": {
+            "type": "string"
           },
-        },
-        responses: { 201: { $ref: '#/components/responses/SuccessEnvelope' } },
+          "ifscCode": {
+            "type": "string"
+          },
+          "bankName": {
+            "type": "string"
+          },
+          "branchName": {
+            "type": "string"
+          },
+          "upiId": {
+            "type": "string"
+          }
+        }
       },
-    },
-    '/api/v1/packages/{id}': {
-      delete: {
-        tags: ['Packages'],
-        summary: 'Delete Package',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
+      "Banner": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "title": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": "string"
+          },
+          "targetUrl": {
+            "type": "string"
+          },
+          "placement": {
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "displayOrder": {
+            "type": "integer"
+          }
+        }
       },
-    },
-
-    // ------------------------------------------------------------------------
-    // SLOTS & BOOKING
-    // ------------------------------------------------------------------------
-    '/api/v1/slots/available': {
-      get: {
-        tags: ['Slots'],
-        summary: 'Get Real-time Available Slots',
-        parameters: [
-          { name: 'date', in: 'query', required: true, schema: { type: 'string', format: 'date', example: '2026-09-12' } },
-          { name: 'serviceId', in: 'query', schema: { type: 'string' } },
-          { name: 'beauticianId', in: 'query', schema: { type: 'string' } },
+      "Blog": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "title": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "thumbnailUrl": {
+            "type": "string"
+          },
+          "isPublished": {
+            "type": "boolean"
+          },
+          "likes": {
+            "type": "integer"
+          }
+        }
+      },
+      "Review": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "userId": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "bookingId": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "beauticianId": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "rating": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "comment": {
+            "type": "string"
+          }
+        }
+      },
+      "Notification": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "isRead": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          }
+        }
+      },
+      "PaginatedResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer"
+              },
+              "page": {
+                "type": "integer"
+              },
+              "limit": {
+                "type": "integer"
+              },
+              "pages": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "message": {
+            "type": "string"
+          },
+          "errorCode": {
+            "type": "string"
+          }
+        }
+      },
+      "MembershipPlan": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "$ref": "#/components/schemas/ObjectId"
+          },
+          "planCode": {
+            "type": "string",
+            "example": "GLOW_CLUB_MONTHLY"
+          },
+          "name": {
+            "type": "string",
+            "example": "GetReady Glow Club (Monthly)"
+          },
+          "description": {
+            "type": "string",
+            "example": "Exclusive beauty membership with 15% off and complimentary treatments"
+          },
+          "price": {
+            "type": "number",
+            "example": 599
+          },
+          "billingCycle": {
+            "type": "string",
+            "enum": [
+              "MONTHLY",
+              "QUARTERLY",
+              "ANNUAL"
+            ],
+            "example": "MONTHLY"
+          },
+          "durationDays": {
+            "type": "integer",
+            "example": 30
+          },
+          "discountType": {
+            "type": "string",
+            "enum": [
+              "PERCENTAGE",
+              "FLAT"
+            ],
+            "example": "PERCENTAGE"
+          },
+          "discountValue": {
+            "type": "number",
+            "example": 15
+          },
+          "maxDiscountPerBooking": {
+            "type": "number",
+            "example": 500
+          },
+          "minBookingSubtotal": {
+            "type": "number",
+            "example": 0
+          },
+          "loyaltyMultiplier": {
+            "type": "number",
+            "example": 2
+          },
+          "bonusPointsOnJoin": {
+            "type": "number",
+            "example": 500
+          },
+          "complimentaryServices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "serviceId": {
+                  "type": "string",
+                  "example": "srv_threading_clean"
+                },
+                "name": {
+                  "type": "string",
+                  "example": "Complimentary Eyebrow Threading / Cleanup"
+                },
+                "quantityPerCycle": {
+                  "type": "integer",
+                  "example": 1
+                },
+                "rolloverAllowed": {
+                  "type": "boolean",
+                  "example": true
+                },
+                "rolloverMaxDays": {
+                  "type": "integer",
+                  "example": 60
+                }
+              }
+            }
+          },
+          "familySharingAllowed": {
+            "type": "boolean",
+            "example": true
+          },
+          "maxFamilyMembers": {
+            "type": "integer",
+            "example": 4
+          },
+          "stackingRule": {
+            "type": "string",
+            "enum": [
+              "EXCLUSIVE",
+              "CANNOT_STACK_WITH_COUPON",
+              "STACKABLE"
+            ],
+            "example": "CANNOT_STACK_WITH_COUPON"
+          },
+          "marketingConfig": {
+            "type": "object",
+            "properties": {
+              "badgeText": {
+                "type": "string",
+                "example": "EXCLUSIVE MEMBERSHIP"
+              },
+              "heroTitle": {
+                "type": "string",
+                "example": "Get Ready. Glow Club."
+              },
+              "perceivedWorthText": {
+                "type": "string",
+                "example": "₹2,400+"
+              },
+              "cartOptInTitle": {
+                "type": "string",
+                "example": "Join Glow Club & Save More Today"
+              }
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "PAUSED",
+              "RETIRED"
+            ],
+            "example": "ACTIVE"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          }
+        }
+      },
+      "CustomerMembershipStatus": {
+        "type": "object",
+        "properties": {
+          "isMember": {
+            "type": "boolean",
+            "example": true
+          },
+          "hasActiveMembership": {
+            "type": "boolean",
+            "example": true
+          },
+          "subscriptionId": {
+            "type": "string",
+            "example": "sub_1892abef71"
+          },
+          "planCode": {
+            "type": "string",
+            "example": "GLOW_CLUB_MONTHLY"
+          },
+          "tierName": {
+            "type": "string",
+            "example": "Glow Club Member"
+          },
+          "status": {
+            "type": "string",
+            "example": "ACTIVE"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "daysRemaining": {
+            "type": "integer",
+            "example": 24
+          },
+          "autoRenew": {
+            "type": "boolean",
+            "example": true
+          },
+          "discountPercentage": {
+            "type": "number",
+            "example": 15
+          },
+          "maxDiscountPerBooking": {
+            "type": "number",
+            "example": 500
+          },
+          "loyaltyMultiplier": {
+            "type": "number",
+            "example": 2
+          },
+          "familySharingAllowed": {
+            "type": "boolean",
+            "example": true
+          },
+          "sharedWithCount": {
+            "type": "integer",
+            "example": 2
+          },
+          "complimentaryEntitlements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "entitlementId": {
+                  "type": "string",
+                  "example": "ent_109823"
+                },
+                "serviceName": {
+                  "type": "string",
+                  "example": "Complimentary Eyebrow Threading / Cleanup"
+                },
+                "totalAllowed": {
+                  "type": "integer",
+                  "example": 1
+                },
+                "usedCount": {
+                  "type": "integer",
+                  "example": 0
+                },
+                "status": {
+                  "type": "string",
+                  "example": "AVAILABLE"
+                },
+                "expiresAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          }
+        }
+      },
+      "MembershipCartBenefits": {
+        "type": "object",
+        "properties": {
+          "isMember": {
+            "type": "boolean",
+            "example": true
+          },
+          "optInApplied": {
+            "type": "boolean",
+            "example": false
+          },
+          "membershipFee": {
+            "type": "number",
+            "example": 0
+          },
+          "membershipDiscount": {
+            "type": "number",
+            "example": 225
+          },
+          "discountPercentage": {
+            "type": "number",
+            "example": 15
+          },
+          "savingsToday": {
+            "type": "number",
+            "example": 225
+          },
+          "planCode": {
+            "type": "string",
+            "example": "GLOW_CLUB_MONTHLY"
+          },
+          "tierName": {
+            "type": "string",
+            "example": "GetReady Glow Club (Monthly)"
+          },
+          "loyaltyMultiplier": {
+            "type": "number",
+            "example": 2
+          }
+        }
+      },
+      "AdminCreateMembershipPlanInput": {
+        "type": "object",
+        "required": [
+          "planCode",
+          "name",
+          "price"
         ],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/slots/hold': {
-      post: {
-        tags: ['Slots'],
-        summary: 'Hold Time Slot (10-minute Lock for Checkout)',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['slotId', 'date'],
-                properties: {
-                  slotId: { type: 'string' },
-                  date: { type: 'string', example: '2026-09-12' },
+        "properties": {
+          "planCode": {
+            "type": "string",
+            "example": "GLOW_CLUB_MONTHLY"
+          },
+          "name": {
+            "type": "string",
+            "example": "GetReady Glow Club (Monthly)"
+          },
+          "description": {
+            "type": "string",
+            "example": "Exclusive beauty membership with 15% off and complimentary treatments"
+          },
+          "price": {
+            "type": "number",
+            "example": 599
+          },
+          "billingCycle": {
+            "type": "string",
+            "enum": [
+              "MONTHLY",
+              "QUARTERLY",
+              "ANNUAL"
+            ],
+            "default": "MONTHLY"
+          },
+          "durationDays": {
+            "type": "integer",
+            "default": 30
+          },
+          "discountType": {
+            "type": "string",
+            "enum": [
+              "PERCENTAGE",
+              "FLAT"
+            ],
+            "default": "PERCENTAGE"
+          },
+          "discountValue": {
+            "type": "number",
+            "default": 15
+          },
+          "maxDiscountPerBooking": {
+            "type": "number",
+            "default": 500
+          },
+          "minBookingSubtotal": {
+            "type": "number",
+            "default": 0
+          },
+          "loyaltyMultiplier": {
+            "type": "number",
+            "default": 2
+          },
+          "bonusPointsOnJoin": {
+            "type": "number",
+            "default": 500
+          },
+          "complimentaryServices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "serviceId",
+                "name"
+              ],
+              "properties": {
+                "serviceId": {
+                  "type": "string"
                 },
-              },
-            },
-          },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/slots/release': {
-      post: {
-        tags: ['Slots'],
-        summary: 'Release Held Slot',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['slotId'],
-                properties: { slotId: { type: 'string' } },
-              },
-            },
-          },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-
-    // ------------------------------------------------------------------------
-    // BOOKINGS & ORCHESTRATION
-    // ------------------------------------------------------------------------
-    '/api/v1/bookings/preview': {
-      post: {
-        tags: ['Bookings'],
-        summary: 'Authoritative Pre-booking Calculation & Quote Preview',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['items'],
-                properties: {
-                  items: {
-                    type: 'array',
-                    items: {
-                      type: 'object',
-                      required: ['serviceId', 'basePrice'],
-                      properties: {
-                        serviceId: { type: 'string' },
-                        serviceName: { type: 'string' },
-                        basePrice: { type: 'number' },
-                        quantity: { type: 'integer', default: 1 },
-                        customerProfileId: { type: 'string' },
-                        upgradeSelected: { type: 'boolean', default: false },
-                        upgradeServiceId: { type: 'string' },
-                        upgradePriceDifference: { type: 'number' },
-                      },
-                    },
-                  },
-                  participants: {
-                    type: 'array',
-                    items: {
-                      type: 'object',
-                      properties: {
-                        customerProfileId: { type: 'string' },
-                        name: { type: 'string' },
-                        relationship: { type: 'string', example: 'Mother' },
-                      },
-                    },
-                  },
-                  hygieneKitQuantity: { type: 'integer', default: 1 },
-                  membershipOptIn: { type: 'boolean', default: false },
-                  couponCode: { type: 'string', example: 'FLAT300' },
-                  useWallet: { type: 'boolean', default: false },
-                  preferredBeauticianCount: { type: 'integer', enum: [1, 2], default: 1 },
+                "name": {
+                  "type": "string"
                 },
-              },
-            },
-          },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/bookings': {
-      post: {
-        tags: ['Bookings'],
-        summary: 'Create Authoritative Multi-Customer / Multi-Beautician Booking Order',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['addressId', 'addressSnapshot', 'participants', 'items'],
-                properties: {
-                  idempotencyKey: { type: 'string', example: 'req_123456789' },
-                  schedulingMode: { type: 'string', enum: ['INSTANT', 'SCHEDULED'], default: 'SCHEDULED' },
-                  slotId: { type: 'string' },
-                  scheduledDate: { type: 'string', example: '2026-09-12' },
-                  addressId: { type: 'string' },
-                  addressSnapshot: { type: 'object' },
-                  preferredBeauticianCount: { type: 'integer', enum: [1, 2], default: 1 },
-                  participants: {
-                    type: 'array',
-                    items: {
-                      type: 'object',
-                      required: ['name'],
-                      properties: {
-                        customerProfileId: { type: 'string' },
-                        name: { type: 'string', example: 'Self' },
-                        relationship: { type: 'string', example: 'Self' },
-                      },
-                    },
-                  },
-                  items: {
-                    type: 'array',
-                    items: {
-                      type: 'object',
-                      required: ['serviceId', 'basePrice'],
-                      properties: {
-                        serviceId: { type: 'string' },
-                        serviceName: { type: 'string' },
-                        basePrice: { type: 'number' },
-                        quantity: { type: 'integer', default: 1 },
-                        customerProfileId: { type: 'string' },
-                        upgradeSelected: { type: 'boolean', default: false },
-                        upgradeServiceId: { type: 'string' },
-                        upgradePriceDifference: { type: 'number' },
-                      },
-                    },
-                  },
-                  hygieneKitQuantity: { type: 'integer', default: 1 },
-                  couponCode: { type: 'string', example: 'FLAT300' },
-                  useWallet: { type: 'boolean', default: false },
-                  paymentMethod: { type: 'string', enum: ['online', 'wallet', 'cod', 'mixed'], default: 'online' },
-                  specialInstructions: { type: 'string' },
+                "quantityPerCycle": {
+                  "type": "integer",
+                  "default": 1
                 },
-              },
-            },
-          },
-        },
-        responses: { 201: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/bookings/my': {
-      get: {
-        tags: ['Bookings'],
-        summary: 'Get My Bookings (Account Owner)',
-        security: [{ BearerAuth: [] }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/bookings/beautician/my-assignments': {
-      get: {
-        tags: ['Bookings'],
-        summary: 'Beautician View Isolation (Only assigned services and customer profiles)',
-        security: [{ BearerAuth: [] }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/bookings/admin': {
-      get: {
-        tags: ['Bookings'],
-        summary: 'List All Bookings (Admin)',
-        security: [{ BearerAuth: [] }],
-        parameters: [
-          { name: 'status', in: 'query', schema: { type: 'string' } },
-          { name: 'page', in: 'query', schema: { type: 'integer' } },
-        ],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/bookings/admin/settings': {
-      get: {
-        tags: ['Bookings'],
-        summary: 'Get Admin Configurable Booking Settings',
-        security: [{ BearerAuth: [] }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      put: {
-        tags: ['Bookings'],
-        summary: 'Update Admin Booking Settings',
-        security: [{ BearerAuth: [] }],
-        requestBody: { content: { 'application/json': { schema: { type: 'object' } } } },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/bookings/{id}': {
-      get: {
-        tags: ['Bookings'],
-        summary: 'Get Booking Details by ID',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/bookings/{id}/start-otp/verify': {
-      post: {
-        tags: ['Bookings'],
-        summary: 'Verify Single Common Start OTP (Transitions booking & items to STARTED)',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['otp'],
-                properties: { otp: { type: 'string', example: '1234' } },
-              },
-            },
-          },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/bookings/{id}/items/{itemId}/complete': {
-      post: {
-        tags: ['Bookings'],
-        summary: 'Beautician Marks Individual Service Item Complete',
-        security: [{ BearerAuth: [] }],
-        parameters: [
-          { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-          { name: 'itemId', in: 'path', required: true, schema: { type: 'string' } },
-        ],
-        requestBody: {
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: { notes: { type: 'string', example: 'Hydrating facial applied' } },
-              },
-            },
-          },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/bookings/{id}/end-otp/verify': {
-      post: {
-        tags: ['Bookings'],
-        summary: 'Verify Single Common End OTP (Allowed ONLY when ALL items are completed -> Triggers Cashback & Points)',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['otp'],
-                properties: { otp: { type: 'string', example: '5678' } },
-              },
-            },
-          },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/bookings/{id}/cancel': {
-      post: {
-        tags: ['Bookings'],
-        summary: 'Cancel Booking with Dynamic Fee Calculation (>6h free, 2-6h fee, <2h fee, waived if delayed/unassigned)',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        requestBody: {
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  reason: { type: 'string', example: 'Change of schedule' },
-                  isDelayed: { type: 'boolean', default: false },
+                "rolloverAllowed": {
+                  "type": "boolean",
+                  "default": true
                 },
-              },
-            },
+                "rolloverMaxDays": {
+                  "type": "integer",
+                  "default": 60
+                }
+              }
+            }
           },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/bookings/{id}/assign': {
-      post: {
-        tags: ['Bookings'],
-        summary: 'Admin Manual Beautician Assignment / Reassignment',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['assignments'],
-                properties: {
-                  assignments: {
-                    type: 'array',
-                    items: {
-                      type: 'object',
-                      required: ['beauticianId', 'beauticianName', 'assignedItemIds'],
-                      properties: {
-                        beauticianId: { type: 'string' },
-                        beauticianName: { type: 'string' },
-                        assignedItemIds: { type: 'array', items: { type: 'string' } },
-                      },
-                    },
-                  },
+          "familySharingAllowed": {
+            "type": "boolean",
+            "default": true
+          },
+          "maxFamilyMembers": {
+            "type": "integer",
+            "default": 4
+          },
+          "stackingRule": {
+            "type": "string",
+            "enum": [
+              "EXCLUSIVE",
+              "CANNOT_STACK_WITH_COUPON",
+              "STACKABLE"
+            ],
+            "default": "CANNOT_STACK_WITH_COUPON"
+          },
+          "marketingConfig": {
+            "type": "object"
+          },
+          "faqs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "question",
+                "answer"
+              ],
+              "properties": {
+                "question": {
+                  "type": "string"
                 },
-              },
-            },
+                "answer": {
+                  "type": "string"
+                }
+              }
+            }
           },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/bookings/{id}/reschedule': {
-      patch: {
-        tags: ['Calendar', 'Bookings'],
-        summary: 'Reschedule Booking with Conflict Detection & Admin Audit',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['date', 'startTime'],
-                properties: {
-                  date: { type: 'string', example: '2026-09-15' },
-                  startTime: { type: 'string', example: '14:00' },
-                  endTime: { type: 'string', example: '15:00' },
-                  beauticianId: { type: 'string' },
-                  beauticianName: { type: 'string' },
-                  reason: { type: 'string', example: 'Customer requested afternoon slot' },
-                },
-              },
-            },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "PAUSED",
+              "RETIRED"
+            ],
+            "default": "ACTIVE"
           },
-        },
-        responses: {
-          200: { $ref: '#/components/responses/SuccessEnvelope' },
-          409: { description: 'Beautician time conflict' },
-        },
-      },
+          "isActive": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      }
     },
-    '/api/v1/bookings/{id}/complete': {
-      post: {
-        tags: ['Calendar', 'Bookings'],
-        summary: 'Admin Direct Booking Completion',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        requestBody: {
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                properties: { notes: { type: 'string', example: 'Admin completed service' } },
-              },
-            },
-          },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
+    "responses": {
+      "Unauthorized": {
+        "description": "Unauthorized - missing or invalid JWT",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
       },
-    },
-
-    // ------------------------------------------------------------------------
-    // CALENDAR SERVICE
-    // ------------------------------------------------------------------------
-    '/api/v1/calendar': {
-      get: {
-        tags: ['Calendar'],
-        summary: 'Query Schedule Calendar (Month, Week, Day, Agenda with Day-level Counts & Conflict Indicators)',
-        security: [{ BearerAuth: [] }],
-        parameters: [
-          { name: 'view', in: 'query', schema: { type: 'string', enum: ['month', 'week', 'day', 'agenda'], default: 'month' } },
-          { name: 'startDate', in: 'query', schema: { type: 'string', example: '2026-09-01' } },
-          { name: 'endDate', in: 'query', schema: { type: 'string', example: '2026-09-30' } },
-          { name: 'date', in: 'query', schema: { type: 'string', example: '2026-09-11' } },
-          { name: 'beauticianId', in: 'query', schema: { type: 'string' } },
-          { name: 'serviceId', in: 'query', schema: { type: 'string' } },
-          { name: 'status', in: 'query', schema: { type: 'string' } },
-          { name: 'locationId', in: 'query', schema: { type: 'string' } },
-          { name: 'search', in: 'query', schema: { type: 'string' } },
-          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
-          { name: 'limit', in: 'query', schema: { type: 'integer', default: 500 } },
-        ],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
+      "Forbidden": {
+        "description": "Forbidden - insufficient role/permission",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
       },
-    },
-    '/api/v1/calendar/today': {
-      get: {
-        tags: ['Calendar'],
-        summary: "Get Today's Appointments with Real-time Conflict Indicators (Right Sidebar)",
-        security: [{ BearerAuth: [] }],
-        parameters: [
-          { name: 'date', in: 'query', schema: { type: 'string', example: '2026-09-11' } },
-          { name: 'beauticianId', in: 'query', schema: { type: 'string' } },
-        ],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
       },
-    },
-    '/api/v1/calendar/summary': {
-      get: {
-        tags: ['Calendar'],
-        summary: 'Get Calendar KPI Summary & Dynamic Trend Statistics from Database',
-        security: [{ BearerAuth: [] }],
-        parameters: [
-          { name: 'startDate', in: 'query', schema: { type: 'string', example: '2026-09-01' } },
-          { name: 'endDate', in: 'query', schema: { type: 'string', example: '2026-09-30' } },
-        ],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/calendar/availability': {
-      get: {
-        tags: ['Calendar'],
-        summary: 'Get Beautician Available Time Slots',
-        security: [{ BearerAuth: [] }],
-        parameters: [
-          { name: 'date', in: 'query', required: true, schema: { type: 'string', example: '2026-09-11' } },
-          { name: 'beauticianId', in: 'query', schema: { type: 'string' } },
-          { name: 'serviceId', in: 'query', schema: { type: 'string' } },
-          { name: 'durationMinutes', in: 'query', schema: { type: 'integer', default: 60 } },
-        ],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/calendar/conflicts': {
-      get: {
-        tags: ['Calendar'],
-        summary: 'Get Detected Booking Overlaps and Schedule Conflicts',
-        security: [{ BearerAuth: [] }],
-        parameters: [
-          { name: 'startDate', in: 'query', schema: { type: 'string' } },
-          { name: 'endDate', in: 'query', schema: { type: 'string' } },
-        ],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-
-    // ------------------------------------------------------------------------
-    // CART SERVICE
-    // ------------------------------------------------------------------------
-    '/api/v1/cart': {
-      get: {
-        tags: ['Cart'],
-        summary: 'Get Current User Cart',
-        security: [{ BearerAuth: [] }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      delete: {
-        tags: ['Cart'],
-        summary: 'Clear Cart',
-        security: [{ BearerAuth: [] }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/cart/items': {
-      post: {
-        tags: ['Cart'],
-        summary: 'Add Service or Package to Cart',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['itemType', 'itemId'],
-                properties: {
-                  itemType: { type: 'string', enum: ['service', 'package'] },
-                  itemId: { type: 'string' },
-                  quantity: { type: 'integer', default: 1 },
-                },
-              },
-            },
-          },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/cart/items/{lineId}': {
-      patch: {
-        tags: ['Cart'],
-        summary: 'Update Cart Item Quantity',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'lineId', in: 'path', required: true, schema: { type: 'string' } }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['quantity'],
-                properties: { quantity: { type: 'integer', example: 2 } },
-              },
-            },
-          },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      delete: {
-        tags: ['Cart'],
-        summary: 'Remove Item from Cart',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'lineId', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/cart/hygiene-kit': {
-      patch: {
-        tags: ['Cart'],
-        summary: 'Toggle Hygiene Kit in Cart',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['enabled'],
-                properties: { enabled: { type: 'boolean' } },
-              },
-            },
-          },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-
-    // ------------------------------------------------------------------------
-    // PAYMENTS
-    // ------------------------------------------------------------------------
-    '/api/v1/payments/create-order': {
-      post: {
-        tags: ['Payments'],
-        summary: 'Create Razorpay Payment Order',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['bookingId', 'amount'],
-                properties: {
-                  bookingId: { type: 'string' },
-                  amount: { type: 'number', example: 1499 },
-                  currency: { type: 'string', default: 'INR' },
-                },
-              },
-            },
-          },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/payments/verify': {
-      post: {
-        tags: ['Payments'],
-        summary: 'Verify Razorpay Signature & Complete Payment',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['razorpay_order_id', 'razorpay_payment_id', 'razorpay_signature'],
-                properties: {
-                  razorpay_order_id: { type: 'string' },
-                  razorpay_payment_id: { type: 'string' },
-                  razorpay_signature: { type: 'string' },
-                },
-              },
-            },
-          },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/payments/webhook': {
-      post: {
-        tags: ['Payments'],
-        summary: 'Razorpay Automated Webhook Listener',
-        responses: { 200: { description: 'Webhook captured' } },
-      },
-    },
-
-    // ------------------------------------------------------------------------
-    // WALLET & LOYALTY
-    // ------------------------------------------------------------------------
-    '/api/v1/wallet/me': {
-      get: {
-        tags: ['Wallet & Loyalty'],
-        summary: 'Get My Wallet Balance & Loyalty Tier',
-        security: [{ BearerAuth: [] }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/wallet/topup/create-order': {
-      post: {
-        tags: ['Wallet & Loyalty'],
-        summary: 'Create Wallet Top-up Razorpay Order',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['amount'],
-                properties: { amount: { type: 'number', example: 1000 } },
-              },
-            },
-          },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/wallet/topup/verify': {
-      post: {
-        tags: ['Wallet & Loyalty'],
-        summary: 'Verify Wallet Top-up Payment',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['razorpay_order_id', 'razorpay_payment_id', 'razorpay_signature'],
-                properties: {
-                  razorpay_order_id: { type: 'string' },
-                  razorpay_payment_id: { type: 'string' },
-                  razorpay_signature: { type: 'string' },
-                },
-              },
-            },
-          },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/wallet/transactions': {
-      get: {
-        tags: ['Wallet & Loyalty'],
-        summary: 'Get Wallet Transaction History',
-        security: [{ BearerAuth: [] }],
-        parameters: [
-          { name: 'page', in: 'query', schema: { type: 'integer' } },
-          { name: 'limit', in: 'query', schema: { type: 'integer' } },
-        ],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/wallet/loyalty-rules': {
-      get: {
-        tags: ['Wallet & Loyalty'],
-        summary: 'Get Loyalty Cashback & Points Rules',
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      put: {
-        tags: ['Wallet & Loyalty'],
-        summary: 'Update Loyalty Rules (Admin)',
-        security: [{ BearerAuth: [] }],
-        requestBody: { content: { 'application/json': { schema: { type: 'object' } } } },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-
-    // ------------------------------------------------------------------------
-    // NOTIFICATIONS
-    // ------------------------------------------------------------------------
-    '/api/v1/notifications': {
-      get: {
-        tags: ['Notifications'],
-        summary: 'List User Notifications',
-        security: [{ BearerAuth: [] }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/notifications/{id}/read': {
-      patch: {
-        tags: ['Notifications'],
-        summary: 'Mark Notification as Read',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/notifications/send': {
-      post: {
-        tags: ['Notifications'],
-        summary: 'Send Push Notification (Admin)',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['userId', 'title', 'body'],
-                properties: {
-                  userId: { type: 'string' },
-                  title: { type: 'string', example: 'Booking Confirmed!' },
-                  body: { type: 'string', example: 'Your beautician Pooja is on her way.' },
-                },
-              },
-            },
-          },
-        },
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-
-    // ------------------------------------------------------------------------
-    // BANNERS & BLOGS
-    // ------------------------------------------------------------------------
-    '/api/v1/banners/active': {
-      get: {
-        tags: ['Banners'],
-        summary: 'Get Active Banners for App Homepage',
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/banners': {
-      get: {
-        tags: ['Banners'],
-        summary: 'List All Banners (Admin)',
-        security: [{ BearerAuth: [] }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      post: {
-        tags: ['Banners'],
-        summary: 'Create Banner',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'multipart/form-data': {
-              schema: {
-                type: 'object',
-                required: ['title'],
-                properties: {
-                  title: { type: 'string', example: 'Monsoon Special Offer' },
-                  linkUrl: { type: 'string' },
-                  file: { type: 'string', format: 'binary' },
-                },
-              },
-            },
-          },
-        },
-        responses: { 201: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/blogs/home': {
-      get: {
-        tags: ['Blogs'],
-        summary: 'Get Featured Blogs for Home Feed',
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/blogs': {
-      get: {
-        tags: ['Blogs'],
-        summary: 'List All Public Blogs',
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-      post: {
-        tags: ['Blogs'],
-        summary: 'Create Blog Post (Admin)',
-        security: [{ BearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'multipart/form-data': {
-              schema: {
-                type: 'object',
-                required: ['title', 'content'],
-                properties: {
-                  title: { type: 'string', example: '10 Essential Skincare Tips' },
-                  content: { type: 'string' },
-                  file: { type: 'string', format: 'binary' },
-                },
-              },
-            },
-          },
-        },
-        responses: { 201: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
-    '/api/v1/blogs/{id}/like': {
-      post: {
-        tags: ['Blogs'],
-        summary: 'Like Blog Post',
-        security: [{ BearerAuth: [] }],
-        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
-        responses: { 200: { $ref: '#/components/responses/SuccessEnvelope' } },
-      },
-    },
+      "BadRequest": {
+        "description": "Validation error / bad request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      }
+    }
   },
+  "paths": {
+    "/api/v1/search": {
+      "get": {
+        "tags": ["User"],
+        "summary": "Elasticsearch Search — Beauticians & Services",
+        "description": "High-performance Elasticsearch search with fuzzy typo-tolerance, geo-distance filtering, and multi-faceted parameters.",
+        "operationId": "searchGetReady",
+        "parameters": [
+          { "name": "q", "in": "query", "description": "Search query (e.g. facial, haircut, priya)", "schema": { "type": "string" } },
+          { "name": "type", "in": "query", "description": "Search target: beautician | service | all", "schema": { "type": "string", "enum": ["beautician", "service", "all"], "default": "all" } },
+          { "name": "lat", "in": "query", "description": "User latitude for geo-distance search", "schema": { "type": "number" } },
+          { "name": "lon", "in": "query", "description": "User longitude for geo-distance search", "schema": { "type": "number" } },
+          { "name": "radius", "in": "query", "description": "Search radius (e.g. 10km, 25km)", "schema": { "type": "string", "default": "15km" } },
+          { "name": "minPrice", "in": "query", "schema": { "type": "number" } },
+          { "name": "maxPrice", "in": "query", "schema": { "type": "number" } },
+          { "name": "minRating", "in": "query", "schema": { "type": "number" } },
+          { "name": "category", "in": "query", "schema": { "type": "string" } },
+          { "name": "isOnline", "in": "query", "schema": { "type": "boolean" } },
+          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["relevance", "price_asc", "price_desc", "rating_desc", "distance"], "default": "relevance" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": { "description": "Search results retrieved successfully" }
+        }
+      }
+    },
+    "/api/v1/search/autocomplete": {
+      "get": {
+        "tags": ["User"],
+        "summary": "Search Autocomplete Suggestions",
+        "description": "Fast edge_ngram autocomplete for instant search-as-you-type suggestions.",
+        "operationId": "searchAutocomplete",
+        "parameters": [
+          { "name": "q", "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "type", "in": "query", "schema": { "type": "string", "enum": ["beautician", "service", "all"], "default": "all" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 8 } }
+        ],
+        "responses": {
+          "200": { "description": "Autocomplete suggestions retrieved successfully" }
+        }
+      }
+    },
+    "/api/v1/home/banners": {
+      "get": {
+        "tags": ["User"],
+        "summary": "User Home — Active Banners (Cached)",
+        "description": "Returns active promotional banners, carousel images, and campaign metadata. Response SLA < 50ms with Redis.",
+        "operationId": "getHomeBanners",
+        "responses": {
+          "200": {
+            "description": "Active banners retrieved successfully"
+          }
+        }
+      }
+    },
+    "/api/v1/home/feed": {
+      "get": {
+        "tags": ["User"],
+        "summary": "User Home — Feed (Pre-computed Materialized View)",
+        "description": "Returns shared public feed containing categories, featured services, spotlight & trending packages, and public offers/coupons. Precomputed in Redis Materialized View. Response SLA < 50ms.",
+        "operationId": "getHomeFeed",
+        "parameters": [
+          {
+            "name": "city",
+            "in": "query",
+            "schema": { "type": "string", "default": "all" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Home feed retrieved successfully"
+          }
+        }
+      }
+    },
+    "/api/v1/home/summary": {
+      "get": {
+        "tags": ["User"],
+        "summary": "User Home — Personal Summary (Isolated)",
+        "description": "Returns the authenticated user's unread notifications count, active booking card, and recent bookings. Strictly user-isolated.",
+        "operationId": "getUserHomeSummary",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "User home summary retrieved successfully"
+          }
+        }
+      }
+    },
+    "/api/v1/beautician/home/summary": {
+      "get": {
+        "tags": ["Beautician"],
+        "summary": "Beautician Home — Summary & Hero Metrics",
+        "description": "Returns today's earnings, booking counts (completed/pending), monthly earnings, rating, and duty/availability status. Response SLA < 50ms with Redis.",
+        "operationId": "getBeauticianHomeSummary",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Beautician home summary retrieved successfully"
+          }
+        }
+      }
+    },
+    "/api/v1/beautician/home/upcoming-bookings": {
+      "get": {
+        "tags": ["Beautician"],
+        "summary": "Beautician Home — Upcoming Bookings (Limit 2)",
+        "description": "Returns the next 2 relevant assigned bookings with customer details, scheduled date, time slot, and status.",
+        "operationId": "getBeauticianUpcomingBookings",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 2 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Upcoming bookings retrieved successfully"
+          }
+        }
+      }
+    },
+    "/api/v1/beautician/home/services": {
+      "get": {
+        "tags": ["Beautician"],
+        "summary": "Beautician Home — Active Services (Limit 4)",
+        "description": "Returns the beautician's active services, images, prices, durations, and ratings.",
+        "operationId": "getBeauticianHomeServices",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 4 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active services retrieved successfully"
+          }
+        }
+      }
+    },
+    "/api/v1/beautician/home/duty": {
+      "patch": {
+        "tags": ["Beautician"],
+        "summary": "Beautician Home — Update Duty / Attendance Status",
+        "description": "Toggles the beautician's duty status (online/offline) and availability. Triggers only when switch is toggled.",
+        "operationId": "updateBeauticianDuty",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "dutyStatus": { "type": "string", "enum": ["online", "offline"] },
+                  "isAvailable": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Duty status updated successfully"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/mobile/send-otp": {
+      "post": {
+        "tags": [
+          "User",
+          "Beautician"
+        ],
+        "summary": "Send OTP to phone number",
+        "description": "Sends a 6-digit OTP via SMS. Works for both customer and beautician roles.",
+        "operationId": "mobileSendOtp",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "phone"
+                ],
+                "properties": {
+                  "phone": {
+                    "$ref": "#/components/schemas/PhoneNumber"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "customer",
+                      "beautician"
+                    ],
+                    "default": "customer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP sent successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/mobile/resend-otp": {
+      "post": {
+        "tags": [
+          "User",
+          "Beautician"
+        ],
+        "summary": "Resend OTP (60s cooldown)",
+        "operationId": "mobileResendOtp",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "phone"
+                ],
+                "properties": {
+                  "phone": {
+                    "$ref": "#/components/schemas/PhoneNumber"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "customer",
+                      "beautician"
+                    ],
+                    "default": "customer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP resent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/mobile/verify-otp": {
+      "post": {
+        "tags": [
+          "User",
+          "Beautician"
+        ],
+        "summary": "Verify OTP and get JWT tokens",
+        "description": "Verifies OTP. On first login, creates a new user account.\nReturns access + refresh JWT tokens.\n",
+        "operationId": "mobileVerifyOtp",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "phone",
+                  "otp"
+                ],
+                "properties": {
+                  "phone": {
+                    "$ref": "#/components/schemas/PhoneNumber"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "minLength": 6,
+                    "maxLength": 6
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "customer",
+                      "beautician"
+                    ],
+                    "default": "customer"
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "description": "Required only for first-time registration"
+                  },
+                  "referralCode": {
+                    "type": "string"
+                  },
+                  "fcmToken": {
+                    "type": "string",
+                    "description": "Firebase push notification token"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "JWT tokens returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AuthTokenPair"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/refresh-token": {
+      "post": {
+        "tags": [
+          "User",
+          "Beautician",
+          "Admin"
+        ],
+        "summary": "Refresh access token using refresh token",
+        "operationId": "refreshToken",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "refreshToken"
+                ],
+                "properties": {
+                  "refreshToken": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "New access token issued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AuthTokenPair"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "User",
+          "Beautician",
+          "Admin"
+        ],
+        "summary": "Logout and invalidate refresh token",
+        "operationId": "logout",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "refreshToken": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Logged out successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "User",
+          "Beautician",
+          "Admin"
+        ],
+        "summary": "Get current authenticated user identity",
+        "operationId": "authGetMe",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current user identity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/UserProfile"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/admin/login": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Admin login with email and password",
+        "operationId": "adminLogin",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 6
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Admin logged in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AuthTokenPair"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/admin/forgot-password": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Admin forgot password - send OTP to email",
+        "operationId": "adminForgotPassword",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP sent to email",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/admin/reset-password": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Admin reset password using OTP",
+        "operationId": "adminResetPassword",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "otp",
+                  "newPassword"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "minLength": 6,
+                    "maxLength": 6
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "minLength": 8
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/me": {
+      "get": {
+        "tags": [
+          "User",
+          "Beautician"
+        ],
+        "summary": "Get my user profile",
+        "operationId": "getMyProfile",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current user profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/UserProfile"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "User",
+          "Beautician"
+        ],
+        "summary": "Update my profile",
+        "operationId": "updateMyProfile",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profileImage": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Profile photo max 5MB"
+                  },
+                  "name": {
+                    "type": "string",
+                    "maxLength": 100
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "gender": {
+                    "type": "string",
+                    "enum": [
+                      "MALE",
+                      "FEMALE",
+                      "OTHER"
+                    ]
+                  },
+                  "dob": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "languages": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List all users (paginated)",
+        "operationId": "listUsers",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          },
+          {
+            "in": "query",
+            "name": "role",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "customer",
+                "beautician",
+                "admin",
+                "super_admin",
+                "ops",
+                "support"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTIVE",
+                "INACTIVE",
+                "SUSPENDED",
+                "DEACTIVATED"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated user list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Create a user manually",
+        "operationId": "createUser",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 100
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "phone": {
+                    "$ref": "#/components/schemas/PhoneNumber"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 6
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "admin",
+                      "super_admin",
+                      "customer",
+                      "beautician",
+                      "ops",
+                      "support"
+                    ],
+                    "default": "customer"
+                  },
+                  "gender": {
+                    "type": "string",
+                    "enum": [
+                      "MALE",
+                      "FEMALE",
+                      "OTHER"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "ACTIVE",
+                      "INACTIVE",
+                      "SUSPENDED",
+                      "DEACTIVATED"
+                    ],
+                    "default": "ACTIVE"
+                  },
+                  "referralCode": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ObjectId"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get user by ID",
+        "operationId": "getUserById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update user by ID",
+        "operationId": "updateUserById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profileImage": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "role": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Delete user by ID",
+        "operationId": "deleteUser",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/addresses": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "List my saved addresses",
+        "operationId": "listAddresses",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Address list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Address"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Add a new address",
+        "operationId": "createAddress",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "addressLine1",
+                  "city",
+                  "state",
+                  "pincode"
+                ],
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "enum": [
+                      "HOME",
+                      "WORK",
+                      "OFFICE",
+                      "OTHER"
+                    ],
+                    "default": "HOME"
+                  },
+                  "addressLine1": {
+                    "type": "string"
+                  },
+                  "addressLine2": {
+                    "type": "string"
+                  },
+                  "landmark": {
+                    "type": "string"
+                  },
+                  "city": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string"
+                  },
+                  "pincode": {
+                    "type": "string"
+                  },
+                  "location": {
+                    "$ref": "#/components/schemas/GeoPoint"
+                  },
+                  "isDefault": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Address created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/addresses/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ObjectId"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Get address by ID",
+        "operationId": "getAddressById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Address record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Update address",
+        "operationId": "updateAddress",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "enum": [
+                      "HOME",
+                      "WORK",
+                      "OFFICE",
+                      "OTHER"
+                    ]
+                  },
+                  "addressLine1": {
+                    "type": "string"
+                  },
+                  "addressLine2": {
+                    "type": "string"
+                  },
+                  "landmark": {
+                    "type": "string"
+                  },
+                  "city": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string"
+                  },
+                  "pincode": {
+                    "type": "string"
+                  },
+                  "isDefault": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Address updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Delete address",
+        "operationId": "deleteAddress",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Address deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/addresses/{id}/default": {
+      "put": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Set address as default",
+        "operationId": "setDefaultAddress",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default address updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/members": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "List family members for current account",
+        "operationId": "listMembers",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Member list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Member"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Add a family member",
+        "operationId": "createMember",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 100
+                  },
+                  "relationship": {
+                    "type": "string",
+                    "default": "Self"
+                  },
+                  "gender": {
+                    "type": "string",
+                    "enum": [
+                      "MALE",
+                      "FEMALE",
+                      "OTHER"
+                    ],
+                    "default": "FEMALE"
+                  },
+                  "age": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 120
+                  },
+                  "skinType": {
+                    "type": "string"
+                  },
+                  "hairType": {
+                    "type": "string"
+                  },
+                  "allergies": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "notes": {
+                    "type": "string"
+                  },
+                  "avatarUrl": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Member created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/members/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ObjectId"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Get member by ID",
+        "operationId": "getMemberById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Member record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Update family member",
+        "operationId": "updateMember",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Member"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Member updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Delete family member",
+        "operationId": "deleteMember",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Member deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/members/{id}/beauty-passport": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Get beauty passport for a member",
+        "description": "Full service history, skin/hair notes, and preference record for the member.",
+        "operationId": "getBeautyPassport",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Beauty passport data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/members/{id}/beauty-passport/entry": {
+      "post": {
+        "tags": [
+          "Beautician",
+          "Admin"
+        ],
+        "summary": "Add entry to member beauty passport",
+        "operationId": "addBeautyPassportEntry",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "serviceId": {
+                    "$ref": "#/components/schemas/ObjectId"
+                  },
+                  "serviceName": {
+                    "type": "string"
+                  },
+                  "notes": {
+                    "type": "string"
+                  },
+                  "beauticianId": {
+                    "$ref": "#/components/schemas/ObjectId"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Entry added",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/roles": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List all roles",
+        "operationId": "listRoles",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Create a new role",
+        "operationId": "createRole",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "slug"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "slug": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "permissions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "isActive": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Role created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/roles/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ObjectId"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get role by ID",
+        "operationId": "getRoleById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update role",
+        "operationId": "updateRole",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "permissions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Role updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Delete role",
+        "operationId": "deleteRole",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/permissions": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List all permissions",
+        "operationId": "listPermissions",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Permissions list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/permissions/sync": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Sync permissions from code to database",
+        "operationId": "syncPermissions",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Permissions synced",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/categories/public": {
+      "get": {
+        "tags": [
+          "User",
+          "Beautician"
+        ],
+        "summary": "List active categories (public, no auth)",
+        "operationId": "listPublicCategories",
+        "responses": {
+          "200": {
+            "description": "Active categories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Category"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/categories/public/{slug}": {
+      "get": {
+        "tags": [
+          "User",
+          "Beautician"
+        ],
+        "summary": "Get category by slug (public)",
+        "operationId": "getPublicCategoryBySlug",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/categories": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List all categories (admin)",
+        "operationId": "listCategories",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All categories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Create a category",
+        "operationId": "createCategory",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Category thumbnail (max 10MB)"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "slug": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "displayOrder": {
+                    "type": "integer",
+                    "default": 0
+                  },
+                  "isActive": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Category created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/categories/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ObjectId"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get category by ID",
+        "operationId": "getCategoryById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update category",
+        "operationId": "updateCategory",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "displayOrder": {
+                    "type": "integer"
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Category updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Delete category",
+        "operationId": "deleteCategory",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/categories/{id}/restore": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Restore deleted category",
+        "operationId": "restoreCategory",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category restored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/categories/{id}/status": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Toggle category active/inactive status",
+        "operationId": "setCategoryStatus",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status toggled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/categories/reorder": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Reorder categories",
+        "operationId": "reorderCategories",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reordered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/categories/bulk/status": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Bulk enable/disable categories",
+        "operationId": "bulkSetCategoryStatus",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bulk status updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/public": {
+      "get": {
+        "tags": [
+          "User",
+          "Beautician"
+        ],
+        "summary": "List approved services (public)",
+        "operationId": "listPublicServices",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "categoryId",
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          },
+          {
+            "in": "query",
+            "name": "gender",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "female",
+                "male",
+                "unisex"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/public/category/{categoryId}": {
+      "get": {
+        "tags": [
+          "User",
+          "Beautician"
+        ],
+        "summary": "List services by category (public)",
+        "operationId": "listPublicServicesByCategory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "categoryId",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Services in category",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/public/{slug}": {
+      "get": {
+        "tags": [
+          "User",
+          "Beautician"
+        ],
+        "summary": "Get service by slug (public)",
+        "operationId": "getPublicServiceBySlug",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Service"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List all services (admin)",
+        "operationId": "listServices",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "categoryId",
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING_APPROVAL",
+                "APPROVED",
+                "REJECTED"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "isActive",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Create a service",
+        "operationId": "createService",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "categoryId",
+                  "price"
+                ],
+                "properties": {
+                  "thumbnail": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "images": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    },
+                    "maxItems": 5
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "categoryId": {
+                    "$ref": "#/components/schemas/ObjectId"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "shortDescription": {
+                    "type": "string"
+                  },
+                  "price": {
+                    "type": "number"
+                  },
+                  "discountedPrice": {
+                    "type": "number"
+                  },
+                  "durationMinMinutes": {
+                    "type": "integer",
+                    "default": 30
+                  },
+                  "durationMaxMinutes": {
+                    "type": "integer",
+                    "default": 45
+                  },
+                  "homeVisitFee": {
+                    "type": "number",
+                    "default": 0
+                  },
+                  "badges": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "gender": {
+                    "type": "string",
+                    "enum": [
+                      "all",
+                      "female",
+                      "male",
+                      "unisex"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Service created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ObjectId"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get service by ID (admin)",
+        "operationId": "getServiceById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update service",
+        "operationId": "updateService",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "thumbnail": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "price": {
+                    "type": "number"
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Service updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Delete service",
+        "operationId": "deleteService",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/approve": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Approve a service",
+        "operationId": "approveService",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service approved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/reject": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Reject a service",
+        "operationId": "rejectService",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}/status": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Toggle service active status",
+        "operationId": "setServiceStatus",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status toggled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/packages/public": {
+      "get": {
+        "tags": [
+          "User",
+          "Beautician"
+        ],
+        "summary": "List active packages (public)",
+        "operationId": "listPublicPackages",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "categoryId",
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Package list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/packages/public/{id}": {
+      "get": {
+        "tags": [
+          "User",
+          "Beautician"
+        ],
+        "summary": "Get package by ID (public)",
+        "operationId": "getPublicPackageById",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Package details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Package"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/packages": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List all packages (admin)",
+        "operationId": "listPackages",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Package list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Create a package",
+        "operationId": "createPackage",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "categoryId",
+                  "price"
+                ],
+                "properties": {
+                  "thumbnail": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "categoryId": {
+                    "$ref": "#/components/schemas/ObjectId"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "price": {
+                    "type": "number"
+                  },
+                  "originalPrice": {
+                    "type": "number"
+                  },
+                  "discountedPrice": {
+                    "type": "number"
+                  },
+                  "minSelectCount": {
+                    "type": "integer",
+                    "default": 1
+                  },
+                  "maxSelectCount": {
+                    "type": "integer",
+                    "default": 1
+                  },
+                  "durationMinMinutes": {
+                    "type": "integer"
+                  },
+                  "durationMaxMinutes": {
+                    "type": "integer"
+                  },
+                  "items": {
+                    "type": "string",
+                    "description": "JSON-encoded array of package service items"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Package created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/packages/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ObjectId"
+          }
+        }
+      ],
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update package",
+        "operationId": "updatePackage",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "thumbnail": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Package updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Delete package",
+        "operationId": "deletePackage",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Package deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/packages/{id}/approve": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Approve package",
+        "operationId": "approvePackage",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Approved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/packages/{id}/reject": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Reject package",
+        "operationId": "rejectPackage",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/hygiene-kits/default": {
+      "get": {
+        "tags": [
+          "User",
+          "Beautician"
+        ],
+        "summary": "Get the default hygiene kit",
+        "operationId": "getDefaultHygieneKit",
+        "responses": {
+          "200": {
+            "description": "Default hygiene kit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/HygieneKit"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/hygiene-kits/active": {
+      "get": {
+        "tags": [
+          "User",
+          "Beautician"
+        ],
+        "summary": "Get all active hygiene kits",
+        "operationId": "getActiveHygieneKits",
+        "responses": {
+          "200": {
+            "description": "Active hygiene kits",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/hygiene-kits": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List all hygiene kits (admin)",
+        "operationId": "listHygieneKits",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hygiene kit list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Create a hygiene kit",
+        "operationId": "createHygieneKit",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "price": {
+                    "type": "number",
+                    "default": 49
+                  },
+                  "isDefault": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Hygiene kit created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/hygiene-kits/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ObjectId"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get hygiene kit by ID",
+        "operationId": "getHygieneKitById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hygiene kit details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update hygiene kit",
+        "operationId": "updateHygieneKit",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "price": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Delete hygiene kit",
+        "operationId": "deleteHygieneKit",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/hygiene-kits/{id}/default": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Set hygiene kit as default",
+        "operationId": "setDefaultHygieneKit",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/coupons/validate": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Validate a coupon code",
+        "operationId": "validateCoupon",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "cartTotal": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Coupon validation result with discount info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/coupons": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List all coupons",
+        "operationId": "listCoupons",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Coupon list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Create a coupon",
+        "operationId": "createCoupon",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code",
+                  "discountType",
+                  "discountValue"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "discountType": {
+                    "type": "string",
+                    "enum": [
+                      "FLAT",
+                      "PERCENTAGE"
+                    ]
+                  },
+                  "discountValue": {
+                    "type": "number"
+                  },
+                  "minOrderValue": {
+                    "type": "number"
+                  },
+                  "maxDiscountAmount": {
+                    "type": "number"
+                  },
+                  "validFrom": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "validUntil": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "usageLimit": {
+                    "type": "integer"
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Coupon created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/coupons/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ObjectId"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get coupon by ID",
+        "operationId": "getCouponById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Coupon details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update coupon",
+        "operationId": "updateCoupon",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "isActive": {
+                    "type": "boolean"
+                  },
+                  "usageLimit": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Coupon updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Delete coupon",
+        "operationId": "deleteCoupon",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Coupon deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/filters/public": {
+      "get": {
+        "tags": [
+          "User",
+          "Beautician"
+        ],
+        "summary": "List active filters with values (public)",
+        "operationId": "listPublicFilters",
+        "responses": {
+          "200": {
+            "description": "Filter list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/filters": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List all filters (admin)",
+        "operationId": "listFilters",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Filter list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Create a filter",
+        "operationId": "createFilter",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "slug": {
+                    "type": "string"
+                  },
+                  "displayType": {
+                    "type": "string",
+                    "enum": [
+                      "chips",
+                      "checkbox",
+                      "radio",
+                      "dropdown",
+                      "range"
+                    ],
+                    "default": "chips"
+                  },
+                  "selectionType": {
+                    "type": "string",
+                    "enum": [
+                      "single",
+                      "multiple"
+                    ],
+                    "default": "single"
+                  },
+                  "displayOrder": {
+                    "type": "integer"
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Filter created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/filters/{filterId}/values": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "filterId",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ObjectId"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List filter values",
+        "operationId": "listFilterValues",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Filter values",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Add filter value",
+        "operationId": "createFilterValue",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "label",
+                  "value"
+                ],
+                "properties": {
+                  "label": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  },
+                  "displayOrder": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Filter value added",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cart": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Get current cart with computed pricing",
+        "description": "Returns cart with all items, coupon, loyalty points/cashback, and total breakdown.",
+        "operationId": "getCart",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cart data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Cart"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Clear entire cart",
+        "operationId": "clearCart",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cart cleared",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cart/sync": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Sync cart from local storage (offline-to-online merge)",
+        "description": "Used on app open to push locally stored cart items to the server.",
+        "operationId": "syncCart",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "items"
+                ],
+                "properties": {
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "itemType",
+                        "refId"
+                      ],
+                      "properties": {
+                        "itemType": {
+                          "type": "string",
+                          "enum": [
+                            "SERVICE",
+                            "PACKAGE"
+                          ]
+                        },
+                        "refId": {
+                          "$ref": "#/components/schemas/ObjectId"
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 10,
+                          "default": 1
+                        },
+                        "forMemberId": {
+                          "$ref": "#/components/schemas/ObjectId"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cart synced",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cart/items": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Add item to cart (service or package)",
+        "operationId": "addCartItem",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "itemType",
+                  "refId"
+                ],
+                "properties": {
+                  "itemType": {
+                    "type": "string",
+                    "enum": [
+                      "SERVICE",
+                      "PACKAGE"
+                    ]
+                  },
+                  "refId": {
+                    "$ref": "#/components/schemas/ObjectId"
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10,
+                    "default": 1
+                  },
+                  "forMemberId": {
+                    "$ref": "#/components/schemas/ObjectId",
+                    "description": "Family member ObjectId if booking for someone else"
+                  },
+                  "selectedServiceIds": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/ObjectId"
+                    },
+                    "description": "Pre-selected service IDs for packages with choice"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Item added - returns updated cart",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Cart"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cart/items/{lineId}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "lineId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "description": "Cart line item ID"
+          }
+        }
+      ],
+      "patch": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Update quantity of a cart line item (0 = remove)",
+        "operationId": "updateCartItemQuantity",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "quantity"
+                ],
+                "properties": {
+                  "quantity": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cart updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Remove a cart line item",
+        "operationId": "removeCartItem",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Item removed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cart/items/{lineId}/selections": {
+      "patch": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Update selected services within a package line item",
+        "operationId": "updatePackageSelections",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "selectedServices"
+                ],
+                "properties": {
+                  "selectedServices": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "serviceId",
+                        "name"
+                      ],
+                      "properties": {
+                        "serviceId": {
+                          "$ref": "#/components/schemas/ObjectId"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "durationMin": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Package selections updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cart/items/{lineId}/recipient": {
+      "patch": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Update recipient (family member) for a cart item",
+        "operationId": "updateCartItemRecipient",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "forMemberId": {
+                    "$ref": "#/components/schemas/ObjectId"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Recipient updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cart/hygiene-kit": {
+      "patch": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Update hygiene kit quantity in cart",
+        "operationId": "updateCartHygieneKit",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "count"
+                ],
+                "properties": {
+                  "count": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 20
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Hygiene kit count updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cart/instructions": {
+      "patch": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Update special instructions for the booking",
+        "operationId": "updateCartInstructions",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "specialInstructions"
+                ],
+                "properties": {
+                  "specialInstructions": {
+                    "type": "string",
+                    "maxLength": 500
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Instructions updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cart/benefits": {
+      "patch": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Apply coupon, loyalty points, cashback, or membership",
+        "description": "Recalculates cart total immediately after applying benefits.",
+        "operationId": "updateCartBenefits",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "couponCode": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "nullable": true
+                  },
+                  "usePoints": {
+                    "type": "boolean"
+                  },
+                  "useCashback": {
+                    "type": "boolean"
+                  },
+                  "membershipOptIn": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Benefits applied - cart total recalculated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cart/book-for-others": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Set booking mode (SELF / MEMBER / CUSTOM)",
+        "operationId": "bookForOthers",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "SELF",
+                      "MEMBER",
+                      "CUSTOM"
+                    ]
+                  },
+                  "memberId": {
+                    "$ref": "#/components/schemas/ObjectId"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Booking mode updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/slots/available": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "List available time slots for a date",
+        "operationId": "listAvailableSlots",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2025-10-25"
+            }
+          },
+          {
+            "in": "query",
+            "name": "beauticianId",
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          },
+          {
+            "in": "query",
+            "name": "serviceId",
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          },
+          {
+            "in": "query",
+            "name": "durationMinutes",
+            "schema": {
+              "type": "integer",
+              "default": 60
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Available slots list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Slot"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/slots/hold": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Soft-reserve a slot for 5 minutes (atomic Redis hold)",
+        "description": "Uses Redis Lua script to hold a slot. Returns a holdToken needed during booking creation.",
+        "operationId": "holdSlot",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "slotId"
+                ],
+                "properties": {
+                  "slotId": {
+                    "$ref": "#/components/schemas/ObjectId"
+                  },
+                  "partySize": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 1
+                  },
+                  "ttlSeconds": {
+                    "type": "integer",
+                    "minimum": 60,
+                    "maximum": 1800,
+                    "default": 300
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Slot held - returns holdToken",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "holdToken": {
+                              "type": "string"
+                            },
+                            "expiresAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/slots/release": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Release a previously held slot",
+        "operationId": "releaseSlot",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "slotId",
+                  "holdToken"
+                ],
+                "properties": {
+                  "slotId": {
+                    "$ref": "#/components/schemas/ObjectId"
+                  },
+                  "holdToken": {
+                    "type": "string"
+                  },
+                  "partySize": {
+                    "type": "integer",
+                    "default": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Slot released",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/slots": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List all slots (admin)",
+        "operationId": "listSlotsAdmin",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "date",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "beauticianId",
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Slot list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Create a single slot",
+        "operationId": "createSlot",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "date",
+                  "startAt",
+                  "endAt"
+                ],
+                "properties": {
+                  "date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "startAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "endAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "minBookings": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 1
+                  },
+                  "maxBookings": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 1
+                  },
+                  "beauticianId": {
+                    "$ref": "#/components/schemas/ObjectId"
+                  },
+                  "serviceIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Slot created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/slots/bulk": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Bulk-create slots for a day (auto-generate from hours)",
+        "operationId": "bulkCreateSlots",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "date"
+                ],
+                "properties": {
+                  "date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "startHour": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 23,
+                    "default": 9
+                  },
+                  "endHour": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 24,
+                    "default": 19
+                  },
+                  "slotDurationMinutes": {
+                    "type": "integer",
+                    "enum": [
+                      30,
+                      45,
+                      60,
+                      90,
+                      120
+                    ],
+                    "default": 60
+                  },
+                  "maxBookings": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 1
+                  },
+                  "beauticianId": {
+                    "$ref": "#/components/schemas/ObjectId"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Slots bulk created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/slots/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ObjectId"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get slot by ID",
+        "operationId": "getSlotById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Slot detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update slot",
+        "operationId": "updateSlot",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Slot updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Delete slot",
+        "operationId": "deleteSlot",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Slot deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/preview": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Preview booking - get authoritative final pricing",
+        "description": "Calculates the final price including coupon, wallet, points, cashback,\nhygiene kit, membership, and upgrade charges.\nShow this on the Order Summary screen before payment.\n",
+        "operationId": "previewBooking",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "items"
+                ],
+                "properties": {
+                  "items": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "$ref": "#/components/schemas/BookingItem"
+                    }
+                  },
+                  "participants": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/BookingParticipant"
+                    }
+                  },
+                  "hygieneKitQuantity": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 1
+                  },
+                  "membershipOptIn": {
+                    "type": "boolean"
+                  },
+                  "couponCode": {
+                    "type": "string"
+                  },
+                  "useWallet": {
+                    "type": "boolean"
+                  },
+                  "walletBalance": {
+                    "type": "number"
+                  },
+                  "usePoints": {
+                    "type": "boolean"
+                  },
+                  "pointsBalance": {
+                    "type": "number"
+                  },
+                  "useCashback": {
+                    "type": "boolean"
+                  },
+                  "cashbackBalance": {
+                    "type": "number"
+                  },
+                  "schedulingMode": {
+                    "type": "string",
+                    "enum": [
+                      "INSTANT",
+                      "SCHEDULED"
+                    ],
+                    "default": "SCHEDULED"
+                  },
+                  "preferredBeauticianCount": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5,
+                    "default": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Pricing preview with full breakdown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "subtotal": {
+                              "type": "number"
+                            },
+                            "couponDiscount": {
+                              "type": "number"
+                            },
+                            "walletDeduction": {
+                              "type": "number"
+                            },
+                            "pointsDeduction": {
+                              "type": "number"
+                            },
+                            "hygieneKitCharge": {
+                              "type": "number"
+                            },
+                            "total": {
+                              "type": "number"
+                            },
+                            "amountToPay": {
+                              "type": "number"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/my": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "List my bookings (customer view)",
+        "operationId": "listMyBookings",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "CONFIRMED",
+                "ASSIGNED",
+                "IN_PROGRESS",
+                "COMPLETED",
+                "CANCELLED"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Customer booking list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/beautician/my-assignments": {
+      "get": {
+        "tags": [
+          "Beautician"
+        ],
+        "summary": "Get my assigned bookings (beautician view)",
+        "description": "Returns all bookings assigned to the authenticated beautician, sorted by scheduled date.",
+        "operationId": "getBeauticianAssignments",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ASSIGNED",
+                "IN_PROGRESS",
+                "COMPLETED"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Beautician assignments list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Create a booking",
+        "description": "Final booking creation after preview and payment.\nFor SCHEDULED mode, provide slotId and holdToken.\nFor INSTANT mode, a beautician is auto-dispatched.\n",
+        "operationId": "createBooking",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "addressId",
+                  "addressSnapshot",
+                  "participants",
+                  "items"
+                ],
+                "properties": {
+                  "idempotencyKey": {
+                    "type": "string",
+                    "description": "Unique key to prevent duplicate bookings on retry"
+                  },
+                  "schedulingMode": {
+                    "type": "string",
+                    "enum": [
+                      "INSTANT",
+                      "SCHEDULED"
+                    ],
+                    "default": "SCHEDULED"
+                  },
+                  "slotId": {
+                    "$ref": "#/components/schemas/ObjectId"
+                  },
+                  "scheduledDate": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "scheduledStartTime": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "holdToken": {
+                    "type": "string",
+                    "description": "Token received from /slots/hold"
+                  },
+                  "addressId": {
+                    "$ref": "#/components/schemas/ObjectId"
+                  },
+                  "addressSnapshot": {
+                    "$ref": "#/components/schemas/Address"
+                  },
+                  "participants": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "$ref": "#/components/schemas/BookingParticipant"
+                    }
+                  },
+                  "items": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "$ref": "#/components/schemas/BookingItem"
+                    }
+                  },
+                  "hygieneKitQuantity": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 1
+                  },
+                  "membershipOptIn": {
+                    "type": "boolean"
+                  },
+                  "couponCode": {
+                    "type": "string"
+                  },
+                  "useWallet": {
+                    "type": "boolean"
+                  },
+                  "usePoints": {
+                    "type": "boolean"
+                  },
+                  "useCashback": {
+                    "type": "boolean"
+                  },
+                  "paymentMethod": {
+                    "type": "string",
+                    "enum": [
+                      "online",
+                      "wallet",
+                      "cod",
+                      "mixed"
+                    ],
+                    "default": "online"
+                  },
+                  "specialInstructions": {
+                    "type": "string",
+                    "maxLength": 500
+                  },
+                  "preferredBeauticianCount": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5,
+                    "default": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Booking created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Booking"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List all bookings (admin)",
+        "operationId": "listAdminBookings",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "CONFIRMED",
+                "ASSIGNED",
+                "IN_PROGRESS",
+                "COMPLETED",
+                "CANCELLED",
+                "FAILED"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "beauticianId",
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          },
+          {
+            "in": "query",
+            "name": "userId",
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Admin booking list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ObjectId"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "User",
+          "Beautician",
+          "Admin"
+        ],
+        "summary": "Get booking details by ID",
+        "operationId": "getBookingById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Full booking record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Booking"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{id}/cancel": {
+      "post": {
+        "tags": [
+          "User",
+          "Admin"
+        ],
+        "summary": "Cancel a booking",
+        "operationId": "cancelBooking",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "default": "User requested cancellation"
+                  },
+                  "isDelayed": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Booking cancelled - refund initiated if applicable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{id}/start-otp/verify": {
+      "post": {
+        "tags": [
+          "Beautician"
+        ],
+        "summary": "Verify start OTP to begin service (beautician)",
+        "description": "Customer shares a 4-digit OTP with beautician. Verifying changes status to IN_PROGRESS.",
+        "operationId": "verifyStartOtp",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "otp"
+                ],
+                "properties": {
+                  "otp": {
+                    "type": "string",
+                    "minLength": 4,
+                    "maxLength": 4
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP verified - booking started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{id}/end-otp/verify": {
+      "post": {
+        "tags": [
+          "Beautician"
+        ],
+        "summary": "Verify end OTP to complete service (beautician)",
+        "description": "Customer shares a 4-digit end-OTP to confirm service completion.",
+        "operationId": "verifyEndOtp",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "otp"
+                ],
+                "properties": {
+                  "otp": {
+                    "type": "string",
+                    "minLength": 4,
+                    "maxLength": 4
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP verified - booking completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{id}/items/{itemId}/complete": {
+      "post": {
+        "tags": [
+          "Beautician"
+        ],
+        "summary": "Mark a specific service item as done within a booking",
+        "operationId": "completeServiceItem",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          },
+          {
+            "in": "path",
+            "name": "itemId",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "notes": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Service item marked complete",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{id}/assign": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Admin manually assign beautician(s) to a booking",
+        "description": "Assigns one or more beauticians to specific service items.\nUsed to override auto-dispatch or for manual allocation.\n",
+        "operationId": "adminAssignBooking",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "assignments"
+                ],
+                "properties": {
+                  "assignments": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "beauticianId",
+                        "beauticianName",
+                        "assignedItemIds"
+                      ],
+                      "properties": {
+                        "beauticianId": {
+                          "$ref": "#/components/schemas/ObjectId"
+                        },
+                        "beauticianName": {
+                          "type": "string"
+                        },
+                        "assignedItemIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Beautician(s) assigned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{id}/reschedule": {
+      "patch": {
+        "tags": [
+          "Admin",
+          "User"
+        ],
+        "summary": "Reschedule a booking",
+        "operationId": "rescheduleBooking",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "date",
+                  "startTime"
+                ],
+                "properties": {
+                  "date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "startTime": {
+                    "type": "string",
+                    "pattern": "^\\d{2}:\\d{2}$",
+                    "example": "14:30"
+                  },
+                  "endTime": {
+                    "type": "string",
+                    "pattern": "^\\d{2}:\\d{2}$"
+                  },
+                  "beauticianId": {
+                    "$ref": "#/components/schemas/ObjectId"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Booking rescheduled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{id}/complete": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Force-complete a booking (admin override)",
+        "operationId": "completeBooking",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "notes": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Booking force-completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/calendar": {
+      "get": {
+        "tags": [
+          "Admin",
+          "Beautician"
+        ],
+        "summary": "Get calendar view of bookings (day/week/month/agenda)",
+        "operationId": "getCalendar",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "view",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "day",
+                "week",
+                "month",
+                "agenda"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "startDate",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "endDate",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "beauticianId",
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Calendar events",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/calendar/today": {
+      "get": {
+        "tags": [
+          "Admin",
+          "Beautician"
+        ],
+        "summary": "Get today's appointments",
+        "operationId": "getTodayAppointments",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Today appointments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/calendar/summary": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Calendar summary stats for a date range",
+        "operationId": "getCalendarSummary",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "startDate",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "endDate",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "beauticianId",
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Summary stats (bookings per day, revenue etc.)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/calendar/availability": {
+      "get": {
+        "tags": [
+          "Admin",
+          "Beautician"
+        ],
+        "summary": "Get beautician availability windows for a date",
+        "operationId": "getCalendarAvailability",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "date",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "beauticianId",
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          },
+          {
+            "in": "query",
+            "name": "serviceId",
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          },
+          {
+            "in": "query",
+            "name": "durationMinutes",
+            "schema": {
+              "type": "integer",
+              "default": 60
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Availability windows",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/calendar/conflicts": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Detect scheduling conflicts",
+        "operationId": "getCalendarConflicts",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Conflict list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/analytics/dashboard": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Dashboard analytics (revenue, bookings, beauticians)",
+        "operationId": "getDashboardAnalytics",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "startDate",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "endDate",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard metrics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/operations/live": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Live operations view (active bookings real-time)",
+        "operationId": "getLiveOperations",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Live bookings and beautician positions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/admin/settings": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get global booking settings",
+        "operationId": "getBookingSettings",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Booking settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update global booking settings",
+        "operationId": "updateBookingSettings",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "multipleBeauticianEnabled": {
+                    "type": "boolean"
+                  },
+                  "maxBeauticiansPerBooking": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10
+                  },
+                  "hygieneKitMandatory": {
+                    "type": "boolean"
+                  },
+                  "hygieneKitPrice": {
+                    "type": "number"
+                  },
+                  "hygieneKitDefaultQuantity": {
+                    "type": "integer"
+                  },
+                  "instantServiceEnabled": {
+                    "type": "boolean"
+                  },
+                  "instantServiceMembersOnly": {
+                    "type": "boolean"
+                  },
+                  "couponEnabled": {
+                    "type": "boolean"
+                  },
+                  "cashbackEnabled": {
+                    "type": "boolean"
+                  },
+                  "pointsEnabled": {
+                    "type": "boolean"
+                  },
+                  "cancellationPolicy": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Settings updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payments/create-order": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Create a Razorpay payment order",
+        "description": "Creates a Razorpay order. Returns orderId to use in Razorpay SDK checkout.",
+        "operationId": "createPaymentOrder",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "amount"
+                ],
+                "properties": {
+                  "bookingId": {
+                    "$ref": "#/components/schemas/ObjectId"
+                  },
+                  "amount": {
+                    "type": "number",
+                    "description": "Amount in INR (rupees, not paise)"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "default": "INR"
+                  },
+                  "idempotencyKey": {
+                    "type": "string"
+                  },
+                  "metadata": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Razorpay order created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "properties": {
+                            "orderId": {
+                              "type": "string"
+                            },
+                            "amount": {
+                              "type": "number"
+                            },
+                            "currency": {
+                              "type": "string"
+                            },
+                            "keyId": {
+                              "type": "string",
+                              "description": "Razorpay public key"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payments/verify": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Verify Razorpay payment HMAC signature",
+        "description": "Called after Razorpay checkout. On success, marks booking as CONFIRMED and triggers notifications.",
+        "operationId": "verifyPayment",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "orderId",
+                  "paymentId"
+                ],
+                "properties": {
+                  "orderId": {
+                    "type": "string"
+                  },
+                  "paymentId": {
+                    "type": "string"
+                  },
+                  "signature": {
+                    "type": "string",
+                    "description": "HMAC-SHA256 signature from Razorpay"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Payment verified - booking confirmed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payments/webhook": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Razorpay webhook receiver (payment.captured, refund.processed, etc.)",
+        "operationId": "paymentWebhook",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Webhook received",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payments/{id}/refund": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Initiate a refund for a payment",
+        "operationId": "refundPayment",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "number",
+                    "description": "Partial refund amount (omit for full refund)"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 255
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Refund initiated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payments": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List all payments (admin)",
+        "operationId": "listPayments",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "CREATED",
+                "PAID",
+                "FAILED",
+                "REFUNDED",
+                "PARTIAL_REFUND"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payments/kpis": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Payment KPIs (revenue, refunds, success rate)",
+        "operationId": "getPaymentKpis",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment KPI metrics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payments/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ObjectId"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get payment by ID",
+        "operationId": "getPaymentById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Payment"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallet/me": {
+      "get": {
+        "tags": [
+          "User",
+          "Beautician"
+        ],
+        "summary": "Get my wallet (balance + points + cashback)",
+        "operationId": "getMyWallet",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Wallet balance",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Wallet"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallet/transactions": {
+      "get": {
+        "tags": [
+          "User",
+          "Beautician"
+        ],
+        "summary": "List my wallet transaction history",
+        "operationId": "listWalletTransactions",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "CREDIT",
+                "DEBIT"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transaction history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallet/topup/create-order": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Create Razorpay order for wallet top-up",
+        "operationId": "createWalletTopupOrder",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "amount"
+                ],
+                "properties": {
+                  "amount": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 50000,
+                    "description": "Top-up amount in INR"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Razorpay order created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallet/topup/verify": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Verify wallet top-up payment and credit wallet",
+        "operationId": "verifyWalletTopup",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "orderId",
+                  "paymentId"
+                ],
+                "properties": {
+                  "orderId": {
+                    "type": "string"
+                  },
+                  "paymentId": {
+                    "type": "string"
+                  },
+                  "signature": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Top-up verified - wallet credited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallet/loyalty-rules": {
+      "get": {
+        "tags": [
+          "User",
+          "Beautician",
+          "Admin"
+        ],
+        "summary": "Get current loyalty rules (earn/redeem ratios)",
+        "operationId": "getLoyaltyRules",
+        "responses": {
+          "200": {
+            "description": "Current loyalty program rules",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallet/loyalty-rules/update": {
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update loyalty rules",
+        "operationId": "updateLoyaltyRules",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "earnRatio": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Points earned per rupee (e.g., 0.1 = 10 pts per INR 100)"
+                  },
+                  "redeemRatio": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Rupee value per point (e.g., 0.5 = INR 0.50 per point)"
+                  },
+                  "minPointsToRedeem": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "maxRedeemPercentage": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Loyalty rules updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallet/points/add": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Manually add loyalty points to a user",
+        "operationId": "addPoints",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "points"
+                ],
+                "properties": {
+                  "points": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "referenceId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Points added",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallet/points/deduct": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Manually deduct loyalty points from a user",
+        "operationId": "deductPoints",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "points"
+                ],
+                "properties": {
+                  "points": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "reason": {
+                    "type": "string"
+                  },
+                  "referenceId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Points deducted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallets": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List all user wallets (admin)",
+        "operationId": "listWallets",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All wallets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/wallet/kpis": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Wallet KPIs (total balance, top-ups, transactions)",
+        "operationId": "getWalletKpis",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Wallet KPI metrics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/beautician-profiles/me": {
+      "get": {
+        "tags": [
+          "Beautician"
+        ],
+        "summary": "Get my beautician profile",
+        "operationId": "getMyBeauticianProfile",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Beautician profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BeauticianProfile"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Beautician"
+        ],
+        "summary": "Update my beautician profile (bio, skills, experience)",
+        "operationId": "updateMyBeauticianProfile",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "bio": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "experienceYears": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 50
+                  },
+                  "skills": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/beautician-profiles": {
+      "post": {
+        "tags": [
+          "Beautician"
+        ],
+        "summary": "Create beautician profile (self-onboarding)",
+        "operationId": "createBeauticianProfile",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "bio": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "experienceYears": {
+                    "type": "number",
+                    "default": 0
+                  },
+                  "skills": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Profile created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/beautician-profiles/me/selfie": {
+      "post": {
+        "tags": [
+          "Beautician"
+        ],
+        "summary": "Upload selfie with ID for KYC",
+        "operationId": "uploadBeauticianSelfie",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profilePhoto": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "idCardFront": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "idCardBack": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "selfieWithId": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Selfie uploaded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/beautician-profiles/me/submit": {
+      "post": {
+        "tags": [
+          "Beautician"
+        ],
+        "summary": "Submit profile for admin review (DRAFT -> SUBMITTED)",
+        "operationId": "submitBeauticianProfileForReview",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profile submitted for review",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/beautician-profiles/me/work-history": {
+      "get": {
+        "tags": [
+          "Beautician"
+        ],
+        "summary": "Get my work history",
+        "operationId": "getMyWorkHistory",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Work history list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Beautician"
+        ],
+        "summary": "Add work history entry",
+        "operationId": "addWorkHistory",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "companyName",
+                  "role",
+                  "startDate"
+                ],
+                "properties": {
+                  "companyName": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": "string"
+                  },
+                  "startDate": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "endDate": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "isCurrent": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Work history added",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/beautician-profiles/me/work-history/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ObjectId"
+          }
+        }
+      ],
+      "patch": {
+        "tags": [
+          "Beautician"
+        ],
+        "summary": "Update work history entry",
+        "operationId": "updateWorkHistory",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Beautician"
+        ],
+        "summary": "Delete work history entry",
+        "operationId": "deleteWorkHistory",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/beautician-profiles/me/certificates": {
+      "get": {
+        "tags": [
+          "Beautician"
+        ],
+        "summary": "Get my certificates",
+        "operationId": "getMyCertificates",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Certificate list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Beautician"
+        ],
+        "summary": "Upload a certificate (file + metadata)",
+        "operationId": "addCertificate",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title",
+                  "issuingOrganization",
+                  "issueDate"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Certificate document max 10MB"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "issuingOrganization": {
+                    "type": "string"
+                  },
+                  "issueDate": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "expiryDate": {
+                    "type": "string",
+                    "format": "date"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Certificate uploaded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/beautician-profiles/me/certificates/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ObjectId"
+          }
+        }
+      ],
+      "patch": {
+        "tags": [
+          "Beautician"
+        ],
+        "summary": "Update certificate",
+        "operationId": "updateCertificate",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Beautician"
+        ],
+        "summary": "Delete certificate",
+        "operationId": "deleteCertificate",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/beautician-profiles/admin-list": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List all beautician profiles (admin)",
+        "operationId": "listBeauticianProfiles",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "INCOMPLETE",
+                "SUBMITTED",
+                "PENDING",
+                "UNDER_REVIEW",
+                "APPROVED",
+                "REJECTED",
+                "SUSPENDED"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "kycStatus",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "NOT_SUBMITTED",
+                "PENDING",
+                "UNDER_REVIEW",
+                "VERIFIED",
+                "REJECTED"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "operationalStatus",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ONLINE",
+                "OFFLINE",
+                "BUSY",
+                "AVAILABLE"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Beautician profiles list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/beautician-profiles/admin/create": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Admin creates beautician profile (full onboarding, one step)",
+        "description": "Creates both user account and beautician profile. Accepts all fields including KYC and bank details.",
+        "operationId": "adminCreateBeauticianProfile",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "phone"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "phone": {
+                    "$ref": "#/components/schemas/PhoneNumber"
+                  },
+                  "gender": {
+                    "type": "string",
+                    "enum": [
+                      "MALE",
+                      "FEMALE",
+                      "OTHER"
+                    ]
+                  },
+                  "dob": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "languages": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "bio": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "experienceYears": {
+                    "type": "number"
+                  },
+                  "skills": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "eligibleServiceIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "serviceRadiusKm": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 8
+                  },
+                  "operationalStatus": {
+                    "type": "string",
+                    "enum": [
+                      "ONLINE",
+                      "OFFLINE",
+                      "AVAILABLE",
+                      "BUSY",
+                      "ON_LEAVE"
+                    ],
+                    "default": "AVAILABLE"
+                  },
+                  "workingHours": {
+                    "type": "object",
+                    "properties": {
+                      "start": {
+                        "type": "string",
+                        "example": "09:00"
+                      },
+                      "end": {
+                        "type": "string",
+                        "example": "18:00"
+                      }
+                    }
+                  },
+                  "workingDays": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "bankDetails": {
+                    "$ref": "#/components/schemas/BankDetail"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "DRAFT",
+                      "INCOMPLETE",
+                      "SUBMITTED",
+                      "PENDING",
+                      "UNDER_REVIEW",
+                      "APPROVED",
+                      "REJECTED",
+                      "SUSPENDED"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Beautician profile created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/beautician-profiles/kyc/queue": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get KYC pending review queue",
+        "operationId": "getKycQueue",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Beauticians awaiting KYC review",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/beautician-profiles/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ObjectId"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get beautician profile by ID",
+        "operationId": "getBeauticianProfileById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Beautician profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BeauticianProfile"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/beautician-profiles/{id}/status": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update beautician status (approve/reject/suspend)",
+        "operationId": "updateBeauticianStatus",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "status"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "APPROVED",
+                      "REJECTED",
+                      "SUSPENDED",
+                      "UNDER_REVIEW",
+                      "DRAFT",
+                      "PENDING",
+                      "ACTIVE",
+                      "INACTIVE"
+                    ]
+                  },
+                  "operationalStatus": {
+                    "type": "string",
+                    "enum": [
+                      "ONLINE",
+                      "OFFLINE",
+                      "BUSY",
+                      "AVAILABLE",
+                      "ON_LEAVE",
+                      "SUSPENDED"
+                    ]
+                  },
+                  "rejectionReason": {
+                    "type": "string",
+                    "description": "Required when status is REJECTED"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/beautician-profiles/{id}/review": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Review beautician profile (approve/reject)",
+        "operationId": "reviewBeauticianProfile",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "status"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "APPROVED",
+                      "REJECTED",
+                      "UNDER_REVIEW"
+                    ]
+                  },
+                  "rejectionReason": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile reviewed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/beautician-profiles/{id}/kyc-review": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Review beautician overall KYC status",
+        "operationId": "reviewBeauticianKyc",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "kycStatus"
+                ],
+                "properties": {
+                  "kycStatus": {
+                    "type": "string",
+                    "enum": [
+                      "VERIFIED",
+                      "REJECTED",
+                      "UNDER_REVIEW",
+                      "PENDING"
+                    ]
+                  },
+                  "kycRejectionReason": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "KYC reviewed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/beautician-profiles/{id}/kyc/documents/{docId}/review": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Review individual KYC document",
+        "operationId": "reviewKycDocument",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          },
+          {
+            "in": "path",
+            "name": "docId",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "status"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "VERIFIED",
+                      "REJECTED",
+                      "UNDER_REVIEW",
+                      "EXPIRED",
+                      "PENDING"
+                    ]
+                  },
+                  "rejectionReason": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Document reviewed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/beautician-profiles/{id}/kyc/selfie/review": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Review beautician selfie verification",
+        "operationId": "reviewKycSelfie",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "status"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "VERIFIED",
+                      "FAILED",
+                      "NEEDS_REVERIFICATION",
+                      "PENDING"
+                    ]
+                  },
+                  "remarks": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Selfie reviewed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/beautician-profiles/{id}/kyc/request-reupload": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Request beautician to re-upload a specific document",
+        "operationId": "requestBeauticianReupload",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "docType",
+                  "reason"
+                ],
+                "properties": {
+                  "docType": {
+                    "type": "string",
+                    "enum": [
+                      "aadhaar_front",
+                      "aadhaar_back",
+                      "pan",
+                      "license",
+                      "police_verification",
+                      "insurance",
+                      "other"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 3
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Re-upload request sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/beautician-profiles/{id}/services": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update beautician eligible services list",
+        "operationId": "updateBeauticianEligibleServices",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "serviceIds"
+                ],
+                "properties": {
+                  "serviceIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Eligible services updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/beautician-profiles/{id}/availability": {
+      "patch": {
+        "tags": [
+          "Admin",
+          "Beautician"
+        ],
+        "summary": "Update beautician availability and working hours",
+        "operationId": "updateBeauticianAvailability",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "isAvailable": {
+                    "type": "boolean"
+                  },
+                  "operationalStatus": {
+                    "type": "string",
+                    "enum": [
+                      "ONLINE",
+                      "OFFLINE",
+                      "BUSY",
+                      "AVAILABLE",
+                      "ON_LEAVE",
+                      "SUSPENDED"
+                    ]
+                  },
+                  "serviceRadiusKm": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "workingHours": {
+                    "type": "object",
+                    "properties": {
+                      "start": {
+                        "type": "string",
+                        "example": "09:00"
+                      },
+                      "end": {
+                        "type": "string",
+                        "example": "18:00"
+                      }
+                    }
+                  },
+                  "workingDays": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "breaks": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "start": {
+                          "type": "string"
+                        },
+                        "end": {
+                          "type": "string"
+                        },
+                        "label": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Availability updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bank-details/me": {
+      "get": {
+        "tags": [
+          "Beautician"
+        ],
+        "summary": "Get my bank details",
+        "operationId": "getMyBankDetails",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bank detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BankDetail"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Beautician"
+        ],
+        "summary": "Add or update my bank details",
+        "operationId": "upsertBankDetails",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "accountHolderName",
+                  "accountNumber",
+                  "ifscCode"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Bank passbook or cheque image (optional)"
+                  },
+                  "accountHolderName": {
+                    "type": "string"
+                  },
+                  "accountNumber": {
+                    "type": "string"
+                  },
+                  "ifscCode": {
+                    "type": "string"
+                  },
+                  "bankName": {
+                    "type": "string"
+                  },
+                  "branchName": {
+                    "type": "string"
+                  },
+                  "upiId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bank details saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Beautician"
+        ],
+        "summary": "Delete my bank details",
+        "operationId": "deleteMyBankDetails",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bank-details": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List all bank details (admin)",
+        "operationId": "listBankDetails",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bank details list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bank-details/{id}/review": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Review a bank detail entry (verify/reject)",
+        "operationId": "reviewBankDetail",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bank detail reviewed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/skills": {
+      "get": {
+        "tags": [
+          "User",
+          "Beautician",
+          "Admin"
+        ],
+        "summary": "List all skills (public)",
+        "operationId": "listSkills",
+        "responses": {
+          "200": {
+            "description": "Skill list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Create a skill",
+        "operationId": "createSkill",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "slug": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "displayOrder": {
+                    "type": "integer",
+                    "default": 0
+                  },
+                  "isActive": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Skill created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/skills/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ObjectId"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "User",
+          "Beautician",
+          "Admin"
+        ],
+        "summary": "Get skill by ID",
+        "operationId": "getSkillById",
+        "responses": {
+          "200": {
+            "description": "Skill detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update skill",
+        "operationId": "updateSkill",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Skill updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Delete skill",
+        "operationId": "deleteSkill",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Skill deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "tags": [
+          "User",
+          "Beautician"
+        ],
+        "summary": "List my notifications",
+        "operationId": "listMyNotifications",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          },
+          {
+            "in": "query",
+            "name": "isRead",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/{id}/read": {
+      "patch": {
+        "tags": [
+          "User",
+          "Beautician"
+        ],
+        "summary": "Mark notification as read",
+        "operationId": "markNotificationAsRead",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification marked as read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/{id}": {
+      "delete": {
+        "tags": [
+          "User",
+          "Beautician"
+        ],
+        "summary": "Delete a notification",
+        "operationId": "deleteNotification",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notification deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/send": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Send a push/in-app notification",
+        "operationId": "sendNotification",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title",
+                  "body"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "body": {
+                    "type": "string"
+                  },
+                  "userIds": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/ObjectId"
+                    },
+                    "description": "Specific users to notify (empty = broadcast)"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "customer",
+                      "beautician",
+                      "all"
+                    ]
+                  },
+                  "data": {
+                    "type": "object",
+                    "description": "Extra data payload for deep-linking"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Notification sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/banners/active": {
+      "get": {
+        "tags": [
+          "User",
+          "Beautician"
+        ],
+        "summary": "List active banners (home screen carousel)",
+        "operationId": "listActiveBanners",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "placement",
+            "schema": {
+              "type": "string",
+              "description": "Banner placement ID (e.g., HOME, CATEGORY_TOP)"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active banners",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Banner"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/banners": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List all banners (admin)",
+        "operationId": "listBanners",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All banners",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Create a banner",
+        "operationId": "createBanner",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Banner image max 15MB"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "targetUrl": {
+                    "type": "string"
+                  },
+                  "placement": {
+                    "type": "string"
+                  },
+                  "displayOrder": {
+                    "type": "integer"
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Banner created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/banners/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ObjectId"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get banner by ID",
+        "operationId": "getBannerById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Banner record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update banner",
+        "operationId": "updateBanner",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Banner updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Delete banner",
+        "operationId": "deleteBanner",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Banner deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/blogs": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "List published blogs (public)",
+        "operationId": "listPublicBlogs",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Published blogs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/blogs/home": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Get home screen featured blogs",
+        "operationId": "getHomeBlogs",
+        "responses": {
+          "200": {
+            "description": "Featured blogs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/blogs/{id}": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Get blog by ID (public)",
+        "operationId": "getPublicBlog",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Blog details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Blog"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/blogs/{id}/like": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Like or unlike a blog post",
+        "operationId": "likeBlog",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Like toggled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/blogs/manage": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List all blogs including drafts (admin)",
+        "operationId": "listManageBlogs",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "published",
+                "archived"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All blogs with drafts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Create a blog post",
+        "operationId": "createBlog",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title",
+                  "content"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Blog thumbnail max 15MB"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "content": {
+                    "type": "string"
+                  },
+                  "slug": {
+                    "type": "string"
+                  },
+                  "category": {
+                    "type": "string"
+                  },
+                  "isPublished": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Blog created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/blogs/manage/{id}": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get blog by ID (admin)",
+        "operationId": "getBlogByIdAdmin",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Blog details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update blog post",
+        "operationId": "updateBlog",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "content": {
+                    "type": "string"
+                  },
+                  "isPublished": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Blog updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Delete blog",
+        "operationId": "deleteBlog",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Blog deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reviews": {
+      "get": {
+        "tags": [
+          "User",
+          "Admin"
+        ],
+        "summary": "List reviews (filter by beauticianId or serviceId)",
+        "operationId": "listReviews",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "beauticianId",
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          },
+          {
+            "in": "query",
+            "name": "serviceId",
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Review list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Submit a review for a completed booking",
+        "operationId": "createReview",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "bookingId",
+                  "rating"
+                ],
+                "properties": {
+                  "bookingId": {
+                    "$ref": "#/components/schemas/ObjectId"
+                  },
+                  "beauticianId": {
+                    "$ref": "#/components/schemas/ObjectId"
+                  },
+                  "rating": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5
+                  },
+                  "comment": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Review submitted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reviews/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ObjectId"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get review by ID",
+        "operationId": "getReviewById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Review details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update/moderate review (admin)",
+        "operationId": "updateReview",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Review updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Delete review",
+        "operationId": "deleteReview",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Review deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/support": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List all support tickets (admin)",
+        "operationId": "listSupportTickets",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Support tickets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "User",
+          "Beautician"
+        ],
+        "summary": "Create a support ticket",
+        "operationId": "createSupportTicket",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "subject",
+                  "message"
+                ],
+                "properties": {
+                  "subject": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "BOOKING",
+                      "PAYMENT",
+                      "BEAUTICIAN",
+                      "TECHNICAL",
+                      "OTHER"
+                    ]
+                  },
+                  "bookingId": {
+                    "$ref": "#/components/schemas/ObjectId"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Ticket created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/support/{id}": {
+      "parameters": [
+        {
+          "in": "path",
+          "name": "id",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ObjectId"
+          }
+        }
+      ],
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get support ticket by ID",
+        "operationId": "getSupportTicketById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ticket details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Respond to or resolve a support ticket",
+        "operationId": "updateSupportTicket",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "OPEN",
+                      "IN_PROGRESS",
+                      "RESOLVED",
+                      "CLOSED"
+                    ]
+                  },
+                  "response": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ticket updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Delete support ticket",
+        "operationId": "deleteSupportTicket",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ticket deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List / export reports (bookings, revenue, beauticians, customers)",
+        "operationId": "listReports",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "bookings",
+                "revenue",
+                "beauticians",
+                "customers"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "startDate",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "endDate",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "default": "json"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Report data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/service-change-requests": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "List pending service change requests",
+        "operationId": "listServiceChangeRequests",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service change request list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/service-change-requests/{id}": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Get service change request by ID",
+        "operationId": "getServiceChangeRequestById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Change request details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/service-change-requests/{id}/approve": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Approve a service change request",
+        "operationId": "approveServiceChangeRequest",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Change request approved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/service-change-requests/{id}/reject": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Reject a service change request",
+        "operationId": "rejectServiceChangeRequest",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ObjectId"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Change request rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/coupons/redeem": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Atomically redeem a coupon for an order with duplicate check and usage lock",
+        "operationId": "redeemCoupon",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code",
+                  "amount",
+                  "orderId",
+                  "userId"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "example": "WELCOME50"
+                  },
+                  "amount": {
+                    "type": "number",
+                    "example": 1200
+                  },
+                  "orderId": {
+                    "type": "string",
+                    "example": "order_65fc8e129182a1048b111002"
+                  },
+                  "userId": {
+                    "type": "string",
+                    "example": "65fc8e129182a1048b111002"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Coupon redeemed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "example": "WELCOME50"
+                        },
+                        "discountAmount": {
+                          "type": "number",
+                          "example": 200
+                        },
+                        "payableAmount": {
+                          "type": "number",
+                          "example": 1000
+                        },
+                        "orderAmount": {
+                          "type": "number",
+                          "example": 1200
+                        },
+                        "orderId": {
+                          "type": "string",
+                          "example": "order_65fc8e129182a1048b111002"
+                        }
+                      }
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Coupon redeemed successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Coupon usage limit reached or already redeemed by this account"
+          }
+        }
+      }
+    },
+    "/api/v1/coupons/release": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Release/rollback coupon usage if booking or payment fails",
+        "operationId": "releaseCoupon",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "orderId"
+                ],
+                "properties": {
+                  "orderId": {
+                    "type": "string",
+                    "example": "order_65fc8e129182a1048b111002"
+                  },
+                  "couponId": {
+                    "type": "string",
+                    "example": "65fc8e129182a1048b111001"
+                  },
+                  "userId": {
+                    "type": "string",
+                    "example": "65fc8e129182a1048b111002"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "example": "Payment failed"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Coupon usage released and restored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "rolledBack": {
+                          "type": "boolean",
+                          "example": true
+                        },
+                        "orderId": {
+                          "type": "string",
+                          "example": "order_65fc8e129182a1048b111002"
+                        }
+                      }
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Coupon usage released and restored successfully"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/memberships/plans": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Fetch active membership plans",
+        "description": "Retrieve all active and visible membership plans for display in the mobile app and banners.",
+        "operationId": "getPublicMembershipPlans",
+        "responses": {
+          "200": {
+            "description": "List of active membership plans",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/MembershipPlan"
+                      }
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Active membership plans fetched successfully"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/memberships/my-status": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Get customer membership status",
+        "description": "Returns active subscription status, validity, remaining days, complimentary entitlements, and family sharing details for the authenticated user.",
+        "operationId": "getCustomerMembershipStatus",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Customer membership status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CustomerMembershipStatus"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/memberships/subscribe": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Initiate membership subscription purchase",
+        "description": "Creates a pending membership subscription and financial transaction to start Razorpay payment.",
+        "operationId": "subscribeMembership",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "planCode": {
+                    "type": "string",
+                    "example": "GLOW_CLUB_MONTHLY"
+                  },
+                  "idempotencyKey": {
+                    "type": "string",
+                    "example": "idem_sub_992182"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Membership subscription initiated"
+          },
+          "409": {
+            "description": "Customer already has an active membership"
+          }
+        }
+      }
+    },
+    "/api/v1/memberships/calculate-benefits": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Calculate cart benefits & opt-in pricing",
+        "description": "Server-authoritative calculation of member discounts (15% up to ₹500 cap) and optional ₹599 membership fee for checkout.",
+        "operationId": "calculateMembershipBenefits",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "serviceId": {
+                          "type": "string"
+                        },
+                        "price": {
+                          "type": "number"
+                        },
+                        "quantity": {
+                          "type": "integer"
+                        },
+                        "categoryId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "grossSubtotal": {
+                    "type": "number",
+                    "example": 1500
+                  },
+                  "optInRequested": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "requestedPlanCode": {
+                    "type": "string",
+                    "example": "GLOW_CLUB_MONTHLY"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Calculation breakdown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MembershipCartBenefits"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/memberships/claim-entitlement": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Claim complimentary monthly treatment",
+        "description": "Atomically redeems a complimentary service entitlement and associates it with a booking.",
+        "operationId": "claimComplimentaryEntitlement",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "entitlementId",
+                  "bookingId"
+                ],
+                "properties": {
+                  "entitlementId": {
+                    "type": "string",
+                    "example": "ent_65f0192a"
+                  },
+                  "bookingId": {
+                    "type": "string",
+                    "example": "bk_882191"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Entitlement claimed successfully"
+          },
+          "409": {
+            "description": "Entitlement already used or expired"
+          }
+        }
+      }
+    },
+    "/api/v1/memberships/cancel": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Cancel membership auto-renewal",
+        "description": "Cancels future auto-renewal while maintaining active membership benefits until the end date.",
+        "operationId": "cancelMembershipSubscription",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "subscriptionId"
+                ],
+                "properties": {
+                  "subscriptionId": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "example": "Customer request"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Auto-renewal cancelled successfully"
+          }
+        }
+      }
+    },
+    "/api/v1/memberships/family-members": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Add family member to shared membership",
+        "description": "Adds a family member to share membership benefits (up to 4 members max).",
+        "operationId": "addFamilyMemberToMembership",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "familyUserId"
+                ],
+                "properties": {
+                  "familyUserId": {
+                    "type": "string",
+                    "example": "65fc8e129182a1048b111003"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Family member added successfully"
+          },
+          "409": {
+            "description": "Maximum family members limit reached"
+          }
+        }
+      }
+    },
+    "/api/v1/memberships/webhook-activate": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "summary": "Webhook subscription activation",
+        "description": "Internal/Payment gateway webhook to transition subscription to ACTIVE upon confirmed payment.",
+        "operationId": "activateMembershipWebhook",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "subscriptionId",
+                  "paymentId"
+                ],
+                "properties": {
+                  "subscriptionId": {
+                    "type": "string"
+                  },
+                  "paymentId": {
+                    "type": "string"
+                  },
+                  "paymentOrderId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Membership activated successfully"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/memberships/plans": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Admin: List all dynamic plans",
+        "description": "Retrieve all membership plans (active, paused, retired) with full configuration details.",
+        "operationId": "adminListMembershipPlans",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of all plans"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Admin: Create dynamic membership plan",
+        "description": "Create a dynamic membership plan with custom pricing, discount rules, complimentary treatments, and marketing copy.",
+        "operationId": "adminCreateMembershipPlan",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminCreateMembershipPlanInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Plan created successfully"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/memberships/plans/{id}": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Admin: Get plan by ID",
+        "operationId": "adminGetMembershipPlanById",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plan details"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Admin: Update dynamic plan",
+        "operationId": "adminUpdateMembershipPlan",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Plan updated successfully"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/memberships/plans/{id}/status": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Admin: Update plan status",
+        "operationId": "adminSetMembershipPlanStatus",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "status"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "ACTIVE",
+                      "PAUSED",
+                      "RETIRED"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Plan status updated"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/memberships/subscriptions": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Admin: Search member directory",
+        "description": "Filter and search customer membership subscriptions with pagination.",
+        "operationId": "adminSearchMembershipSubscriptions",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "planCode",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated member subscriptions list"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/memberships/analytics": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Admin: Membership analytics & MRR",
+        "description": "Real-time recurring revenue, active member count, churn and retention metrics.",
+        "operationId": "adminGetMembershipAnalytics",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Membership analytics"
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{id}/eligible-beauticians": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Admin: Get eligible beauticians ranked by Creator Priority and Availability",
+        "description": "Returns candidate beauticians for a booking with Creator Beautician placed at Top (#1 Rank) and real-time FREE/BUSY availability details.",
+        "operationId": "getEligibleBeauticians",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Booking ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ranked eligible beauticians candidate list"
+          }
+        }
+      }
+    }
+  }
 };
+
+export default openapiSpec;

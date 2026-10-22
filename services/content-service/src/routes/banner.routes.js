@@ -11,6 +11,7 @@ const upload = multer({
 export function createBannerRoutes(bannerController) {
   const router = Router();
 
+  router.get('/admin/stats', bannerController.getAdminStats);
   router.get('/active', validate(bannerValidator.activeBannersQuery, 'query'), bannerController.listActive);
   router.get('/', validate(bannerValidator.listBannersQuery, 'query'), bannerController.list);
   router.post('/', upload.single('file'), validate(bannerValidator.createBanner), bannerController.create);

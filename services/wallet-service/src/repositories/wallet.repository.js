@@ -1,21 +1,34 @@
 import mongoose from 'mongoose';
 import { WalletModel, WalletTransactionModel } from '../models/wallet.model.js';
+import { PayoutRequestModel } from '../models/payout-request.model.js';
+import { PayoutConfigModel } from '../models/payout-config.model.js';
 import { LoyaltyRuleModel } from '../models/loyalty-rule.model.js';
+import { WalletType } from '../models/wallet.enum.js';
 
 export class WalletRepository {
-  async getOrCreateForUser(userId, session = null) {
-    const uid = new mongoose.Types.ObjectId(userId);
-    let wallet = await WalletModel.findOne({ userId: uid }).session(session);
+  async getOrCreateForUser(userId, walletType = WalletType.CUSTOMER, session = null) {
+    const uidStr = String(userId);
+    let wallet = await WalletModel.findOne({ userId: uidStr, walletType }).session(session);
     if (!wallet) {
-      wallet = new WalletModel({ userId: uid, balance: 0, points: 0, cashbackBalance: 0 });
+      wallet = new WalletModel({
+        userId: uidStr,
+        walletType,
+        balance: 0,
+        pendingWithdrawalBalance: 0,
+        totalEarnedLifetime: 0,
+        totalWithdrawnLifetime: 0,
+        currentMonthEarnings: 0,
+        points: 0,
+        cashbackBalance: 0,
+      });
       await wallet.save({ session });
     }
     return wallet;
   }
 
-  async findByUserId(userId, session = null) {
-    if (!mongoose.Types.ObjectId.isValid(userId)) return null;
-    return WalletModel.findOne({ userId: new mongoose.Types.ObjectId(userId) }).session(session);
+  async findByUserId(userId, walletType = WalletType.CUSTOMER, session = null) {
+    const uidStr = String(userId);
+    return WalletModel.findOne({ userId: uidStr, walletType }).session(session);
   }
 
   async findById(id) {
@@ -59,19 +72,24 @@ export class WalletRepository {
     };
   }
 
-  async getKpis() {
+  async getKpis(walletType = null) {
+    const matchFilter = walletType ? { walletType } : {};
     const [stats, statusCounts] = await Promise.all([
       WalletModel.aggregate([
+        { $match: matchFilter },
         {
           $group: {
             _id: null,
             totalBalance: { $sum: '$balance' },
             totalPoints: { $sum: '$points' },
+            totalPendingWithdrawal: { $sum: '$pendingWithdrawalBalance' },
+            totalEarned: { $sum: '$totalEarnedLifetime' },
             totalCount: { $sum: 1 },
           },
         },
       ]),
       WalletModel.aggregate([
+        { $match: matchFilter },
         {
           $group: {
             _id: '$status',
@@ -84,12 +102,16 @@ export class WalletRepository {
     const active = statusCounts.find((s) => s._id === 'ACTIVE')?.count || 0;
     const total = stats[0]?.totalCount || 0;
     const totalBalance = stats[0]?.totalBalance || 0;
+    const totalPendingWithdrawal = stats[0]?.totalPendingWithdrawal || 0;
+    const totalEarned = stats[0]?.totalEarned || 0;
 
     return {
       total,
       active,
       pending: total - active,
       totalBalance,
+      totalPendingWithdrawal,
+      totalEarned,
     };
   }
 
@@ -112,8 +134,18 @@ export class WalletRepository {
 
 export class WalletTransactionRepository {
   async create(data, session = null) {
-    const doc = new WalletTransactionModel(data);
+    const doc = new WalletTransactionModel({
+      ...data,
+      userId: String(data.userId),
+    });
     return doc.save({ session });
+  }
+
+  async findById(id) {
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      return WalletTransactionModel.findById(id).lean();
+    }
+    return WalletTransactionModel.findOne({ referenceId: id }).lean();
   }
 
   async findByRazorpayOrderId(orderId) {
@@ -124,14 +156,64 @@ export class WalletTransactionRepository {
     return WalletTransactionModel.findOne({ razorpayPaymentId: paymentId });
   }
 
-  async listByUser(userId, { limit = 20, skip = 0, type = null } = {}) {
-    const query = { userId: new mongoose.Types.ObjectId(userId) };
-    if (type) query.type = type;
+  async listByUser(userId, { limit = 20, skip = 0, type = null, category = null } = {}) {
+    const query = { userId: String(userId) };
+    if (type) query.type = type.toUpperCase();
+    if (category) query.category = category.toUpperCase();
+
     const [transactions, total] = await Promise.all([
       WalletTransactionModel.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       WalletTransactionModel.countDocuments(query),
     ]);
     return { transactions, total };
+  }
+
+  async listRecent(userId, limit = 5) {
+    return WalletTransactionModel.find({ userId: String(userId) })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+  }
+}
+
+export class PayoutRequestRepository {
+  async create(data, session = null) {
+    const doc = new PayoutRequestModel({
+      ...data,
+      beauticianId: String(data.beauticianId),
+    });
+    return doc.save({ session });
+  }
+
+  async findById(id, session = null) {
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      return PayoutRequestModel.findById(id).session(session);
+    }
+    return PayoutRequestModel.findOne({ payoutNumber: id }).session(session);
+  }
+
+  async findByPayoutNumber(payoutNumber) {
+    return PayoutRequestModel.findOne({ payoutNumber });
+  }
+
+  async listByBeautician(beauticianId, { limit = 20, skip = 0, status = null } = {}) {
+    const query = { beauticianId: String(beauticianId) };
+    if (status) query.status = status;
+    const [payouts, total] = await Promise.all([
+      PayoutRequestModel.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      PayoutRequestModel.countDocuments(query),
+    ]);
+    return { payouts, total };
+  }
+
+  async listAll({ limit = 25, skip = 0, status = null } = {}) {
+    const query = {};
+    if (status) query.status = status;
+    const [payouts, total] = await Promise.all([
+      PayoutRequestModel.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      PayoutRequestModel.countDocuments(query),
+    ]);
+    return { payouts, total };
   }
 }
 
@@ -159,3 +241,33 @@ export class LoyaltyRuleRepository {
     return rule.save();
   }
 }
+
+export class PayoutConfigRepository {
+  async getConfig() {
+    let configDoc = await PayoutConfigModel.findOne().lean();
+    if (!configDoc) {
+      configDoc = await PayoutConfigModel.create({
+        minWithdrawalAmount: 100,
+        maxWithdrawalAmount: 50000,
+        defaultCommissionPercentage: 10,
+        dailyWithdrawalLimit: 25000,
+        allowUpiPayout: true,
+        allowBankPayout: true,
+      });
+      configDoc = configDoc.toObject();
+    }
+    return configDoc;
+  }
+
+  async updateConfig(data, adminUserId = null) {
+    let configDoc = await PayoutConfigModel.findOne();
+    if (!configDoc) {
+      configDoc = new PayoutConfigModel({ ...data, updatedBy: adminUserId });
+    } else {
+      Object.assign(configDoc, data, { updatedBy: adminUserId });
+    }
+    await configDoc.save();
+    return configDoc.toObject();
+  }
+}
+

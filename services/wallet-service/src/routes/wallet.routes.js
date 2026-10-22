@@ -10,6 +10,7 @@ export function createWalletRoutes(walletController) {
 
   // Admin loyalty rules update
   router.put('/loyalty-rules', validate(walletValidator.updateLoyaltyRules), walletController.updateLoyaltyRules);
+  router.put('/loyalty-rules/update', validate(walletValidator.updateLoyaltyRules), walletController.updateLoyaltyRules);
 
   // Public webhook route
   router.post('/webhook/razorpay', walletController.handleRazorpayWebhook);

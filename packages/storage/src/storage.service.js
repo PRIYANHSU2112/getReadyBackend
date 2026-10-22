@@ -1,10 +1,15 @@
-import {
-  PutObjectCommand,
-  DeleteObjectCommand,
-  HeadObjectCommand,
-  GetObjectCommand,
-} from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+let PutObjectCommand, DeleteObjectCommand, HeadObjectCommand, GetObjectCommand, getSignedUrl;
+try {
+  const s3 = await import('@aws-sdk/client-s3');
+  PutObjectCommand = s3.PutObjectCommand;
+  DeleteObjectCommand = s3.DeleteObjectCommand;
+  HeadObjectCommand = s3.HeadObjectCommand;
+  GetObjectCommand = s3.GetObjectCommand;
+  const presigner = await import('@aws-sdk/s3-request-presigner');
+  getSignedUrl = presigner.getSignedUrl;
+} catch {
+  // S3 SDK optional in non-cloud / offline environments
+}
 import fs from 'fs';
 import { createS3Client } from './s3.client.js';
 import { STORAGE_LIMITS } from './storage.constants.js';

@@ -34,6 +34,52 @@ export class BeauticianProfileRepository {
     ]);
     return { items, total };
   }
+
+  async getAdminStats({ startDate, endDate } = {}) {
+    const [facetResults] = await BeauticianProfileModel.aggregate([
+      {
+        $facet: {
+          total: [
+            { $match: { deletedAt: null } },
+            { $count: 'count' },
+          ],
+          online: [
+            { $match: { isOnline: true, deletedAt: null } },
+            { $count: 'count' },
+          ],
+          kycPending: [
+            { $match: { kycStatus: { $in: ['PENDING', 'UNDER_REVIEW'] }, deletedAt: null } },
+            { $count: 'count' },
+          ],
+          kycApproved: [
+            { $match: { kycStatus: 'APPROVED', deletedAt: null } },
+            { $count: 'count' },
+          ],
+          topRated: [
+            { $match: { 'rating.average': { $gte: 4.8 }, deletedAt: null } },
+            { $count: 'count' },
+          ],
+        },
+      },
+    ]);
+
+    const total = facetResults.total[0]?.count || 0;
+    const online = facetResults.online[0]?.count || 0;
+    const pendingKyc = facetResults.kycPending[0]?.count || 0;
+    const approved = facetResults.kycApproved[0]?.count || 0;
+    const topRated = facetResults.topRated[0]?.count || 0;
+
+    return {
+      totalRegistered: total,
+      activeOnline: online,
+      available: online,
+      busy: 0,
+      onLeave: Math.max(0, total - online),
+      pendingKycQueue: pendingKyc,
+      approvedPartners: approved,
+      topRatedCount: topRated,
+    };
+  }
 }
 
 export class WorkHistoryRepository {
@@ -112,11 +158,12 @@ export class SkillRepository {
 
 export class BankDetailRepository {
   async upsertByUserId(userId, data) {
-    return BankDetailModel.findOneAndUpdate(
-      { userId, deletedAt: null },
-      { $set: data },
-      { upsert: true, new: true },
-    );
+    const existing = await BankDetailModel.findOne({ userId });
+    if (existing) {
+      Object.assign(existing, data, { deletedAt: null });
+      return existing.save();
+    }
+    return BankDetailModel.create({ userId, ...data, deletedAt: null });
   }
 
   async findByUserId(userId) {

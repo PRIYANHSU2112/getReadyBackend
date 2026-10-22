@@ -1,3 +1,4 @@
+import 'express-async-errors';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -25,6 +26,7 @@ import {
   BookingController,
 } from './controllers/booking.controllers.js';
 import { CalendarController } from './controllers/calendar.controller.js';
+import { bookingHomeController } from './controllers/booking-home.controller.js';
 
 import {
   createSlotRoutes,
@@ -88,6 +90,9 @@ export function createApp(deps = {}) {
   const calendarCtrl = new CalendarController(calendarService);
 
   // Mount routes
+  app.get('/api/v1/home/summary', bookingHomeController.getUserSummary);
+  app.get('/api/v1/beautician/home/upcoming-bookings', bookingHomeController.getBeauticianUpcoming);
+
   const calendarRouter = createCalendarRoutes(calendarCtrl);
   const bookingRouter = createBookingRoutes(bookingCtrl, calendarCtrl);
 

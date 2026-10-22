@@ -1,6 +1,7 @@
-import amqplib from 'amqplib';
 import { logger } from '@getready/logger';
 import { EXCHANGES, QUEUES } from './constants.js';
+
+let amqpLib = null;
 
 export class RabbitMQConnection {
   /**
@@ -20,6 +21,14 @@ export class RabbitMQConnection {
   async connect() {
     if (this.connection && this.channel) {
       return { connection: this.connection, channel: this.channel };
+    }
+
+    if (!amqpLib) {
+      try {
+        amqpLib = (await import('amqplib')).default;
+      } catch (e) {
+        throw new Error('amqplib is required for RabbitMQConnection');
+      }
     }
 
     if (this.isConnecting) {

@@ -21,12 +21,12 @@ async function startServer() {
       logger.warn({ err }, 'RabbitMQ connection deferred or unavailable at startup');
     }
 
-    const { app, walletService } = createApp(publisher);
+    const { app, walletService, beauticianWalletService } = createApp(publisher);
     app.locals.dbConnected = true;
 
     if (rmqConnection) {
       const eventConsumer = new EventConsumer(rmqConnection, 'wallet-service');
-      const walletConsumer = new WalletConsumer(eventConsumer, walletService);
+      const walletConsumer = new WalletConsumer(eventConsumer, walletService, beauticianWalletService);
       await walletConsumer.start();
     }
 

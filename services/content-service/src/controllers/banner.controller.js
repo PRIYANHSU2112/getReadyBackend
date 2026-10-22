@@ -8,7 +8,7 @@ export class BannerController {
   }
 
   listActive = async (req, res) => {
-    const banners = await this.bannerService.listActive();
+    const banners = await this.bannerService.getHomeBanners();
     return ApiResponse.success(res, banners, 'Active banners retrieved successfully');
   };
 
@@ -65,5 +65,10 @@ export class BannerController {
     const { id } = req.params;
     await this.bannerService.remove(id);
     return ApiResponse.success(res, null, 'Banner deleted successfully');
+  };
+
+  getAdminStats = async (req, res) => {
+    const stats = await this.bannerService.getAdminStats(req.query);
+    return ApiResponse.success(res, stats, 'Banner stats retrieved successfully');
   };
 }

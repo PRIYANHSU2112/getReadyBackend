@@ -98,4 +98,41 @@ export const catalogValidator = {
     items: Joi.array().items(Joi.string()).optional(),
     isDefault: Joi.boolean().default(false),
   }),
+
+  validateCoupon: Joi.object({
+    code: Joi.string().trim().required(),
+    amount: Joi.number().min(0).default(0),
+    userId: Joi.string().trim().optional().allow(null, ''),
+  }),
+
+  redeemCoupon: Joi.object({
+    code: Joi.string().trim().required(),
+    amount: Joi.number().min(0).required(),
+    orderId: Joi.string().trim().required(),
+    userId: Joi.string().trim().required(),
+  }),
+
+  releaseCoupon: Joi.object({
+    orderId: Joi.string().trim().required(),
+    couponId: Joi.string().trim().optional(),
+    userId: Joi.string().trim().optional().allow(null, ''),
+    reason: Joi.string().trim().optional().allow(null, ''),
+  }),
+
+  createCoupon: Joi.object({
+    code: Joi.string().trim().required(),
+    name: Joi.string().trim().optional().allow(null, ''),
+    description: Joi.string().trim().optional().allow(null, ''),
+    discountType: Joi.string().valid('FLAT', 'PERCENTAGE').default('FLAT'),
+    discountValue: Joi.number().min(0).required(),
+    minOrderValue: Joi.number().min(0).default(0),
+    maxDiscountAmount: Joi.number().min(0).optional().allow(null),
+    usageLimit: Joi.number().min(1).default(1000),
+    perUserLimit: Joi.number().min(1).default(1),
+    status: Joi.string().valid('ACTIVE', 'INACTIVE', 'EXPIRED').default('ACTIVE'),
+    validFrom: Joi.date().optional(),
+    validTo: Joi.date().optional(),
+    isActive: Joi.boolean().default(true),
+  }),
 };
+

@@ -14,6 +14,7 @@ export class UserRepository {
   }
 
   async findByEmail(email, { includePassword = false, includeDeleted = false, lean = true } = {}) {
+    if (!email || typeof email !== 'string') return null;
     let q = UserModel.findOne({
       email: new RegExp(`^${email.trim()}$`, 'i'),
       ...(includeDeleted ? {} : { deletedAt: null }),
@@ -23,6 +24,7 @@ export class UserRepository {
   }
 
   async findByPhone(phone, { role = null, includeDeleted = false, lean = true } = {}) {
+    if (!phone || typeof phone !== 'string') return null;
     const filter = {
       phone: phone.trim(),
       ...(role ? { role: role.toLowerCase() } : {}),
@@ -54,5 +56,57 @@ export class UserRepository {
       UserModel.countDocuments(filter),
     ]);
     return { items, total };
+  }
+
+  async getAdminStats({ startDate, endDate } = {}) {
+    const matchPeriod = {};
+    if (startDate || endDate) {
+      matchPeriod.createdAt = {};
+      if (startDate) matchPeriod.createdAt.$gte = new Date(startDate);
+      if (endDate) matchPeriod.createdAt.$lte = new Date(endDate);
+    }
+
+    const [facetResults] = await UserModel.aggregate([
+      {
+        $facet: {
+          totalUsers: [
+            { $match: { deletedAt: null } },
+            { $count: 'count' },
+          ],
+          activeUsers: [
+            { $match: { isActive: true, deletedAt: null } },
+            { $count: 'count' },
+          ],
+          periodNewUsers: [
+            { $match: { deletedAt: null, ...matchPeriod } },
+            { $count: 'count' },
+          ],
+          membershipUsers: [
+            {
+              $match: {
+                deletedAt: null,
+                $or: [
+                  { membershipTier: { $exists: true, $nin: [null, '', 'STANDARD', 'Standard User'] } },
+                  { isMember: true },
+                ],
+              },
+            },
+            { $count: 'count' },
+          ],
+          inactiveUsers: [
+            { $match: { isActive: false, deletedAt: null } },
+            { $count: 'count' },
+          ],
+        },
+      },
+    ]);
+
+    return {
+      totalCustomers: facetResults.totalUsers[0]?.count || 0,
+      activeCustomers: facetResults.activeUsers[0]?.count || 0,
+      newCustomersThisPeriod: facetResults.periodNewUsers[0]?.count || 0,
+      membershipHolders: facetResults.membershipUsers[0]?.count || 0,
+      blockedAccounts: facetResults.inactiveUsers[0]?.count || 0,
+    };
   }
 }

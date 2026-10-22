@@ -1,0 +1,36 @@
+1. Standard Update & Full Restart (Rebuild All Services)
+bash
+cd ~/getReadyBackend
+git pull origin main
+docker compose --env-file .env.production -f docker-compose.production.yml up -d --build
+Why --env-file .env.production is required: This tells Docker Compose to inject your production MongoDB Atlas cluster (getready_prod), JWT secrets, and RabbitMQ/Redis passwords instead of the local development variables.
+
+2. Fast Restart (Without Rebuilding Images)
+If you only changed environment variables or need to restart existing containers without code compilation:
+
+bash
+cd ~/getReadyBackend
+docker compose --env-file .env.production -f docker-compose.production.yml restart
+3. Update a Single Service (Zero Downtime for Other Services)
+If you only made changes to a specific service (e.g., api-gateway or user-service), you don't need to rebuild everything:
+
+bash
+cd ~/getReadyBackend
+git pull origin main
+# Example: Rebuild and restart only api-gateway
+docker compose --env-file .env.production -f docker-compose.production.yml up -d --build --no-deps api-gateway
+# Example: Rebuild and restart only user-service
+docker compose --env-file .env.production -f docker-compose.production.yml up -d --build --no-deps user-service
+4. Useful Verification Commands
+Check status of all containers:
+bash
+docker ps
+Check live logs of API Gateway:
+bash
+docker logs -f --tail 50 getready-api-gateway
+Check live logs of User Service:
+bash
+docker logs -f --tail 50 getready-user-service
+Test gateway health directly on the server:
+bash
+curl -i https://api.priyashu.in/health

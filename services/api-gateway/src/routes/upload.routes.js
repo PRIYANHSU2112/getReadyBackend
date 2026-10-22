@@ -1,5 +1,5 @@
 import multer from 'multer';
-import { Router } from 'express';
+import express, { Router } from 'express';
 import { defaultStorageService, buildObjectKey, validateImageUpload, validateDocumentUpload } from '@getready/storage';
 import { ApiResponse, HttpStatus, ErrorCodes } from '@getready/errors';
 
@@ -10,6 +10,7 @@ const upload = multer({
 
 export function createUploadRouter() {
   const router = Router();
+  router.use(express.json());
 
   /**
    * POST /api/v1/uploads/presign
@@ -17,7 +18,7 @@ export function createUploadRouter() {
    */
   router.post('/presign', async (req, res, next) => {
     try {
-      const { fileName = 'file.jpg', contentType = 'image/jpeg', folder = 'uploads', isPublic = true } = req.body;
+      const { fileName = 'file.jpg', contentType = 'image/jpeg', folder = 'uploads', isPublic = true } = req.body || {};
 
       if (!contentType) {
         return ApiResponse.error(res, 'contentType is required', HttpStatus.BAD_REQUEST, ErrorCodes.BAD_REQUEST);

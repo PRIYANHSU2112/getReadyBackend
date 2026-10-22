@@ -41,4 +41,9 @@ export class ReviewController {
     const result = await this.reviewService.delete(req.params.id);
     return ApiResponse.success(res, result, 'Review deleted successfully');
   };
+
+  getAdminStats = async (req, res) => {
+    const stats = await this.reviewService.getAdminStats(req.query);
+    return ApiResponse.success(res, stats, 'Review stats retrieved successfully');
+  };
 }

@@ -97,6 +97,11 @@ export class BeauticianProfileController {
     return ApiResponse.paginated(res, result.items, result.meta, 'Profiles fetched successfully');
   };
 
+  getAdminStats = async (req, res) => {
+    const stats = await this.profileService.getAdminStats(req.query);
+    return ApiResponse.success(res, stats, 'Beautician stats retrieved successfully');
+  };
+
   getProfileById = async (req, res) => {
     const profile = await this.profileService.getProfileById(req.params.id);
     return ApiResponse.success(res, profile, 'Profile fetched successfully');

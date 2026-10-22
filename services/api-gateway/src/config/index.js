@@ -13,6 +13,8 @@ export const config = loadServiceConfig('api-gateway', {
     wallet: process.env.WALLET_SERVICE_URL || 'http://localhost:3008',
     notification: process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3009',
     content: process.env.CONTENT_SERVICE_URL || 'http://localhost:3010',
+    membership: process.env.MEMBERSHIP_SERVICE_URL || 'http://localhost:3011',
+    search: process.env.SEARCH_SERVICE_URL || 'http://localhost:3012',
   },
 });
 

@@ -1,3 +1,4 @@
+import 'express-async-errors';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -5,10 +6,19 @@ import { createHttpLogger, logger } from '@getready/logger';
 import { correlationMiddleware } from '@getready/tracing';
 import { createMetricsMiddleware, register } from '@getready/metrics';
 import { AppError, HttpStatus } from '@getready/errors';
-import { WalletRepository, WalletTransactionRepository, LoyaltyRuleRepository } from './repositories/wallet.repository.js';
+import {
+  WalletRepository,
+  WalletTransactionRepository,
+  LoyaltyRuleRepository,
+  PayoutRequestRepository,
+  PayoutConfigRepository,
+} from './repositories/wallet.repository.js';
 import { WalletService } from './services/wallet.service.js';
+import { BeauticianWalletService } from './services/beautician-wallet.service.js';
 import { WalletController } from './controllers/wallet.controller.js';
+import { BeauticianWalletController } from './controllers/beautician-wallet.controller.js';
 import { createWalletRoutes } from './routes/wallet.routes.js';
+import { createBeauticianWalletRoutes } from './routes/beautician-wallet.routes.js';
 
 export function createApp(publisher = null) {
   const app = express();
@@ -59,13 +69,39 @@ export function createApp(publisher = null) {
   const walletRepository = new WalletRepository();
   const transactionRepository = new WalletTransactionRepository();
   const loyaltyRuleRepository = new LoyaltyRuleRepository();
-  const walletService = new WalletService(walletRepository, transactionRepository, loyaltyRuleRepository, publisher);
-  const walletController = new WalletController(walletService);
+  const payoutRepository = new PayoutRequestRepository();
+  const payoutConfigRepository = new PayoutConfigRepository();
 
-  // Mount routes
+  const walletService = new WalletService(walletRepository, transactionRepository, loyaltyRuleRepository, publisher);
+  const beauticianWalletService = new BeauticianWalletService(
+    walletRepository,
+    transactionRepository,
+    payoutRepository,
+    payoutConfigRepository,
+    publisher,
+  );
+
+  const walletController = new WalletController(walletService);
+  const beauticianWalletController = new BeauticianWalletController(beauticianWalletService, payoutRepository);
+
+  // Mount Customer Wallet routes
   const walletRoutes = createWalletRoutes(walletController);
   app.use('/api/v1/wallet', walletRoutes);
   app.use('/api/v1/wallets', walletRoutes);
+
+  // Mount Beautician Wallet routes
+  const beauticianWalletRoutes = createBeauticianWalletRoutes(beauticianWalletController);
+  app.use('/api/v1/beautician/wallet', beauticianWalletRoutes);
+  app.use('/api/v1/wallet/beautician', beauticianWalletRoutes);
+
+  // Mount Admin Payouts & Commission Config
+  const adminPayoutRoutes = express.Router();
+  adminPayoutRoutes.get('/config', beauticianWalletController.getPayoutConfig);
+  adminPayoutRoutes.put('/config', beauticianWalletController.updatePayoutConfig);
+  adminPayoutRoutes.get('/', beauticianWalletController.listAdminPayouts);
+  adminPayoutRoutes.patch('/:id/process', beauticianWalletController.processAdminPayout);
+  app.use('/api/v1/admin/payouts', adminPayoutRoutes);
+  app.use('/admin/payouts', adminPayoutRoutes);
 
   // Error Handler
   app.use((err, req, res, next) => {
@@ -92,5 +128,6 @@ export function createApp(publisher = null) {
     });
   });
 
-  return { app, walletService };
+  return { app, walletService, beauticianWalletService };
 }
+

@@ -44,13 +44,20 @@ export class PricingEngine {
     let membershipDiscount = 0;
     let membershipFee = 0;
 
-    if (membership.isMember && membership.membershipPlan?.discountPercentage > 0) {
-      const discountPct = Number(membership.membershipPlan.discountPercentage);
-      membershipDiscount = roundToTwo((itemsSubtotal * discountPct) / 100);
-      payable = Math.max(0, payable - membershipDiscount);
-    } else if (membership.optInMembership && membership.membershipPlan?.price > 0) {
+    if (membership.optInMembership && membership.membershipPlan?.price > 0) {
       membershipFee = roundToTwo(membership.membershipPlan.price);
       payable += membershipFee;
+    }
+
+    if ((membership.isMember || membership.optInMembership) && membership.membershipPlan?.discountPercentage > 0) {
+      const discountPct = Number(membership.membershipPlan.discountPercentage);
+      let calculated = (itemsSubtotal * discountPct) / 100;
+      const cap = Number(membership.membershipPlan.maxDiscountPerBooking || 0);
+      if (cap > 0) {
+        calculated = Math.min(calculated, cap);
+      }
+      membershipDiscount = roundToTwo(calculated);
+      payable = Math.max(0, payable - membershipDiscount);
     }
 
     let couponDiscount = 0;

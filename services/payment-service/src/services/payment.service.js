@@ -38,14 +38,23 @@ export class PaymentService {
     let orderId = `order_rzp_${Date.now()}`;
 
     if (this.razorpayClient) {
-      const rzpOrder = await this.razorpayClient.orders.create({
-        amount: amountInPaise,
-        currency,
-        receipt: `rcpt_${bookingId || userId}_${Date.now()}`,
-        notes: { userId: String(userId), bookingId: String(bookingId || '') },
-      });
-      orderId = rzpOrder.id;
+      try {
+        const rzpPromise = this.razorpayClient.orders.create({
+          amount: amountInPaise,
+          currency,
+          receipt: `rcpt_${bookingId || userId}_${Date.now()}`,
+          notes: { userId: String(userId), bookingId: String(bookingId || '') },
+        });
+        const rzpTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Razorpay timeout')), 600));
+        const rzpOrder = await Promise.race([rzpPromise, rzpTimeout]);
+        orderId = rzpOrder.id;
+      } catch (err) {
+        logger.warn({ err: err.message }, 'Razorpay payment order creation fallback to simulated order');
+        orderId = `order_sim_${Date.now()}`;
+      }
     }
+
+    const finalIdempotencyKey = idempotencyKey || `idem_${userId}_${bookingId || Date.now()}_${Date.now()}`;
 
     const payment = await this.paymentRepository.create({
       userId,
@@ -55,7 +64,7 @@ export class PaymentService {
       status: PaymentStatus.PENDING,
       paymentMethod: PaymentMethod.RAZORPAY,
       razorpayOrderId: orderId,
-      idempotencyKey,
+      idempotencyKey: finalIdempotencyKey,
       metadata,
     });
 

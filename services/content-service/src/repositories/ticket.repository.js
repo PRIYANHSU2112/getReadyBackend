@@ -61,4 +61,40 @@ export class TicketRepository {
     }
     return TicketModel.findOneAndDelete({ ticketNumber: id });
   }
+
+  async getAdminStats({ startDate, endDate, priority, category } = {}) {
+    const match = {};
+    if (startDate || endDate) {
+      match.createdAt = {};
+      if (startDate) match.createdAt.$gte = new Date(startDate);
+      if (endDate) match.createdAt.$lte = new Date(endDate);
+    }
+    if (priority && priority !== 'ALL' && priority !== 'all') {
+      match.priority = priority.toUpperCase();
+    }
+    if (category && category !== 'ALL' && category !== 'all') {
+      match.category = category;
+    }
+
+    const [res] = await TicketModel.aggregate([
+      { $match: match },
+      {
+        $facet: {
+          totals: [{ $count: 'count' }],
+          open: [{ $match: { status: 'OPEN' } }, { $count: 'count' }],
+          inProgress: [{ $match: { status: 'IN_PROGRESS' } }, { $count: 'count' }],
+          resolved: [{ $match: { status: { $in: ['RESOLVED', 'CLOSED'] } } }, { $count: 'count' }],
+          urgent: [{ $match: { priority: 'URGENT', status: { $nin: ['RESOLVED', 'CLOSED'] } } }, { $count: 'count' }],
+        },
+      },
+    ]);
+
+    return {
+      total: res?.totals?.[0]?.count || 0,
+      open: res?.open?.[0]?.count || 0,
+      inProgress: res?.inProgress?.[0]?.count || 0,
+      resolved: res?.resolved?.[0]?.count || 0,
+      urgent: res?.urgent?.[0]?.count || 0,
+    };
+  }
 }

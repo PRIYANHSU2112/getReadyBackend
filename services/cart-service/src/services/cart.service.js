@@ -3,6 +3,7 @@ import { AppError, NotFoundError, ValidationError } from '@getready/errors';
 import { CartItemType, MAX_ITEM_QUANTITY, CART_CURRENCY } from '../models/cart.model.js';
 import { computeCartPricing } from '../pricing/cart.pricing-engine.js';
 import { toCartDto } from './cart.mapper.js';
+import { membershipClient as defaultMembershipClient } from './membership-client.js';
 
 function toObjectId(id) {
   if (!id) return null;
@@ -11,10 +12,11 @@ function toObjectId(id) {
 }
 
 export class CartService {
-  constructor(cartRepository, catalogClient, redisClient = null) {
+  constructor(cartRepository, catalogClient, redisClient = null, membershipClient = defaultMembershipClient) {
     this.cartRepository = cartRepository;
     this.catalogClient = catalogClient;
     this.redis = redisClient;
+    this.membershipClient = membershipClient;
   }
 
   async getCart(userId) {
@@ -33,7 +35,32 @@ export class CartService {
   }
 
   async recalculate(cart) {
-    const pricing = computeCartPricing(cart, { currency: CART_CURRENCY });
+    let membershipPlan = null;
+    let isMember = false;
+
+    try {
+      if (cart.benefits?.membershipOptIn) {
+        const requestedCode = cart.benefits.membershipPlanCode || 'GLOW_CLUB_MONTHLY';
+        membershipPlan = await this.membershipClient?.getActivePlan(requestedCode);
+      } else if (cart.userId) {
+        const userSub = await this.membershipClient?.checkUserMembership(cart.userId);
+        if (userSub?.isMember || userSub?.hasActiveMembership) {
+          isMember = true;
+          membershipPlan = {
+            discountPercentage: userSub.discountPercentage || 15,
+            maxDiscountPerBooking: userSub.maxDiscountPerBooking || 500,
+          };
+        }
+      }
+    } catch {
+      // Graceful fallback to local defaults if membership service call fails
+    }
+
+    const pricing = computeCartPricing(cart, {
+      currency: CART_CURRENCY,
+      isMember,
+      membershipPlan,
+    });
     cart.pricing = pricing;
     await this.cartRepository.save(cart);
   }

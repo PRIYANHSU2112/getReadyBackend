@@ -1,0 +1,25 @@
+{
+  "name": "@getready/search-service",
+  "version": "1.0.0",
+  "description": "Elasticsearch High-Performance Search Microservice for Get Ready",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "@elastic/elasticsearch": "^8.15.0",
+    "@getready/config": "*",
+    "@getready/errors": "*",
+    "@getready/logger": "*",
+    "@getready/metrics": "*",
+    "@getready/rabbitmq": "*",
+    "@getready/tracing": "*",
+    "compression": "^1.7.5",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "mongoose": "^8.9.3"
+  }
+}

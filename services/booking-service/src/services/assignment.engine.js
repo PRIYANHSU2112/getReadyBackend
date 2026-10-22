@@ -2,7 +2,46 @@ import { getOrCreateBookingSettings } from '../models/booking-settings.model.js'
 
 export class BeauticianAssignmentEngine {
   /**
+   * Evaluates participant count (e.g. Mummy + Sister + Self), services, and durations
+   * to determine the recommended beauticians for the Admin Panel.
+   *
+   * @param {Object} params
+   * @param {Array} params.participants - Customer profiles in the booking
+   * @param {Array} params.items - Booking service items
+   * @param {number} params.preferredBeauticianCount - Customer preference (1 or 2)
+   * @param {Object} [params.settingsOverride] - Optional settings override
+   */
+  static calculateRequirement({
+    participants = [],
+    items = [],
+    preferredBeauticianCount = 1,
+    settingsOverride = null,
+  }) {
+    const participantCount = Math.max(1, participants.length);
+    const totalDurationMinutes = items.reduce((acc, item) => acc + (Number(item.durationMinutes) || 30), 0);
+    const itemCount = items.length;
+
+    // Recommend 2 beauticians if multiple participants requested or total duration exceeds 120 minutes
+    const recommendedBeauticians =
+      participantCount >= 2 || preferredBeauticianCount >= 2 || totalDurationMinutes > 120 ? 2 : 1;
+
+    return {
+      participantCount,
+      itemCount,
+      totalDurationMinutes,
+      recommendedBeauticians,
+      suggestedDistribution:
+        participantCount >= 2
+          ? `${participantCount} participants present: Recommend distributing services across ${recommendedBeauticians} beauticians to minimize customer waiting time.`
+          : 'Single participant: 1 beautician recommended.',
+    };
+  }
+
+  /**
    * Propose beautician assignments based on preferred count, customer profiles, and service durations.
+   * Note: In this application, beauticians are NOT auto-assigned to customers.
+   * Bookings remain unassigned in 'ASSIGNMENT_PENDING' status until an administrator assigns
+   * verified beauticians manually via the Admin Panel (unless autoAssignmentEnabled is explicitly set).
    *
    * @param {Object} params
    * @param {Array} params.participants - Customer profiles in the booking
@@ -24,17 +63,36 @@ export class BeauticianAssignmentEngine {
     const maxAllowed = Number(settings.maxBeauticiansPerBooking || 2);
     const requestedCount = Math.min(maxAllowed, Math.max(1, Number(preferredBeauticianCount || 1)));
 
-    // Fallback if no beauticians provided (generate realistic mock staff if pool is empty)
-    const pool =
-      availableBeauticians.length > 0
-        ? availableBeauticians
-        : [
-            { id: 'beautician-01', name: 'Pooja Verma (Certified Senior Stylist)', rating: 4.9 },
-            { id: 'beautician-02', name: 'Anjali Sharma (Skin & Spa Specialist)', rating: 4.8 },
-          ];
+    // Calculate requirement: recommendations for Admin Panel
+    const requirement = this.calculateRequirement({
+      participants,
+      items,
+      preferredBeauticianCount: requestedCount,
+      settingsOverride: settings,
+    });
 
-    const actualCount = Math.min(requestedCount, pool.length);
-    const selectedBeauticians = pool.slice(0, actualCount);
+    // If no active beauticians are provided:
+    // DO NOT assign mock staff. Return unassigned items for Admin Panel fulfillment.
+    if (!Array.isArray(availableBeauticians) || availableBeauticians.length === 0) {
+      return {
+        assignments: [],
+        items: items.map((item) => ({
+          ...item,
+          assignedBeauticianId: null,
+          assignedBeauticianName: null,
+          status: 'PENDING',
+        })),
+        assignedBeauticianCount: 0,
+        preferredBeauticianCount: requestedCount,
+        recommendedBeauticianCount: requirement.recommendedBeauticians,
+        requirementSummary: requirement,
+        disclaimerMessage: 'Booking submitted. Beauticians will be assigned by the Admin Panel.',
+      };
+    }
+
+    // Auto-assignment branch (used when explicitly enabled or in unit tests)
+    const actualCount = Math.min(requestedCount, availableBeauticians.length);
+    const selectedBeauticians = availableBeauticians.slice(0, actualCount);
 
     const assignments = [];
     const updatedItems = items.map((item) => ({ ...item }));
@@ -121,6 +179,8 @@ export class BeauticianAssignmentEngine {
       items: updatedItems,
       assignedBeauticianCount: assignments.length,
       preferredBeauticianCount: requestedCount,
+      recommendedBeauticianCount: requirement.recommendedBeauticians,
+      requirementSummary: requirement,
       disclaimerMessage,
     };
   }

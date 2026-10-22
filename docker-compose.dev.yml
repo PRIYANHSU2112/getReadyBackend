@@ -7,6 +7,7 @@ networks:
 volumes:
   redis_dev_data:
   rabbitmq_dev_data:
+  elasticsearch_dev_data:
   prometheus_dev_data:
   grafana_dev_data:
   uploads_dev_data:
@@ -42,6 +43,36 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - getready-dev-network
+
+  elasticsearch:
+    image: elasticsearch:8.15.0
+    container_name: getready-dev-elasticsearch
+    init: true
+    restart: unless-stopped
+    ports:
+      - '9200:9200'
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - elasticsearch_dev_data:/usr/share/elasticsearch/data
+    networks:
+      - getready-dev-network
+
+  kibana:
+    image: kibana:8.15.0
+    container_name: getready-dev-kibana
+    init: true
+    restart: unless-stopped
+    ports:
+      - '5601:5601'
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
     networks:
       - getready-dev-network
 
@@ -123,6 +154,7 @@ services:
       WALLET_SERVICE_URL: http://wallet-service:3008
       NOTIFICATION_SERVICE_URL: http://notification-service:3009
       CONTENT_SERVICE_URL: http://content-service:3010
+      MEMBERSHIP_SERVICE_URL: http://membership-service:3011
       WORKER_SERVICE_URL: http://worker-service:3011
       JWT_SECRET: getready_dev_super_secret_jwt_key_2026_at_least_32_characters
       DATABASE_URI: ${DATABASE_URI}
@@ -449,6 +481,30 @@ services:
       AWS_ENDPOINT: https://sgp1.digitaloceanspaces.com
       AWS_ACCESS_KEY_ID: DO003NRRKMN4DTETPLGA
       AWS_SECRET_ACCESS_KEY: M5kmv62vtYMFrOwv2duhltYAAHLo26BbGeckKaG1lfE
+    depends_on:
+      - rabbitmq
+      - redis
+    networks:
+      - getready-dev-network
+
+  membership-service:
+    build:
+      context: .
+      dockerfile: services/membership-service/Dockerfile
+    container_name: getready-dev-membership-service
+    init: true
+    restart: unless-stopped
+    env_file:
+      - .env.development
+    volumes:
+      - ./services/membership-service:/app/services/membership-service
+      - ./packages:/app/packages
+    environment:
+      NODE_ENV: development
+      PORT: 3011
+      DATABASE_URI: ${DATABASE_URI}
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
     depends_on:
       - rabbitmq
       - redis

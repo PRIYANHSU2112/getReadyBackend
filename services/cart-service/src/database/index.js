@@ -5,7 +5,8 @@ export async function connectDatabase(uri) {
   try {
     await mongoose.connect(uri, {
       maxPoolSize: 20,
-      serverSelectionTimeoutMS: 5000,
+      family: 4,
+      serverSelectionTimeoutMS: 15000,
     });
     logger.info({ uri }, 'Cart Database connected successfully');
   } catch (error) {

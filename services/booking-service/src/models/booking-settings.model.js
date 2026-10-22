@@ -19,7 +19,7 @@ const bookingSettingsSchema = new mongoose.Schema(
     maxServicesPerBeautician: { type: Number, default: 10, min: 1 },
     maxDurationPerBeauticianMinutes: { type: Number, default: 240, min: 30 },
     manualAssignmentEnabled: { type: Boolean, default: true },
-    autoAssignmentEnabled: { type: Boolean, default: true },
+    autoAssignmentEnabled: { type: Boolean, default: false }, // Default to Manual Assignment via Admin Panel
 
     // Service upgrade settings
     serviceUpgradeEnabled: { type: Boolean, default: true },
@@ -96,7 +96,7 @@ export const DEFAULT_BOOKING_SETTINGS = Object.freeze({
   maxServicesPerBeautician: 10,
   maxDurationPerBeauticianMinutes: 240,
   manualAssignmentEnabled: true,
-  autoAssignmentEnabled: true,
+  autoAssignmentEnabled: false, // Default to Manual Assignment via Admin Panel
   serviceUpgradeEnabled: true,
   minUpgradeDifference: 100,
   maxUpgradeDifference: 200,

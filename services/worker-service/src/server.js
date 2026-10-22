@@ -6,6 +6,8 @@ import { createApp } from './app.js';
 import { DlqMonitorJob } from './jobs/dlq-monitor.job.js';
 import { SlotCleanupJob } from './jobs/slot-cleanup.job.js';
 
+import { HomeFeedPrecomputeJob } from './jobs/home-feed-precompute.job.js';
+
 async function startServer() {
   try {
     const app = createApp();
@@ -13,6 +15,7 @@ async function startServer() {
     let rmqConnection = null;
     let dlqJob = null;
     let cleanupJob = null;
+    let feedPrecomputeJob = null;
 
     try {
       rmqConnection = new RabbitMQConnection(config.rabbitmq.url, 'worker-service');
@@ -28,6 +31,9 @@ async function startServer() {
     cleanupJob = new SlotCleanupJob(null);
     cleanupJob.start(60000);
 
+    feedPrecomputeJob = new HomeFeedPrecomputeJob(null, null);
+    feedPrecomputeJob.start(300000);
+
     const server = http.createServer(app);
 
     server.listen(config.port, () => {
@@ -37,6 +43,7 @@ async function startServer() {
     const shutdown = async (signal) => {
       logger.info({ signal }, 'Shutting down Worker Service...');
       if (cleanupJob) cleanupJob.stop();
+      if (feedPrecomputeJob) feedPrecomputeJob.stop();
       server.close(async () => {
         if (rmqConnection) await rmqConnection.close();
         logger.info('Worker HTTP server and RabbitMQ closed.');

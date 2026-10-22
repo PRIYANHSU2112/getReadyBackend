@@ -17,6 +17,9 @@ export function createBlogRoutes(blogController) {
 
   router.get('/manage', validate(blogValidator.manageBlogsQuery, 'query'), blogController.listManage);
   router.get('/manage/:id', validate(blogValidator.blogIdParams, 'params'), blogController.getById);
+  router.post('/manage', upload.single('file'), validate(blogValidator.createBlog), blogController.create);
+  router.patch('/manage/:id', validate(blogValidator.blogIdParams, 'params'), upload.single('file'), validate(blogValidator.updateBlog), blogController.update);
+  router.delete('/manage/:id', validate(blogValidator.blogIdParams, 'params'), blogController.remove);
   router.post('/', upload.single('file'), validate(blogValidator.createBlog), blogController.create);
   router.get('/:id', validate(blogValidator.blogIdParams, 'params'), blogController.getPublic);
   router.patch('/:id', validate(blogValidator.blogIdParams, 'params'), upload.single('file'), validate(blogValidator.updateBlog), blogController.update);
