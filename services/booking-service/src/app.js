@@ -32,9 +32,12 @@ import {
   createSlotRoutes,
   createBookingRoutes,
   createCalendarRoutes,
-  createReportsRoutes,
   createSettingsRoutes,
 } from './routes/booking.routes.js';
+import { ReportRepository } from './repositories/report.repository.js';
+import { ReportService } from './services/report.service.js';
+import { ReportController } from './controllers/report.controller.js';
+import { createReportsRoutes } from './routes/report.routes.js';
 
 export function createApp(deps = {}) {
   const app = express();
@@ -89,6 +92,10 @@ export function createApp(deps = {}) {
   const bookingCtrl = new BookingController(bookingService);
   const calendarCtrl = new CalendarController(calendarService);
 
+  const reportRepo = deps.reportRepository || new ReportRepository();
+  const reportService = deps.reportService || new ReportService(reportRepo, bookingRepo);
+  const reportCtrl = new ReportController(reportService);
+
   // Mount routes
   app.get('/api/v1/home/summary', bookingHomeController.getUserSummary);
   app.get('/api/v1/beautician/home/upcoming-bookings', bookingHomeController.getBeauticianUpcoming);
@@ -99,7 +106,7 @@ export function createApp(deps = {}) {
   app.use('/api/v1/slots', createSlotRoutes(slotCtrl));
   app.use('/api/v1/calendar', calendarRouter);
   app.use('/api/v1/bookings', bookingRouter);
-  app.use('/api/v1/reports', createReportsRoutes(bookingCtrl));
+  app.use('/api/v1/reports', createReportsRoutes(reportCtrl));
   app.use('/api/v1/settings', createSettingsRoutes(bookingCtrl));
 
   // Admin route aliases for direct matching
