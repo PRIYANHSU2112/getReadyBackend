@@ -172,6 +172,17 @@ export class MembershipController {
     const analytics = await this.membershipService.getAnalytics();
     return ApiResponse.success(res, analytics, 'Membership analytics retrieved');
   };
+
+  getLoyaltyLedger = async (req, res) => {
+    const userId = req.query.userId || req.headers['x-user-id'];
+    const result = await this.membershipService.getLoyaltyLedger(userId, req.query);
+    return ApiResponse.success(res, result, 'Loyalty ledger retrieved successfully');
+  };
+
+  adjustLoyaltyPoints = async (req, res) => {
+    const result = await this.membershipService.adjustLoyaltyPoints(req.body);
+    return ApiResponse.success(res, result, 'Loyalty points adjusted successfully');
+  };
 }
 
 export const membershipController = new MembershipController();

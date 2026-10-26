@@ -41,4 +41,10 @@ export class CmsController {
     const result = await this.cmsService.delete(req.params.id);
     return ApiResponse.success(res, result, 'CMS page deleted successfully');
   };
+
+  getAdminStats = async (req, res) => {
+    const stats = await this.cmsService.getAdminStats();
+    return ApiResponse.success(res, stats, 'CMS stats retrieved successfully');
+  };
 }
+

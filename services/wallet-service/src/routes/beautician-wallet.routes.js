@@ -11,6 +11,7 @@ export function createBeauticianWalletRoutes(beauticianWalletController) {
   router.get('/payout-config', beauticianWalletController.getPayoutConfig);
 
   // Admin Payouts & Commission Config endpoints
+  router.get('/admin/payouts/stats', beauticianWalletController.getAdminPayoutStats);
   router.get('/admin/payouts/config', beauticianWalletController.getPayoutConfig);
   router.put('/admin/payouts/config', beauticianWalletController.updatePayoutConfig);
   router.get('/admin/payouts', beauticianWalletController.listAdminPayouts);

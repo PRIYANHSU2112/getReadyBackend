@@ -58,6 +58,8 @@ import {
   createOfferRoutes,
   createAdminPromotionRoutes,
 } from './routes/promotion.routes.js';
+import { UploadController } from './controllers/upload.controller.js';
+import { createUploadRoutes } from './routes/upload.routes.js';
 
 export function createApp(deps = {}) {
   const app = express();
@@ -120,10 +122,12 @@ export function createApp(deps = {}) {
   const hygieneKitCtrl = new HygieneKitController(hygieneKitService);
   const couponCtrl = new CouponController(couponService);
   const promotionCtrl = new PromotionController(promotionService);
+  const uploadCtrl = new UploadController(storageService);
 
   // Mount routes
   app.get('/api/v1/home/feed', homeFeedController.getFeed);
   app.post('/api/v1/home/feed/refresh', homeFeedController.refreshFeed);
+  app.use('/api/v1/upload', createUploadRoutes(uploadCtrl));
   app.use('/api/v1/categories', createCategoryRoutes(categoryCtrl));
   app.use('/api/v1/services', createServiceRoutes(serviceCtrl));
   app.use('/api/v1/service-change-requests', createServiceChangeRequestRoutes(serviceCtrl));

@@ -57,4 +57,25 @@ export class CmsRepository {
     }
     return CmsModel.findOneAndDelete({ slug: id });
   }
+
+  async getAdminStats() {
+    const [stats] = await CmsModel.aggregate([
+      {
+        $facet: {
+          total: [{ $count: 'count' }],
+          published: [{ $match: { status: 'PUBLISHED' } }, { $count: 'count' }],
+          draft: [{ $match: { status: 'DRAFT' } }, { $count: 'count' }],
+          archived: [{ $match: { status: 'ARCHIVED' } }, { $count: 'count' }],
+        },
+      },
+    ]);
+
+    return {
+      total: stats?.total?.[0]?.count || 0,
+      publishedCount: stats?.published?.[0]?.count || 0,
+      draftCount: stats?.draft?.[0]?.count || 0,
+      archivedCount: stats?.archived?.[0]?.count || 0,
+    };
+  }
 }
+

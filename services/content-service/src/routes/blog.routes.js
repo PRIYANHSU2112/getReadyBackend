@@ -11,6 +11,8 @@ const upload = multer({
 export function createBlogRoutes(blogController) {
   const router = Router();
 
+  router.get('/admin/stats', blogController.getAdminStats);
+  router.get('/manage/admin/stats', blogController.getAdminStats);
   router.get('/home', validate(blogValidator.homeBlogsQuery, 'query'), blogController.home);
   router.get('/', validate(blogValidator.listBlogsQuery, 'query'), blogController.listPublic);
   router.post('/:id/like', validate(blogValidator.blogIdParams, 'params'), blogController.like);

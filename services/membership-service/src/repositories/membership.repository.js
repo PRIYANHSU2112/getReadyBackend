@@ -519,6 +519,79 @@ export class MembershipRepository {
       mrr: Math.round(activeCount * 599),
     };
   }
+
+  /**
+   * Loyalty Ledger: Get user points ledger and current balance
+   */
+  async getLoyaltyLedger(userId, { page = 1, limit = 20 } = {}) {
+    const pageNum = parseInt(page || '1', 10);
+    const limitNum = Math.min(parseInt(limit || '20', 10), 100);
+    const skip = (pageNum - 1) * limitNum;
+
+    const filter = { userId };
+    const [items, total, latestEntry] = await Promise.all([
+      LoyaltyLedgerModel.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      LoyaltyLedgerModel.countDocuments(filter),
+      LoyaltyLedgerModel.findOne(filter).sort({ createdAt: -1 }).lean(),
+    ]);
+
+    const balance = latestEntry ? latestEntry.balanceAfter : 0;
+    return {
+      balance,
+      items: items.map((i) => ({ ...i, id: i._id?.toString() })),
+      meta: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum),
+      },
+    };
+  }
+
+  /**
+   * Loyalty Ledger: Adjust points (Credit or Debit)
+   */
+  async addLoyaltyEntry({ userId, type, category = 'ADMIN_ADJUSTMENT', points, description, referenceId = null }) {
+    const pts = Math.abs(Number(points));
+    if (isNaN(pts) || pts <= 0) {
+      throw new AppError('Points must be a positive number', HttpStatus.BAD_REQUEST, ErrorCodes.VALIDATION_ERROR);
+    }
+
+    const latest = await LoyaltyLedgerModel.findOne({ userId }).sort({ createdAt: -1 }).lean();
+    const currentBalance = latest ? latest.balanceAfter : 0;
+
+    let balanceAfter = currentBalance;
+    if (type === 'CREDIT') {
+      balanceAfter = currentBalance + pts;
+    } else if (type === 'DEBIT') {
+      if (currentBalance < pts) {
+        throw new AppError(`Insufficient points balance. Current: ${currentBalance}, debit: ${pts}`, HttpStatus.BAD_REQUEST, ErrorCodes.VALIDATION_ERROR);
+      }
+      balanceAfter = currentBalance - pts;
+    } else {
+      throw new AppError('Type must be CREDIT or DEBIT', HttpStatus.BAD_REQUEST, ErrorCodes.VALIDATION_ERROR);
+    }
+
+    const ledger = await LoyaltyLedgerModel.create({
+      ledgerId: `lld_${randomUUID()}`,
+      userId,
+      type,
+      category,
+      points: pts,
+      balanceAfter,
+      description: description || `Admin loyalty adjustment (${type})`,
+      referenceId,
+    });
+
+    return {
+      balance: balanceAfter,
+      entry: ledger.toJSON ? ledger.toJSON() : ledger,
+    };
+  }
 }
 
 export const membershipRepository = new MembershipRepository();

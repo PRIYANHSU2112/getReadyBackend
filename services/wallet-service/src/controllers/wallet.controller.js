@@ -109,4 +109,38 @@ export class WalletController {
     const result = await this.walletService.deleteWallet(id);
     return ApiResponse.success(res, result, 'Wallet deactivated successfully');
   };
+
+  adjustWalletBalance = async (req, res) => {
+    const { id } = req.params;
+    const { amount, reason } = req.body;
+    const numericAmount = parseFloat(amount);
+    if (isNaN(numericAmount) || numericAmount === 0) {
+      return ApiResponse.error(res, 'Valid adjustment amount is required', HttpStatus.BAD_REQUEST);
+    }
+    const wallet = await this.walletService.walletRepository.findById(id);
+    if (!wallet) {
+      return ApiResponse.error(res, 'Wallet not found', HttpStatus.NOT_FOUND);
+    }
+
+    let result;
+    if (numericAmount > 0) {
+      result = await this.walletService.creditWallet(
+        wallet.userId,
+        numericAmount,
+        'ADMIN_ADJUSTMENT',
+        null,
+        reason || 'Admin manual credit adjustment',
+      );
+    } else {
+      result = await this.walletService.debitWallet(
+        wallet.userId,
+        Math.abs(numericAmount),
+        'ADMIN_ADJUSTMENT',
+        null,
+        reason || 'Admin manual debit adjustment',
+      );
+    }
+    return ApiResponse.success(res, result, 'Wallet balance adjusted successfully');
+  };
 }
+

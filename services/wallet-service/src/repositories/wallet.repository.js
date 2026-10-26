@@ -72,48 +72,42 @@ export class WalletRepository {
     };
   }
 
-  async getKpis(walletType = null) {
-    const matchFilter = walletType ? { walletType } : {};
-    const [stats, statusCounts] = await Promise.all([
-      WalletModel.aggregate([
-        { $match: matchFilter },
-        {
-          $group: {
-            _id: null,
-            totalBalance: { $sum: '$balance' },
-            totalPoints: { $sum: '$points' },
-            totalPendingWithdrawal: { $sum: '$pendingWithdrawalBalance' },
-            totalEarned: { $sum: '$totalEarnedLifetime' },
-            totalCount: { $sum: 1 },
+  async getKpis() {
+    const stats = await WalletModel.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalWallets: { $sum: 1 },
+          totalMoneyInWallets: { $sum: '$balance' },
+          totalUserWallets: {
+            $sum: { $cond: [{ $eq: ['$walletType', 'CUSTOMER'] }, 1, 0] },
+          },
+          totalBeauticianWallets: {
+            $sum: { $cond: [{ $eq: ['$walletType', 'BEAUTICIAN'] }, 1, 0] },
           },
         },
-      ]),
-      WalletModel.aggregate([
-        { $match: matchFilter },
-        {
-          $group: {
-            _id: '$status',
-            count: { $sum: 1 },
-          },
+      },
+      {
+        $project: {
+          _id: 0,
+          totalWallets: 1,
+          totalMoneyInWallets: 1,
+          totalUserWallets: 1,
+          totalBeauticianWallets: 1,
         },
-      ]),
+      },
     ]);
 
-    const active = statusCounts.find((s) => s._id === 'ACTIVE')?.count || 0;
-    const total = stats[0]?.totalCount || 0;
-    const totalBalance = stats[0]?.totalBalance || 0;
-    const totalPendingWithdrawal = stats[0]?.totalPendingWithdrawal || 0;
-    const totalEarned = stats[0]?.totalEarned || 0;
-
-    return {
-      total,
-      active,
-      pending: total - active,
-      totalBalance,
-      totalPendingWithdrawal,
-      totalEarned,
-    };
+    return (
+      stats[0] || {
+        totalWallets: 0,
+        totalMoneyInWallets: 0,
+        totalUserWallets: 0,
+        totalBeauticianWallets: 0,
+      }
+    );
   }
+
 
   async create(data) {
     const wallet = new WalletModel(data);
@@ -215,7 +209,72 @@ export class PayoutRequestRepository {
     ]);
     return { payouts, total };
   }
+
+  async getStats() {
+    const stats = await PayoutRequestModel.aggregate([
+      {
+        $group: {
+          _id: null,
+          pendingCount: {
+            $sum: {
+              $cond: [
+                { $in: ['$status', ['REQUESTED', 'PENDING', 'PROCESSING']] },
+                1,
+                0,
+              ],
+            },
+          },
+          pendingAmount: {
+            $sum: {
+              $cond: [
+                { $in: ['$status', ['REQUESTED', 'PENDING', 'PROCESSING']] },
+                '$amount',
+                0,
+              ],
+            },
+          },
+          totalDisbursed: {
+            $sum: {
+              $cond: [
+                { $eq: ['$status', 'COMPLETED'] },
+                '$amount',
+                0,
+              ],
+            },
+          },
+          totalCommissionEarned: {
+            $sum: {
+              $cond: [
+                { $eq: ['$status', 'COMPLETED'] },
+                { $ifNull: ['$commissionDeducted', 0] },
+                0,
+              ],
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          pendingCount: 1,
+          pendingAmount: 1,
+          totalDisbursed: 1,
+          totalCommissionEarned: 1,
+        },
+      },
+    ]);
+
+    return (
+      stats[0] || {
+        pendingCount: 0,
+        pendingAmount: 0,
+        totalDisbursed: 0,
+        totalCommissionEarned: 0,
+      }
+    );
+  }
 }
+
 
 export class LoyaltyRuleRepository {
   async findRule() {

@@ -86,6 +86,9 @@ export function createApp(deps = {}) {
 
   // Mount routes
   const memberRoutes = createMemberRoutes(memberController);
+  const referralRouter = express.Router();
+  referralRouter.get('/', userController.listReferrals);
+
   app.use('/api/v1/users', createUserRoutes(userController));
   app.use('/api/v1/addresses', createAddressRoutes(addressController));
   app.use('/api/v1/members', memberRoutes);
@@ -93,7 +96,7 @@ export function createApp(deps = {}) {
   app.use('/api/v1/customer-profiles', memberRoutes);
   app.use('/api/v1/roles', rolesRouter);
   app.use('/api/v1/permissions', permissionsRouter);
-  app.use('/api/v1/referrals', memberRoutes);
+  app.use('/api/v1/referrals', referralRouter);
 
   // 404
   app.use((req, res) => {

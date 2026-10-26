@@ -31,6 +31,10 @@ import { LandingRepository, FaqRepository } from './repositories/landing.reposit
 import { LandingService } from './services/landing.service.js';
 import { LandingController } from './controllers/landing.controller.js';
 import { createLandingRoutes, createFaqRoutes } from './routes/landing.routes.js';
+import { CompanyRepository } from './repositories/company.repository.js';
+import { CompanyService } from './services/company.service.js';
+import { CompanyController } from './controllers/company.controller.js';
+import { createCompanyRoutes } from './routes/company.routes.js';
 
 export function createApp() {
   const app = express();
@@ -103,6 +107,10 @@ export function createApp() {
   const landingService = new LandingService(landingRepository, faqRepository);
   const landingController = new LandingController(landingService);
 
+  const companyRepository = new CompanyRepository();
+  const companyService = new CompanyService(companyRepository);
+  const companyController = new CompanyController(companyService);
+
   // Mount routes
   const bannerRoutes = createBannerRoutes(bannerController);
   const blogRoutes = createBlogRoutes(blogController);
@@ -111,6 +119,7 @@ export function createApp() {
   const cmsRoutes = createCmsRoutes(cmsController);
   const landingRoutes = createLandingRoutes(landingController);
   const faqRoutes = createFaqRoutes(landingController);
+  const companyRoutes = createCompanyRoutes(companyController);
 
   app.use('/api/v1/home/banners', (req, res) => bannerController.listActive(req, res));
   app.use('/api/v1/banners', bannerRoutes);
@@ -133,6 +142,8 @@ export function createApp() {
   app.use('/api/v1/faq', faqRoutes);
   app.use('/api/v1/content/faq', faqRoutes);
   app.use('/api/v1/content', cmsRoutes);
+  app.use('/api/v1/company', companyRoutes);
+  app.use('/api/v1/content/company', companyRoutes);
 
   // Error Handler
   app.use((err, req, res, next) => {

@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { BeauticianProfileModel } from '../models/beautician.models.js';
+import { AttendanceModel } from '../models/hrm.models.js';
 import { beauticianCache } from '../cache/beautician.cache.js';
 import { logger } from '@getready/logger';
 
@@ -232,6 +233,47 @@ export class BeauticianHomeService {
       },
       { new: true, runValidators: true },
     );
+
+    // Sync with Attendance record
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (updated?._id) {
+        if (newStatus === 'ONLINE') {
+          await AttendanceModel.findOneAndUpdate(
+            { beauticianProfileId: updated._id, date: todayStr },
+            {
+              $setOnInsert: {
+                beauticianProfileId: updated._id,
+                userId: updated.userId || bid,
+                date: todayStr,
+                punchIn: new Date(),
+                status: 'PRESENT',
+                source: 'DUTY_TOGGLE',
+              },
+            },
+            { upsert: true, new: true }
+          );
+        } else if (newStatus === 'OFFLINE') {
+          const att = await AttendanceModel.findOne({ beauticianProfileId: updated._id, date: todayStr });
+          if (att && att.punchIn && !att.punchOut) {
+            const now = new Date();
+            const hours = Number((Math.max(0, now.getTime() - new Date(att.punchIn).getTime()) / (1000 * 60 * 60)).toFixed(2));
+            await AttendanceModel.updateOne(
+              { _id: att._id },
+              {
+                $set: {
+                  punchOut: now,
+                  totalHoursWorked: hours,
+                  status: hours >= 4 ? 'PRESENT' : 'HALF_DAY',
+                },
+              }
+            );
+          }
+        }
+      }
+    } catch (e) {
+      logger.warn({ err: e.message }, 'Failed to record attendance on duty toggle');
+    }
 
     // Invalidate Redis caches immediately
     await beauticianCache.del(`home:beautician:${bid}:summary`);

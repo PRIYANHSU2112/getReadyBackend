@@ -26,7 +26,7 @@ export function createWalletRoutes(walletController) {
   router.post('/topup/verify', validate(walletValidator.verifyTopupPayment), walletController.verifyTopupPayment);
   router.get('/transactions', validate(walletValidator.listTransactionsQuery, 'query'), walletController.listTransactions);
   router.post('/points/add', validate(walletValidator.addPoints), walletController.addPoints);
-  router.post('/points/deduct', validate(walletValidator.deductPoints), walletController.deductPoints);
+  router.post('/:id/adjust', walletController.adjustWalletBalance);
   router.patch('/:id', walletController.updateWallet);
   router.put('/:id', walletController.updateWallet);
   router.delete('/:id', walletController.deleteWallet);

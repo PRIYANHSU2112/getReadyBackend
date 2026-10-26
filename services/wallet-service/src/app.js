@@ -96,6 +96,7 @@ export function createApp(publisher = null) {
 
   // Mount Admin Payouts & Commission Config
   const adminPayoutRoutes = express.Router();
+  adminPayoutRoutes.get('/stats', beauticianWalletController.getAdminPayoutStats);
   adminPayoutRoutes.get('/config', beauticianWalletController.getPayoutConfig);
   adminPayoutRoutes.put('/config', beauticianWalletController.updatePayoutConfig);
   adminPayoutRoutes.get('/', beauticianWalletController.listAdminPayouts);

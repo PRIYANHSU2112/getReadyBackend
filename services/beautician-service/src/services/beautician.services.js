@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import mongoose from 'mongoose';
 import { AppError, ValidationError, HttpStatus, ErrorCodes } from '@getready/errors';
 import { EVENT_TYPES } from '@getready/rabbitmq';
 import { StorageService } from '@getready/storage';
@@ -181,6 +182,9 @@ export class BeauticianProfileService {
   }
 
   async getProfileById(id) {
+    if (!mongoose.isValidObjectId(id)) {
+      throw new AppError('Invalid profile ID', HttpStatus.BAD_REQUEST, ErrorCodes.VALIDATION_ERROR);
+    }
     const profile = await this.profileRepo.findById(id);
     if (!profile) throw new AppError('Profile not found', HttpStatus.NOT_FOUND, ErrorCodes.NOT_FOUND);
 
@@ -388,6 +392,9 @@ export class BeauticianProfileService {
   }
 
   async reviewKycDocument(profileId, docId, { status, rejectionReason = null }, adminUserId = null) {
+    if (!mongoose.isValidObjectId(profileId)) {
+      throw new AppError('Invalid profile ID', HttpStatus.BAD_REQUEST, ErrorCodes.VALIDATION_ERROR);
+    }
     if (status === 'REJECTED' && (!rejectionReason || !rejectionReason.trim())) {
       throw new ValidationError('Rejection reason is mandatory when rejecting a KYC document');
     }
@@ -454,6 +461,9 @@ export class BeauticianProfileService {
   }
 
   async reviewKycSelfie(profileId, { status, remarks = null }, adminUserId = null) {
+    if (!mongoose.isValidObjectId(profileId)) {
+      throw new AppError('Invalid profile ID', HttpStatus.BAD_REQUEST, ErrorCodes.VALIDATION_ERROR);
+    }
     const profile = await this.profileRepo.findById(profileId);
     if (!profile) throw new AppError('Profile not found', HttpStatus.NOT_FOUND, ErrorCodes.NOT_FOUND);
 
@@ -473,6 +483,9 @@ export class BeauticianProfileService {
   }
 
   async requestReupload(profileId, { docType, reason }, adminUserId = null) {
+    if (!mongoose.isValidObjectId(profileId)) {
+      throw new AppError('Invalid profile ID', HttpStatus.BAD_REQUEST, ErrorCodes.VALIDATION_ERROR);
+    }
     const profile = await this.profileRepo.findById(profileId);
     if (!profile) throw new AppError('Profile not found', HttpStatus.NOT_FOUND, ErrorCodes.NOT_FOUND);
 
@@ -543,6 +556,9 @@ export class BeauticianProfileService {
   }
 
   async updateStatus(profileId, { status, rejectionReason = null, operationalStatus = null }, adminUserId = null) {
+    if (!mongoose.isValidObjectId(profileId)) {
+      throw new AppError('Invalid profile ID', HttpStatus.BAD_REQUEST, ErrorCodes.VALIDATION_ERROR);
+    }
     const profile = await this.profileRepo.findById(profileId);
     if (!profile) throw new AppError('Profile not found', HttpStatus.NOT_FOUND, ErrorCodes.NOT_FOUND);
 
@@ -599,6 +615,9 @@ export class BeauticianProfileService {
   }
 
   async reviewKyc(id, { kycStatus, kycRejectionReason = null }, adminUserId = null) {
+    if (!mongoose.isValidObjectId(id)) {
+      throw new AppError('Invalid profile ID', HttpStatus.BAD_REQUEST, ErrorCodes.VALIDATION_ERROR);
+    }
     const profile = await this.profileRepo.findById(id);
     if (!profile) throw new AppError('Profile not found', HttpStatus.NOT_FOUND, ErrorCodes.NOT_FOUND);
     profile.kycStatus = kycStatus;
@@ -615,6 +634,9 @@ export class BeauticianProfileService {
   }
 
   async reviewCertificate(id, { status, rejectionReason = null }) {
+    if (!mongoose.isValidObjectId(id)) {
+      throw new AppError('Invalid certificate ID', HttpStatus.BAD_REQUEST, ErrorCodes.VALIDATION_ERROR);
+    }
     return this.certificateRepo.reviewById(id, { status, rejectionReason });
   }
 
@@ -706,12 +728,18 @@ export class BankDetailService {
   }
 
   async getBankDetailById(id) {
+    if (!mongoose.isValidObjectId(id)) {
+      throw new AppError('Invalid bank detail ID', HttpStatus.BAD_REQUEST, ErrorCodes.VALIDATION_ERROR);
+    }
     const detail = await this.bankDetailRepo.findById(id);
     if (!detail) throw new AppError('Bank detail not found', HttpStatus.NOT_FOUND, ErrorCodes.NOT_FOUND);
     return detail;
   }
 
   async reviewBankDetail(id, { status, rejectionReason = null }, adminUserId = null) {
+    if (!mongoose.isValidObjectId(id)) {
+      throw new AppError('Invalid bank detail ID', HttpStatus.BAD_REQUEST, ErrorCodes.VALIDATION_ERROR);
+    }
     return this.bankDetailRepo.reviewById(id, {
       status,
       rejectionReason,

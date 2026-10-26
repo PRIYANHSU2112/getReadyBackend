@@ -13,7 +13,7 @@ export class BeauticianWalletController {
         return ApiResponse.error(res, 'User ID is required', HttpStatus.UNAUTHORIZED);
       }
       const data = await this.service.getDashboard(userId);
-      return ApiResponse.success(res, data, HttpStatus.OK, 'Beautician wallet dashboard fetched');
+      return ApiResponse.success(res, data, 'Beautician wallet dashboard fetched', HttpStatus.OK);
     } catch (err) {
       next(err);
     }
@@ -31,7 +31,7 @@ export class BeauticianWalletController {
         page: parseInt(page, 10),
         limit: parseInt(limit, 10),
       });
-      return ApiResponse.success(res, data, HttpStatus.OK, 'Transactions fetched');
+      return ApiResponse.success(res, data, 'Transactions fetched', HttpStatus.OK);
     } catch (err) {
       next(err);
     }
@@ -44,7 +44,7 @@ export class BeauticianWalletController {
         return ApiResponse.error(res, 'User ID is required', HttpStatus.UNAUTHORIZED);
       }
       const data = await this.service.getTransactionDetails(userId, req.params.id);
-      return ApiResponse.success(res, data, HttpStatus.OK, 'Transaction details fetched');
+      return ApiResponse.success(res, data, 'Transaction details fetched', HttpStatus.OK);
     } catch (err) {
       next(err);
     }
@@ -57,13 +57,22 @@ export class BeauticianWalletController {
         return ApiResponse.error(res, 'User ID is required', HttpStatus.UNAUTHORIZED);
       }
       const result = await this.service.requestPayout(userId, req.body);
-      return ApiResponse.success(res, result, HttpStatus.CREATED, 'Withdrawal request submitted successfully');
+      return ApiResponse.success(res, result, 'Withdrawal request submitted successfully', HttpStatus.CREATED);
     } catch (err) {
       next(err);
     }
   };
 
   // Admin endpoints
+  getAdminPayoutStats = async (req, res, next) => {
+    try {
+      const stats = await this.payoutRepo.getStats();
+      return ApiResponse.success(res, stats, 'Payout stats fetched successfully', HttpStatus.OK);
+    } catch (err) {
+      next(err);
+    }
+  };
+
   listAdminPayouts = async (req, res, next) => {
     try {
       const { status, page = 1, limit = 25 } = req.query;
@@ -73,7 +82,7 @@ export class BeauticianWalletController {
         skip,
         limit: parseInt(limit, 10),
       });
-      return ApiResponse.success(res, data, HttpStatus.OK, 'Payout requests fetched');
+      return ApiResponse.success(res, data, 'Payout requests fetched', HttpStatus.OK);
     } catch (err) {
       next(err);
     }
@@ -88,7 +97,7 @@ export class BeauticianWalletController {
         transactionRef,
         reason,
       });
-      return ApiResponse.success(res, result, HttpStatus.OK, `Payout ${action.toLowerCase()}ed successfully`);
+      return ApiResponse.success(res, result, `Payout ${action.toLowerCase()}ed successfully`, HttpStatus.OK);
     } catch (err) {
       next(err);
     }
@@ -98,7 +107,7 @@ export class BeauticianWalletController {
   getPayoutConfig = async (req, res, next) => {
     try {
       const config = await this.service.getPayoutConfig();
-      return ApiResponse.success(res, config, HttpStatus.OK, 'Payout configuration fetched');
+      return ApiResponse.success(res, config, 'Payout configuration fetched', HttpStatus.OK);
     } catch (err) {
       next(err);
     }
@@ -108,10 +117,9 @@ export class BeauticianWalletController {
     try {
       const adminUserId = req.user?.id || req.headers['x-user-id'] || 'ADMIN';
       const updated = await this.service.updatePayoutConfig(req.body, adminUserId);
-      return ApiResponse.success(res, updated, HttpStatus.OK, 'Payout configuration updated successfully');
+      return ApiResponse.success(res, updated, 'Payout configuration updated successfully', HttpStatus.OK);
     } catch (err) {
       next(err);
     }
   };
 }
-

@@ -71,4 +71,9 @@ export class BlogService {
     if (!blog) throw new NotFoundError('Blog not found');
     return { success: true };
   }
+
+  async getAdminStats() {
+    return this.blogRepository.getAdminStats();
+  }
 }
+

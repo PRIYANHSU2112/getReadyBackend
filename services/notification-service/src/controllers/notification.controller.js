@@ -40,4 +40,39 @@ export class NotificationController {
     const notification = await this.notificationService.sendNotification(req.body);
     return ApiResponse.success(res, notification, 'Notification sent successfully', HttpStatus.CREATED);
   };
+
+  listAdmin = async (req, res) => {
+    const { limit = 20, page = 1, channel, read, search } = req.query;
+    const result = await this.notificationService.listAdmin({
+      limit: Number(limit),
+      page: Number(page),
+      channel,
+      read,
+      search,
+    });
+    return ApiResponse.paginated(
+      res,
+      result.items,
+      {
+        page: result.page,
+        limit: result.limit,
+        total: result.total,
+        totalPages: result.totalPages,
+        hasNext: result.page < result.totalPages,
+        hasPrevious: result.page > 1,
+      },
+      'Admin notifications retrieved successfully',
+    );
+  };
+
+  getAdminStats = async (_req, res) => {
+    const stats = await this.notificationService.getAdminStats();
+    return ApiResponse.success(res, stats, 'Notification stats retrieved successfully');
+  };
+
+  broadcast = async (req, res) => {
+    const notification = await this.notificationService.broadcast(req.body);
+    return ApiResponse.success(res, notification, 'Broadcast notification dispatched successfully', HttpStatus.CREATED);
+  };
 }
+

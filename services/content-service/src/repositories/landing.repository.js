@@ -104,4 +104,23 @@ export class FaqRepository {
   async deleteById(id) {
     return FaqModel.findByIdAndDelete(id);
   }
+
+  async getAdminStats() {
+    const [stats] = await FaqModel.aggregate([
+      {
+        $facet: {
+          total: [{ $count: 'count' }],
+          published: [{ $match: { isPublished: true } }, { $count: 'count' }],
+          categories: [{ $group: { _id: '$category' } }, { $count: 'count' }],
+        },
+      },
+    ]);
+
+    return {
+      total: stats?.total?.[0]?.count || 0,
+      publishedCount: stats?.published?.[0]?.count || 0,
+      categoryCount: stats?.categories?.[0]?.count || 0,
+    };
+  }
 }
+

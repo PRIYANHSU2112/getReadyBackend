@@ -60,4 +60,25 @@ export class BlogRepository {
   async incrementLikes(id) {
     return BlogModel.findByIdAndUpdate(id, { $inc: { likesCount: 1 } }, { new: true });
   }
+
+  async getAdminStats() {
+    const [stats] = await BlogModel.aggregate([
+      {
+        $facet: {
+          total: [{ $count: 'count' }],
+          published: [{ $match: { status: 'PUBLISHED' } }, { $count: 'count' }],
+          draft: [{ $match: { status: 'DRAFT' } }, { $count: 'count' }],
+          totalLikes: [{ $group: { _id: null, sum: { $sum: '$likesCount' } } }],
+        },
+      },
+    ]);
+
+    return {
+      total: stats?.total?.[0]?.count || 0,
+      publishedCount: stats?.published?.[0]?.count || 0,
+      draftCount: stats?.draft?.[0]?.count || 0,
+      totalLikes: stats?.totalLikes?.[0]?.sum || 0,
+    };
+  }
 }
+

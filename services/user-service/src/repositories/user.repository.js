@@ -109,4 +109,37 @@ export class UserRepository {
       blockedAccounts: facetResults.inactiveUsers[0]?.count || 0,
     };
   }
+
+  async findReferrals({ page = 1, limit = 20, search } = {}) {
+    const pageNum = parseInt(page || '1', 10);
+    const limitNum = Math.min(parseInt(limit || '20', 10), 100);
+    const skip = (pageNum - 1) * limitNum;
+    const filter = { referredBy: { $ne: null }, deletedAt: null };
+
+    const [items, total] = await Promise.all([
+      UserModel.find(filter)
+        .populate('referredBy', 'name phone email referralCode')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      UserModel.countDocuments(filter),
+    ]);
+
+    const formatted = items.map((user) => ({
+      _id: user._id,
+      id: user._id,
+      referralCode: user.referredBy?.referralCode || '—',
+      referrerName: user.referredBy?.name || 'Customer',
+      referrerPhone: user.referredBy?.phone || '—',
+      refereeName: user.name || 'New Customer',
+      refereePhone: user.phone || '—',
+      rewardAmount: 150,
+      status: user.status === 'ACTIVE' ? 'COMPLETED' : 'PENDING_FIRST_BOOKING',
+      bookingNumber: null,
+      createdAt: user.createdAt,
+    }));
+
+    return { items: formatted, meta: { page: pageNum, limit: limitNum, total, totalPages: Math.ceil(total / limitNum) } };
+  }
 }

@@ -39,6 +39,14 @@ import {
   createBankDetailRoutes,
 } from './routes/beautician.routes.js';
 import { beauticianHomeController } from './controllers/beautician-home.controller.js';
+import {
+  AttendanceRepository,
+  LeaveRepository,
+  PayslipRepository,
+} from './repositories/hrm.repositories.js';
+import { HrmService } from './services/hrm.service.js';
+import { HrmController } from './controllers/hrm.controller.js';
+import { createHrmRoutes } from './routes/hrm.routes.js';
 
 export function createApp(deps = {}) {
   const app = express();
@@ -81,6 +89,9 @@ export function createApp(deps = {}) {
   const certRepo = deps.certificateRepository || new CertificateRepository();
   const skillRepo = deps.skillRepository || new SkillRepository();
   const bankRepo = deps.bankDetailRepository || new BankDetailRepository();
+  const attendanceRepo = deps.attendanceRepository || new AttendanceRepository();
+  const leaveRepo = deps.leaveRepository || new LeaveRepository();
+  const payslipRepo = deps.payslipRepository || new PayslipRepository();
   const storageService = deps.storageService || new StorageService(config.storage || {});
   const userClient = deps.userClient || new UserClient(config.userServiceUrl);
 
@@ -98,10 +109,21 @@ export function createApp(deps = {}) {
   const skillService = deps.skillService || new SkillService(skillRepo, deps.eventPublisher || null);
   const bankDetailService =
     deps.bankDetailService || new BankDetailService(bankRepo, profileRepo, storageService);
+  const hrmService =
+    deps.hrmService ||
+    new HrmService(
+      attendanceRepo,
+      leaveRepo,
+      payslipRepo,
+      profileRepo,
+      storageService,
+      deps.cache || null,
+    );
 
   const profileCtrl = new BeauticianProfileController(profileService);
   const skillCtrl = new SkillController(skillService);
   const bankCtrl = new BankDetailController(bankDetailService);
+  const hrmCtrl = new HrmController(hrmService);
 
   // Mount routes
   app.get('/api/v1/beautician/home/summary', beauticianHomeController.getSummary);
@@ -117,6 +139,7 @@ export function createApp(deps = {}) {
   app.use('/api/v1/beautician', beauticianRoutes);
   app.use('/api/v1/skills', createSkillRoutes(skillCtrl));
   app.use('/api/v1/bank-details', createBankDetailRoutes(bankCtrl));
+  app.use('/api/v1/hrm', createHrmRoutes(hrmCtrl));
 
   // 404
   app.use((req, res) => {
@@ -126,9 +149,17 @@ export function createApp(deps = {}) {
   // Global Error Handler
   app.use((err, req, res, _next) => {
     logger.error({ err, url: req.originalUrl, correlationId: req.correlationId }, 'Beautician Service Error');
-    const statusCode = err.statusCode || HttpStatus.INTERNAL_SERVER_ERROR;
-    const message = config.isProduction && statusCode === 500 ? 'Internal server error' : err.message;
-    return ApiResponse.error(res, message, statusCode, err.code || ErrorCodes.INTERNAL_ERROR, err.details, req.requestId);
+    let statusCode = err.statusCode || HttpStatus.INTERNAL_SERVER_ERROR;
+    let code = err.code || ErrorCodes.INTERNAL_ERROR;
+    let message = config.isProduction && statusCode === 500 ? 'Internal server error' : err.message;
+
+    if (err.name === 'CastError') {
+      statusCode = HttpStatus.BAD_REQUEST;
+      code = ErrorCodes.VALIDATION_ERROR;
+      message = `Invalid ${err.path || 'identifier'}: ${err.value}`;
+    }
+
+    return ApiResponse.error(res, message, statusCode, code, err.details, req.requestId);
   });
 
   return app;

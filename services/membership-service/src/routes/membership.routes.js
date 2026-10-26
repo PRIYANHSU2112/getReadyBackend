@@ -14,6 +14,10 @@ export function createMembershipRoutes(ctrl) {
   router.post('/family-members', validate(membershipValidator, 'addFamilyMember'), ctrl.addFamilyMember);
   router.post('/claim-entitlement', validate(membershipValidator, 'claimEntitlement'), ctrl.claimEntitlement);
 
+  // Loyalty Ledger Endpoints
+  router.get('/loyalty-ledger', ctrl.getLoyaltyLedger);
+  router.post('/loyalty-ledger/adjust', ctrl.adjustLoyaltyPoints);
+
   // Webhook Activation from Payment Service
   router.post('/webhook-activate', ctrl.webhookActivate);
 
@@ -32,6 +36,8 @@ export function createAdminMembershipRoutes(ctrl) {
 
   router.get('/subscriptions', ctrl.searchMembersAdmin);
   router.get('/analytics', ctrl.getAnalyticsAdmin);
+  router.get('/loyalty-ledger', ctrl.getLoyaltyLedger);
+  router.post('/loyalty-ledger/adjust', ctrl.adjustLoyaltyPoints);
 
   return router;
 }

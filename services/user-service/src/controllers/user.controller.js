@@ -77,4 +77,9 @@ export class UserController {
     const user = await this.userService.setPasswordByEmail(email, newPassword);
     return ApiResponse.success(res, user);
   };
+
+  listReferrals = async (req, res) => {
+    const result = await this.userService.listReferrals(req.query);
+    return ApiResponse.paginated(res, result.items, result.meta, 'Referrals fetched successfully');
+  };
 }

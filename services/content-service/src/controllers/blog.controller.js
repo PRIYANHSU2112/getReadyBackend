@@ -92,4 +92,10 @@ export class BlogController {
     await this.blogService.remove(id);
     return ApiResponse.success(res, null, 'Blog removed successfully');
   };
+
+  getAdminStats = async (_req, res) => {
+    const stats = await this.blogService.getAdminStats();
+    return ApiResponse.success(res, stats, 'Blog admin stats retrieved successfully');
+  };
 }
+

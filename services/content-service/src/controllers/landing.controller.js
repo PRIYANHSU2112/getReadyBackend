@@ -35,4 +35,10 @@ export class LandingController {
     await this.landingService.deleteFaq(req.params.id);
     return ApiResponse.success(res, { id: req.params.id }, 'FAQ deleted successfully');
   };
+
+  getFaqAdminStats = async (_req, res) => {
+    const stats = await this.landingService.getFaqAdminStats();
+    return ApiResponse.success(res, stats, 'FAQ admin stats retrieved successfully');
+  };
 }
+

@@ -141,6 +141,7 @@ export function createGatewayRouter(serviceOverrides = {}) {
   router.use('/api/v1/beautician', createServiceProxy(services.beautician, 'beautician-service'));
   router.use('/api/v1/bank-details', createServiceProxy(services.beautician, 'beautician-service'));
   router.use('/api/v1/skills', createServiceProxy(services.beautician, 'beautician-service'));
+  router.use('/api/v1/hrm', createServiceProxy(services.beautician, 'beautician-service'));
 
   // 4. Catalog Service (/api/v1/categories, services, service-change-requests, packages, filters, hygiene-kits, coupons)
   router.use('/api/v1/categories', createServiceProxy(services.catalog, 'catalog-service'));
@@ -152,6 +153,7 @@ export function createGatewayRouter(serviceOverrides = {}) {
   router.use('/api/v1/coupons', createServiceProxy(services.catalog, 'catalog-service'));
   router.use('/api/v1/offers', createServiceProxy(services.catalog, 'catalog-service'));
   router.use('/api/v1/admin/promotions', createServiceProxy(services.catalog, 'catalog-service'));
+  router.use('/api/v1/upload', createServiceProxy(services.catalog, 'catalog-service'));
 
   // 5. Booking & Calendar Service (/api/v1/slots, bookings, calendar, reports, settings)
   router.use('/api/v1/slots', createServiceProxy(services.booking, 'booking-service'));
@@ -189,6 +191,7 @@ export function createGatewayRouter(serviceOverrides = {}) {
   router.use('/api/v1/content', createServiceProxy(services.content, 'content-service'));
   router.use('/api/v1/landing', createServiceProxy(services.content, 'content-service'));
   router.use('/api/v1/faq', createServiceProxy(services.content, 'content-service'));
+  router.use('/api/v1/company', createServiceProxy(services.content, 'content-service'));
 
   // 11. Search Service (/api/v1/search)
   router.use('/api/v1/search', createServiceProxy(services.search, 'search-service'));

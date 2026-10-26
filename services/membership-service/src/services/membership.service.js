@@ -290,6 +290,23 @@ export class MembershipService {
   async getAnalytics() {
     return this.membershipRepo.getAnalytics();
   }
+
+  /**
+   * Loyalty Ledger
+   */
+  async getLoyaltyLedger(userId, query) {
+    if (!userId) {
+      throw new AppError('userId is required', HttpStatus.BAD_REQUEST, ErrorCodes.VALIDATION_ERROR);
+    }
+    return this.membershipRepo.getLoyaltyLedger(userId, query);
+  }
+
+  async adjustLoyaltyPoints(payload) {
+    if (!payload?.userId) {
+      throw new AppError('userId is required', HttpStatus.BAD_REQUEST, ErrorCodes.VALIDATION_ERROR);
+    }
+    return this.membershipRepo.addLoyaltyEntry(payload);
+  }
 }
 
 export const membershipService = new MembershipService();

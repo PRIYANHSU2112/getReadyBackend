@@ -35,4 +35,9 @@ export class LandingService {
   async deleteFaq(id) {
     return this.faqRepo.deleteById(id);
   }
+
+  async getFaqAdminStats() {
+    return this.faqRepo.getAdminStats();
+  }
 }
+

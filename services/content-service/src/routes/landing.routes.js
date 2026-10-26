@@ -13,6 +13,7 @@ export function createLandingRoutes(controller) {
 
 export function createFaqRoutes(controller) {
   const router = Router();
+  router.get('/admin/stats', controller.getFaqAdminStats);
   router.get('/', controller.listFaqs);
   router.post('/', controller.createFaq);
   router.patch('/:id', controller.updateFaq);

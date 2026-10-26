@@ -2,6 +2,7 @@ import { Router } from 'express';
 
 export function createCmsRoutes(controller) {
   const router = Router();
+  router.get('/admin/stats', controller.getAdminStats);
   router.get('/', controller.list);
   router.get('/:id', controller.getById);
   router.post('/', controller.create);

@@ -63,4 +63,9 @@ export class CmsService {
     if (!page) throw new NotFoundError('CMS page not found');
     return { id, deleted: true };
   }
+
+  async getAdminStats() {
+    return this.cmsRepo.getAdminStats();
+  }
 }
+

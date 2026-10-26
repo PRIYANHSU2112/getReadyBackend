@@ -266,4 +266,8 @@ export class UserService {
     const { startDate, endDate } = this.parseDateRange(query);
     return this.userRepository.getAdminStats({ startDate, endDate });
   }
+
+  async listReferrals(query = {}) {
+    return this.userRepository.findReferrals(query);
+  }
 }
